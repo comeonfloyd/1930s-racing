@@ -105,7 +105,7 @@ public partial class CalendarScreen : Control
         row.AddThemeConstantOverride("separation", 16);
         column.AddChild(row);
 
-        _calendarScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _calendarScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, VerticalScrollMode = ScrollContainer.ScrollMode.ShowAlways };
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _body.AddThemeConstantOverride("separation", 8);
         _calendarScroll.AddChild(_body);
@@ -114,7 +114,7 @@ public partial class CalendarScreen : Control
         _map = new TravelMap { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, EnterRace = OnEnter };
         row.AddChild(_map);
 
-        var sideScroll = new ScrollContainer { CustomMinimumSize = new Vector2(SideWidth, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var sideScroll = new ScrollContainer { CustomMinimumSize = new Vector2(SideWidth, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, VerticalScrollMode = ScrollContainer.ScrollMode.ShowAlways };
         _side = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _side.AddThemeConstantOverride("separation", 12);
         sideScroll.AddChild(_side);
@@ -127,6 +127,8 @@ public partial class CalendarScreen : Control
 
     private void RunDevShot()
     {
+        // macOS stops drawing a window it thinks nobody can see, and the capture then waits forever.
+        DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.AlwaysOnTop, true);
         if (DevShot.Arg("team") is { } team && Career is null)
         {
             Career = new Career(_data, team, Session.StartYear);
@@ -245,10 +247,10 @@ public partial class CalendarScreen : Control
             _side.AddChild(SummaryCard(career));
         _side.AddChild(MoneyCard(career));
         _side.AddChild(DrawingOfficeCard(career));
+        _side.AddChild(RivalsCard(career));
         _side.AddChild(TeamCard(career));
         if (career.News.Count > 0)
             _side.AddChild(NewsCard(career));
-        _side.AddChild(RivalsCard(career));
     }
 
     private void OnAction()
@@ -499,8 +501,15 @@ public partial class CalendarScreen : Control
             var release = new Button { Text = "Release", SizeFlagsVertical = SizeFlags.ShrinkCenter, CustomMinimumSize = new Vector2(110, 0), Disabled = career.Drivers.Count <= 1 };
             release.TooltipText = release.Disabled ? "The team needs at least one driver" : "Let the driver go; no more wages";
             var id = driver.Id;
+            // Two presses: the first asks to confirm, so a star is not let go by a stray click.
             release.Pressed += () =>
             {
+                if (release.ThemeTypeVariation != "Danger")
+                {
+                    release.ThemeTypeVariation = "Danger";
+                    release.Text = "Confirm release";
+                    return;
+                }
                 career.Release(id);
                 Refresh();
             };
@@ -574,7 +583,7 @@ public partial class CalendarScreen : Control
         var box = Stack(card, 6);
         box.AddChild(new Label { Text = "MONEY", ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = $"£{career.Cash:N0}", ThemeTypeVariation = "Big", Modulate = career.Cash < 0 ? UiTheme.Danger : Colors.White });
-        box.AddChild(new Label { Text = $"Every week: wages −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label { Text = $"Every week: wages and works −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}", ThemeTypeVariation = "Muted" });
         box.AddChild(new HSeparator());
 
         // Wages and backing come every week, so the list shows the race money and travel.
