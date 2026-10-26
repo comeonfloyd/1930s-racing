@@ -10,6 +10,14 @@ public enum EntryResult
     NoDrivers,
 }
 
+public enum SignResult
+{
+    Signed,
+    NotAvailable,
+    TeamFull,
+    NotEnoughMoney,
+}
+
 public enum ProjectResult
 {
     Queued,
@@ -38,7 +46,7 @@ public sealed record SeasonSummary(int Year, int Races, int Wins, int Podiums, i
 /// did not enter are run in the background. An entered race is run with <see cref="PrepareRace"/>
 /// and <see cref="FinishRace"/>, so the player can watch it and give orders in between.
 /// </summary>
-public sealed class Career
+public sealed partial class Career
 {
     private readonly GameData _data;
     private readonly SortedSet<RaceEvent> _entries = new(Comparer<RaceEvent>.Create((a, b) =>
@@ -51,6 +59,14 @@ public sealed class Career
     private readonly List<Project> _projects = new();
     private readonly Dictionary<Upgrade, int> _upgradesDone = new();
     private readonly List<NewsItem> _news = new();
+    private readonly Dictionary<string, Car> _rivalCars = new();
+    private readonly List<string> _roster;
+
+    /// <summary>Everyone signed to the team, including drivers killed racing.</summary>
+    public IReadOnlyList<string> Roster => _roster;
+
+    /// <summary>Most cars a team can run at one race.</summary>
+    public const int MaxDrivers = 4;
 
     public Team Team { get; }
     public DateOnly Today { get; private set; }
@@ -64,6 +80,9 @@ public sealed class Career
 
     /// <summary>The team's car as developed so far.</summary>
     public Car Car { get; private set; }
+
+    /// <summary>Every other team's car as its works have developed it so far.</summary>
+    public Car CarOf(string teamId) => teamId == Team.Id ? Car : _rivalCars.GetValueOrDefault(teamId) ?? _data.Teams[teamId].Car;
 
     /// <summary>Drawing-office work: the first project is being worked on, the rest wait.</summary>
     public IReadOnlyList<Project> Projects => _projects;
@@ -81,6 +100,50 @@ public sealed class Career
         _paidUntil = Today;
         Cash = Team.StartingCash;
         Car = Team.Car;
+        _roster = Team.DriverIds.ToList();
+    }
+
+    /// <summary>
+    /// Drivers anyone can sign this year: alive, racing this year, and not under contract with
+    /// another works. Drivers the player releases join them.
+    /// </summary>
+    public IReadOnlyList<Driver> FreeAgents
+    {
+        get
+        {
+            var contracted = _data.Teams.Values.Where(t => t.Id != Team.Id).SelectMany(t => t.DriverIds).Concat(_roster).ToHashSet();
+            return _data.Drivers.Values
+                .Where(d => !contracted.Contains(d.Id) && !_deadDrivers.Contains(d.Id) && Racing(d))
+                .OrderByDescending(d => d.Skills.Speed)
+                .ToList();
+        }
+    }
+
+    private bool Racing(Driver d) => d.FirstYear <= Today.Year && Today.Year <= d.LastYear;
+
+    public SignResult Sign(string driverId)
+    {
+        var driver = FreeAgents.FirstOrDefault(d => d.Id == driverId);
+        if (driver is null)
+            return SignResult.NotAvailable;
+        if (Drivers.Count >= MaxDrivers)
+            return SignResult.TeamFull;
+        var fee = Finance.SigningFee(driver);
+        if (fee > Cash)
+            return SignResult.NotEnoughMoney;
+        Pay(MoneyKind.Wages, $"Signing fee, {driver.Name}", -fee);
+        _roster.Add(driverId);
+        _news.Add(new NewsItem(Today, $"{driver.Name} signs for {Team.Name} at £{Finance.DriverWage(driver)} a week."));
+        return SignResult.Signed;
+    }
+
+    /// <summary>Lets a driver go; the team must keep at least one.</summary>
+    public bool Release(string driverId)
+    {
+        if (Drivers.Count <= 1 || !_roster.Remove(driverId))
+            return false;
+        _news.Add(new NewsItem(Today, $"{_data.Drivers[driverId].Name} leaves {Team.Name}."));
+        return true;
     }
 
     public int TimesDone(Upgrade upgrade) =>
@@ -104,6 +167,29 @@ public sealed class Career
         return ProjectResult.Queued;
     }
 
+    /// <summary>
+    /// The other works develop their cars too: each week a team may finish a piece of work, more
+    /// often the richer it is. Seeded by the career and the week, so a season always plays out the
+    /// same. Rates are first-pass placeholders, balanced with tools/SeasonRunner.
+    /// </summary>
+    private void DevelopRivals(DateOnly week)
+    {
+        var rng = new Random(unchecked(Seed * 7919 + week.DayNumber));
+        foreach (var team in _data.Teams.Values.Where(t => t.Id != Team.Id).OrderBy(t => t.Id, StringComparer.Ordinal))
+        {
+            var chance = DrawingOffice.RivalWeeklyChance(team.StartingCash);
+            if (rng.NextDouble() >= chance)
+                continue;
+            var car = CarOf(team.Id);
+            var options = DrawingOffice.Kinds.Select(k => k.Id).Where(u => DrawingOffice.CanImprove(car, u)).ToList();
+            if (options.Count == 0)
+                continue;
+            var upgrade = options[rng.Next(options.Count)];
+            _rivalCars[team.Id] = DrawingOffice.Apply(car, upgrade);
+            _news.Add(new NewsItem(week, $"{team.Name}: {DrawingOffice.Kind(upgrade).RivalNews}."));
+        }
+    }
+
     /// <summary>A week of drawing-office work on the first project in the queue.</summary>
     private void WorkOnProjects(DateOnly date)
     {
@@ -124,9 +210,9 @@ public sealed class Career
 
     /// <summary>The team's drivers still alive.</summary>
     public IReadOnlyList<Driver> Drivers =>
-        Team.DriverIds.Where(id => !_deadDrivers.Contains(id)).Select(id => _data.Drivers[id]).ToList();
+        _roster.Where(id => !_deadDrivers.Contains(id)).Select(id => _data.Drivers[id]).ToList();
 
-    public int WeeklyCosts => Finance.WeeklyCosts(Drivers.Count);
+    public int WeeklyCosts => Finance.WeeklyCosts(Drivers);
 
     public int WeeklyBacking => Finance.WeeklyBacking(Team.Prestige);
 
@@ -144,10 +230,14 @@ public sealed class Career
 
     /// <summary>The cars on the grid: every living driver, with the player's team only if entered.</summary>
     public IReadOnlyList<RaceEntry> GridFor(RaceEvent ev) =>
-        RaceSim.FullGrid(_data)
+        _data.Teams.Values
+            .Where(t => t.Id != Team.Id || _entries.Contains(ev))
+            .SelectMany(t =>
+            {
+                var team = t with { Car = CarOf(t.Id) };
+                return (t.Id == Team.Id ? _roster : t.DriverIds).Select(id => new RaceEntry(_data.Drivers[id], team));
+            })
             .Where(e => !_deadDrivers.Contains(e.Driver.Id))
-            .Where(e => e.Team.Id != Team.Id || _entries.Contains(ev))
-            .Select(e => e.Team.Id == Team.Id ? e with { Team = Team with { Car = Car } } : e)
             .ToList();
 
     /// <summary>
@@ -215,6 +305,14 @@ public sealed class Career
         if (!HasNextSeason)
             throw new InvalidOperationException("No data for the next season yet.");
         AdvanceTo(new DateOnly(Today.Year + 1, 1, 1));
+        // Drivers whose careers ended last year retire from the team.
+        foreach (var id in _roster.Where(id => !Racing(_data.Drivers[id])).ToList())
+        {
+            if (Drivers.Count <= 1)
+                break;
+            _roster.Remove(id);
+            _news.Add(new NewsItem(Today, $"{_data.Drivers[id].Name} retires from racing."));
+        }
     }
 
     public SeasonSummary Summary(int year)
@@ -271,6 +369,7 @@ public sealed class Career
             Pay(MoneyKind.Wages, "Wages and works", -WeeklyCosts, _paidUntil);
             Pay(MoneyKind.Backing, "Works backing", WeeklyBacking, _paidUntil);
             WorkOnProjects(_paidUntil);
+            DevelopRivals(_paidUntil);
         }
     }
 

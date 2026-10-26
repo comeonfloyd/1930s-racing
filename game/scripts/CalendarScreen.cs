@@ -28,9 +28,12 @@ public partial class CalendarScreen : Control
     private HBoxContainer _tabs = null!;
     private Button _calendarTab = null!;
     private Button _mapTab = null!;
+    private Button _driversTab = null!;
+
+    private enum View { Calendar, Map, Drivers }
 
     // Kept across scene changes, so coming back from a race shows the same view.
-    private static bool _showMap;
+    private static View _view;
 
     private static Career? Career
     {
@@ -89,17 +92,20 @@ public partial class CalendarScreen : Control
         _tabs.AddThemeConstantOverride("separation", 4);
         _calendarTab = new Button { Text = "Calendar", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(110, 0) };
         _mapTab = new Button { Text = "Travel map", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(110, 0) };
-        _calendarTab.Pressed += () => { _showMap = false; Refresh(); };
-        _mapTab.Pressed += () => { _showMap = true; Refresh(); };
+        _driversTab = new Button { Text = "Drivers", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(110, 0) };
+        _calendarTab.Pressed += () => { _view = View.Calendar; Refresh(); };
+        _mapTab.Pressed += () => { _view = View.Map; Refresh(); };
+        _driversTab.Pressed += () => { _view = View.Drivers; Refresh(); };
         _tabs.AddChild(_calendarTab);
         _tabs.AddChild(_mapTab);
+        _tabs.AddChild(_driversTab);
         column.AddChild(_tabs);
 
         var row = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         row.AddThemeConstantOverride("separation", 16);
         column.AddChild(row);
 
-        _calendarScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _calendarScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, VerticalScrollMode = ScrollContainer.ScrollMode.ShowAlways };
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _body.AddThemeConstantOverride("separation", 8);
         _calendarScroll.AddChild(_body);
@@ -108,7 +114,7 @@ public partial class CalendarScreen : Control
         _map = new TravelMap { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, EnterRace = OnEnter };
         row.AddChild(_map);
 
-        var sideScroll = new ScrollContainer { CustomMinimumSize = new Vector2(SideWidth, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var sideScroll = new ScrollContainer { CustomMinimumSize = new Vector2(SideWidth, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, VerticalScrollMode = ScrollContainer.ScrollMode.ShowAlways };
         _side = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _side.AddThemeConstantOverride("separation", 12);
         sideScroll.AddChild(_side);
@@ -121,6 +127,8 @@ public partial class CalendarScreen : Control
 
     private void RunDevShot()
     {
+        // macOS stops drawing a window it thinks nobody can see, and the capture then waits forever.
+        DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.AlwaysOnTop, true);
         if (DevShot.Arg("team") is { } team && Career is null)
         {
             Career = new Career(_data, team, Session.StartYear);
@@ -138,12 +146,17 @@ public partial class CalendarScreen : Control
                 Shutdown.Quit(GetTree());
                 return;
             }
-            _showMap = true;
+            _view = View.Map;
             Refresh();
             DevShot.Capture(this, "map.png", 1, () =>
             {
-                _showMap = false;
-                GoToRace();
+                _view = View.Drivers;
+                Refresh();
+                DevShot.Capture(this, "drivers.png", 1, () =>
+                {
+                    _view = View.Calendar;
+                    GoToRace();
+                });
             });
         });
     }
@@ -179,16 +192,19 @@ public partial class CalendarScreen : Control
             child.QueueFree();
 
         _tabs.Visible = Career is not null;
-        _calendarScroll.Visible = Career is null || !_showMap;
-        _map.Visible = Career is not null && _showMap;
-        _calendarTab.SetPressedNoSignal(!_showMap);
-        _mapTab.SetPressedNoSignal(_showMap);
+        _calendarScroll.Visible = Career is null || _view != View.Map;
+        _map.Visible = Career is not null && _view == View.Map;
+        _calendarTab.SetPressedNoSignal(_view == View.Calendar);
+        _mapTab.SetPressedNoSignal(_view == View.Map);
+        _driversTab.SetPressedNoSignal(_view == View.Drivers);
 
         if (Career is not { } career)
         {
             _title.Text = $"The {Session.StartYear} season";
             _status.Text = "Choose a team to begin";
             _action.Visible = false;
+            if (!DevShot.Active && SaveGame.Load(_data) is { } saved)
+                _body.AddChild(ContinueCard(saved));
             _body.AddChild(new Label { Text = "CHOOSE YOUR TEAM", ThemeTypeVariation = "Overline" });
             var teams = new HBoxContainer();
             teams.AddThemeConstantOverride("separation", 16);
@@ -199,6 +215,8 @@ public partial class CalendarScreen : Control
             return;
         }
 
+        if (!DevShot.Active)
+            SaveGame.Save(career);
         _title.Text = $"The {career.CurrentSeason.Year} season";
         _status.Text = $"{career.Today.ToString("d MMMM yyyy", English)}  ·  £{career.Cash:N0}";
         _action.Visible = true;
@@ -218,14 +236,18 @@ public partial class CalendarScreen : Control
             ? "No more races entered: run the rest of the season without your team"
             : "";
 
-        foreach (var ev in career.CurrentSeason.Events)
-            _body.AddChild(EventCard(career, ev));
+        if (_view == View.Drivers)
+            DriverMarket(career);
+        else
+            foreach (var ev in career.CurrentSeason.Events)
+                _body.AddChild(EventCard(career, ev));
         _map.SetSeason(_data, career);
 
         if (career.SeasonOver)
             _side.AddChild(SummaryCard(career));
         _side.AddChild(MoneyCard(career));
         _side.AddChild(DrawingOfficeCard(career));
+        _side.AddChild(RivalsCard(career));
         _side.AddChild(TeamCard(career));
         if (career.News.Count > 0)
             _side.AddChild(NewsCard(career));
@@ -292,6 +314,30 @@ public partial class CalendarScreen : Control
         return card;
     }
 
+    private Control ContinueCard(Career saved)
+    {
+        var card = Card();
+        card.AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, 12, 16, border: new Color(UiTheme.Accent, 0.7f)));
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 14);
+        row.AddChild(new ColorRect { Color = TrackView.TeamColor(saved.Team.Id), CustomMinimumSize = new Vector2(5, 40), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+        var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        titles.AddThemeConstantOverride("separation", 0);
+        titles.AddChild(new Label { Text = "SAVED GAME", ThemeTypeVariation = "Overline" });
+        titles.AddChild(new Label { Text = $"{saved.Team.Name}, {saved.Today.ToString("d MMMM yyyy", English)}", ThemeTypeVariation = "Heading" });
+        titles.AddChild(new Label { Text = $"£{saved.Cash:N0} · {saved.Results.Count(r => r.Entered)} races run", ThemeTypeVariation = "Muted" });
+        row.AddChild(titles);
+        var go = new Button { Text = "Continue  ›", ThemeTypeVariation = "Accent", SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        go.Pressed += () =>
+        {
+            Career = saved;
+            Refresh();
+        };
+        row.AddChild(go);
+        card.AddChild(row);
+        return card;
+    }
+
     private static Control HowToPlay()
     {
         var card = Card();
@@ -303,6 +349,7 @@ public partial class CalendarScreen : Control
                      "Travel costs money and days: the cars must get from one race to the next in time.",
                      "Wages are paid every week. Your maker's backing comes in every week too.",
                      "The drawing office improves the car: more power, less weight, better handling, fewer failures.",
+                     "Sign drivers looking for a drive, or release one to save wages.",
                      "On race day you run the pit wall: pace orders and pit stops.",
                  })
             box.AddChild(new Label { Text = line, ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
@@ -321,7 +368,7 @@ public partial class CalendarScreen : Control
         titles.AddChild(new Label { Text = "YOUR TEAM", ThemeTypeVariation = "Overline" });
         titles.AddChild(new Label { Text = career.Team.Name, ThemeTypeVariation = "Heading" });
         top.AddChild(titles);
-        var change = new Button { Text = "New game", SizeFlagsVertical = SizeFlags.ShrinkCenter, TooltipText = "Pick a team again and start over in 1930" };
+        var change = new Button { Text = "Main menu", SizeFlagsVertical = SizeFlags.ShrinkCenter, TooltipText = "Back to the team choice. The game is saved; pick Continue to come back to it." };
         change.Pressed += () =>
         {
             Career = null;
@@ -332,7 +379,7 @@ public partial class CalendarScreen : Control
         box.AddChild(top);
         var car = career.Car;
         box.AddChild(new Label { Text = $"{car.Name} · {car.Horsepower} hp · {car.WeightKg} kg · handling {car.Handling} · reliability {car.Reliability:P0}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
-        foreach (var id in career.Team.DriverIds)
+        foreach (var id in career.Roster)
         {
             var driver = _data.Drivers[id];
             var dead = career.DeadDrivers.Contains(id);
@@ -426,13 +473,117 @@ public partial class CalendarScreen : Control
         return card;
     }
 
+    private Control RivalsCard(Career career)
+    {
+        var card = Card();
+        var box = Stack(card, 4);
+        box.AddChild(new Label { Text = "THE CARS", ThemeTypeVariation = "Overline" });
+        foreach (var team in _data.Teams.Values.OrderByDescending(t => career.CarOf(t.Id).Horsepower))
+        {
+            var car = career.CarOf(team.Id);
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 8);
+            line.AddChild(new ColorRect { Color = TrackView.TeamColor(team.Id), CustomMinimumSize = new Vector2(4, 16), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+            line.AddChild(new Label { Text = team.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill, Modulate = team.Id == career.Team.Id ? UiTheme.Accent : Colors.White });
+            line.AddChild(new Label { Text = $"{car.Horsepower} hp · {car.WeightKg} kg · H{car.Handling} · {car.Reliability:P0}", ThemeTypeVariation = "Muted", TooltipText = "Power, weight, handling (1–20) and reliability", MouseFilter = MouseFilterEnum.Pass });
+            box.AddChild(line);
+        }
+        return card;
+    }
+
+    // ------------------------------------------------------------------ drivers
+
+    private void DriverMarket(Career career)
+    {
+        _body.AddChild(new Label { Text = $"YOUR DRIVERS · {career.Drivers.Count} OF {Career.MaxDrivers}", ThemeTypeVariation = "Overline" });
+        foreach (var driver in career.Drivers)
+        {
+            var release = new Button { Text = "Release", SizeFlagsVertical = SizeFlags.ShrinkCenter, CustomMinimumSize = new Vector2(110, 0), Disabled = career.Drivers.Count <= 1 };
+            release.TooltipText = release.Disabled ? "The team needs at least one driver" : "Let the driver go; no more wages";
+            var id = driver.Id;
+            // Two presses: the first asks to confirm, so a star is not let go by a stray click.
+            release.Pressed += () =>
+            {
+                if (release.ThemeTypeVariation != "Danger")
+                {
+                    release.ThemeTypeVariation = "Danger";
+                    release.Text = "Confirm release";
+                    return;
+                }
+                career.Release(id);
+                Refresh();
+            };
+            _body.AddChild(DriverCard(career, driver, release, mine: true));
+        }
+
+        _body.AddChild(new Label { Text = "DRIVERS LOOKING FOR A DRIVE", ThemeTypeVariation = "Overline" });
+        foreach (var driver in career.FreeAgents)
+        {
+            var fee = Finance.SigningFee(driver);
+            var full = career.Drivers.Count >= Career.MaxDrivers;
+            var sign = new Button
+            {
+                Text = $"Sign · £{fee:N0}", ThemeTypeVariation = "Accent", SizeFlagsVertical = SizeFlags.ShrinkCenter,
+                CustomMinimumSize = new Vector2(110, 0), Disabled = full || fee > career.Cash,
+                TooltipText = full ? $"The team already runs {Career.MaxDrivers} cars" : $"Signing fee £{fee:N0} now, then £{Finance.DriverWage(driver)} a week",
+            };
+            var id = driver.Id;
+            sign.Pressed += () =>
+            {
+                var result = career.Sign(id);
+                _notice.Text = result switch
+                {
+                    SignResult.TeamFull => $"The team already runs {Career.MaxDrivers} cars. Release a driver first.",
+                    SignResult.NotEnoughMoney => "Not enough money for the signing fee.",
+                    SignResult.NotAvailable => "That driver is no longer available.",
+                    _ => "",
+                };
+                _notice.Visible = _notice.Text.Length > 0;
+                Refresh();
+            };
+            _body.AddChild(DriverCard(career, driver, sign, mine: false));
+        }
+    }
+
+    private static Control DriverCard(Career career, Driver driver, Button action, bool mine)
+    {
+        var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 14);
+        var badge = new PanelContainer { ThemeTypeVariation = "Badge", CustomMinimumSize = new Vector2(52, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        var speed = new VBoxContainer();
+        speed.AddThemeConstantOverride("separation", -4);
+        speed.AddChild(new Label { Text = driver.Skills.Speed.ToString(), ThemeTypeVariation = "Big", HorizontalAlignment = HorizontalAlignment.Center, Modulate = mine ? UiTheme.Accent : Colors.White });
+        speed.AddChild(new Label { Text = "SPEED", ThemeTypeVariation = "Overline", HorizontalAlignment = HorizontalAlignment.Center });
+        badge.AddChild(speed);
+        row.AddChild(badge);
+
+        var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        titles.AddThemeConstantOverride("separation", 2);
+        titles.AddChild(new Label { Text = driver.Name, ThemeTypeVariation = "Heading" });
+        titles.AddChild(new Label { Text = $"{driver.Nationality} · age {career.Today.Year - driver.BirthYear} · £{Finance.DriverWage(driver)} a week", ThemeTypeVariation = "Muted" });
+        var skills = new HBoxContainer();
+        skills.AddThemeConstantOverride("separation", 6);
+        foreach (var (name, value) in new[]
+                 {
+                     ("Consistency", driver.Skills.Consistency), ("Car care", driver.Skills.MechanicalSympathy),
+                     ("Wet", driver.Skills.Wet), ("Bravery", driver.Skills.Bravery),
+                 })
+            skills.AddChild(Chip($"{name} {value}"));
+        titles.AddChild(skills);
+        row.AddChild(titles);
+        row.AddChild(action);
+        card.AddChild(row);
+        return card;
+    }
+
     private static Control MoneyCard(Career career)
     {
         var card = Card();
         var box = Stack(card, 6);
         box.AddChild(new Label { Text = "MONEY", ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = $"£{career.Cash:N0}", ThemeTypeVariation = "Big", Modulate = career.Cash < 0 ? UiTheme.Danger : Colors.White });
-        box.AddChild(new Label { Text = $"Every week: wages −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label { Text = $"Every week: wages and works −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}", ThemeTypeVariation = "Muted" });
         box.AddChild(new HSeparator());
 
         // Wages and backing come every week, so the list shows the race money and travel.

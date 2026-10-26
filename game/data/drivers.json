@@ -1,6 +1,6 @@
 // Real drivers. firstYear/lastYear bound their careers inside the 1930 to 1939 game
 // window; how the game uses lastYear (retirement, real deaths) is still to be decided.
-// Skills are placeholder game values, 1 to 20.
+// Skills are placeholder game values, 1 to 20. Years and birth years are approximate.
 [
   { "id": "tazio-nuvolari", "name": "Tazio Nuvolari", "nationality": "Italy", "birthYear": 1892, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 20, "consistency": 15, "mechanicalSympathy": 11, "wet": 19, "bravery": 20 } },
   { "id": "giuseppe-campari", "name": "Giuseppe Campari", "nationality": "Italy", "birthYear": 1892, "firstYear": 1930, "lastYear": 1933, "skills": { "speed": 16, "consistency": 14, "mechanicalSympathy": 13, "wet": 14, "bravery": 17 } },
@@ -10,5 +10,20 @@
   { "id": "william-grover-williams", "name": "William Grover-Williams", "nationality": "United Kingdom", "birthYear": 1903, "firstYear": 1930, "lastYear": 1936, "skills": { "speed": 16, "consistency": 16, "mechanicalSympathy": 15, "wet": 14, "bravery": 14 } },
   { "id": "achille-varzi", "name": "Achille Varzi", "nationality": "Italy", "birthYear": 1904, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 19, "consistency": 19, "mechanicalSympathy": 17, "wet": 14, "bravery": 15 } },
   { "id": "luigi-fagioli", "name": "Luigi Fagioli", "nationality": "Italy", "birthYear": 1898, "firstYear": 1930, "lastYear": 1937, "skills": { "speed": 17, "consistency": 14, "mechanicalSympathy": 12, "wet": 13, "bravery": 17 } },
-  { "id": "rudolf-caracciola", "name": "Rudolf Caracciola", "nationality": "Germany", "birthYear": 1901, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 19, "consistency": 18, "mechanicalSympathy": 16, "wet": 20, "bravery": 16 } }
+  { "id": "rudolf-caracciola", "name": "Rudolf Caracciola", "nationality": "Germany", "birthYear": 1901, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 19, "consistency": 18, "mechanicalSympathy": 16, "wet": 20, "bravery": 16 } },
+
+  // Drivers without a works seat at the start: privateers and newcomers the player can sign.
+  { "id": "rene-dreyfus", "name": "René Dreyfus", "nationality": "France", "birthYear": 1905, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 16, "consistency": 16, "mechanicalSympathy": 15, "wet": 14, "bravery": 14 } },
+  { "id": "philippe-etancelin", "name": "Philippe Étancelin", "nationality": "France", "birthYear": 1896, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 15, "consistency": 15, "mechanicalSympathy": 15, "wet": 13, "bravery": 15 } },
+  { "id": "marcel-lehoux", "name": "Marcel Lehoux", "nationality": "France", "birthYear": 1888, "firstYear": 1930, "lastYear": 1936, "skills": { "speed": 15, "consistency": 14, "mechanicalSympathy": 14, "wet": 13, "bravery": 15 } },
+  { "id": "jean-pierre-wimille", "name": "Jean-Pierre Wimille", "nationality": "France", "birthYear": 1908, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 15, "consistency": 13, "mechanicalSympathy": 13, "wet": 14, "bravery": 15 } },
+  { "id": "baconin-borzacchini", "name": "Baconin Borzacchini", "nationality": "Italy", "birthYear": 1898, "firstYear": 1930, "lastYear": 1933, "skills": { "speed": 16, "consistency": 13, "mechanicalSympathy": 12, "wet": 13, "bravery": 18 } },
+  { "id": "goffredo-zehender", "name": "Goffredo Zehender", "nationality": "Italy", "birthYear": 1901, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 13, "consistency": 13, "mechanicalSympathy": 13, "wet": 12, "bravery": 13 } },
+  { "id": "hans-stuck", "name": "Hans Stuck", "nationality": "Germany", "birthYear": 1900, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 16, "consistency": 14, "mechanicalSympathy": 14, "wet": 15, "bravery": 15 } },
+  { "id": "tim-birkin", "name": "Tim Birkin", "nationality": "United Kingdom", "birthYear": 1896, "firstYear": 1930, "lastYear": 1933, "skills": { "speed": 15, "consistency": 12, "mechanicalSympathy": 10, "wet": 15, "bravery": 19 } },
+  { "id": "earl-howe", "name": "Earl Howe", "nationality": "United Kingdom", "birthYear": 1884, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 12, "consistency": 16, "mechanicalSympathy": 16, "wet": 13, "bravery": 11 } },
+  { "id": "billy-arnold", "name": "Billy Arnold", "nationality": "USA", "birthYear": 1905, "firstYear": 1930, "lastYear": 1932, "skills": { "speed": 16, "consistency": 14, "mechanicalSympathy": 13, "wet": 10, "bravery": 17 } },
+  { "id": "louis-meyer", "name": "Louis Meyer", "nationality": "USA", "birthYear": 1904, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 16, "consistency": 16, "mechanicalSympathy": 15, "wet": 10, "bravery": 14 } },
+  { "id": "carlo-felice-trossi", "name": "Carlo Felice Trossi", "nationality": "Italy", "birthYear": 1908, "firstYear": 1931, "lastYear": 1939, "skills": { "speed": 16, "consistency": 13, "mechanicalSympathy": 12, "wet": 14, "bravery": 15 } },
+  { "id": "raymond-sommer", "name": "Raymond Sommer", "nationality": "France", "birthYear": 1906, "firstYear": 1931, "lastYear": 1939, "skills": { "speed": 16, "consistency": 13, "mechanicalSympathy": 11, "wet": 14, "bravery": 17 } }
 ]

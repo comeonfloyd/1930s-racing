@@ -17,7 +17,7 @@ public class DrawingOfficeTests
         career.AdvanceDays(7 * DrawingOffice.Kind(Upgrade.Engine).Weeks);
         Assert.Equal(before + DrawingOffice.HorsepowerStep, career.Car.Horsepower);
         Assert.Empty(career.Projects);
-        Assert.Single(career.News);
+        Assert.Contains(career.News, n => n.Text.StartsWith("Engine tuning finished"));
     }
 
     [Fact]
@@ -78,5 +78,20 @@ public class DrawingOfficeTests
         var mine = career.GridFor(ev).Where(e => e.Team.Id == "alfa-rossa").ToList();
         Assert.NotEmpty(mine);
         Assert.All(mine, e => Assert.Equal(career.Car.Horsepower, e.Team.Car.Horsepower));
+    }
+}
+
+public class RivalDevelopmentTests
+{
+    [Fact]
+    public void RivalWorksImproveTheirCarsOverASeason()
+    {
+        var data = TestData.Load();
+        var career = new Career(data, "alfa-rossa", 1930, seed: 2);
+        career.AdvanceTo(new DateOnly(1930, 12, 31));
+
+        var improved = data.Teams.Values.Where(t => t.Id != "alfa-rossa").Count(t => career.CarOf(t.Id) != t.Car);
+        Assert.True(improved >= 2, $"only {improved} rival cars changed");
+        Assert.Equal(data.Teams["alfa-rossa"].Car, career.CarOf("alfa-rossa"));
     }
 }

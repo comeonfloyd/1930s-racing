@@ -68,7 +68,7 @@ public class SeasonTests
         career.AdvanceTo(new DateOnly(1930, 1, 29));
 
         Assert.Equal(4, career.Ledger.Count(t => t.Kind == MoneyKind.Wages));
-        Assert.Equal(12000 - 4 * Finance.WeeklyCosts(3) + 4 * Finance.WeeklyBacking(70), career.Cash);
+        Assert.Equal(12000 - 4 * career.WeeklyCosts + 4 * Finance.WeeklyBacking(70), career.Cash);
     }
 
     [Fact]
