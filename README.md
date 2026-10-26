@@ -11,6 +11,7 @@ The design plan lives in [docs/design.md](docs/design.md).
 | `src/RacingSim/` | Game rules and simulation in plain C# with no engine code, so it can be unit tested and run headless |
 | `tests/RacingSim.Tests/` | xUnit tests for the sim core |
 | `tools/RaceRunner/` | Console app that runs one race headless and prints the result and a lap chart |
+| `tools/track-art/` | Scripts that paint the ground picture for each circuit and draw the car sprite (`game/art/`) |
 | `tools/track-data/` | Real map data (OpenStreetMap) and the scripts that turn it into the circuit drawings |
 | `game/` | The Godot 4 project (scenes, scripts) |
 | `game/data/` | World data as JSON: circuits, team bases, drivers, teams, and one file per season |

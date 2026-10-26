@@ -26,6 +26,10 @@ public partial class RaceScreen : Control
 
     private LiveRace _race = null!;
     private TrackView _track = null!;
+    private Control _frame = null!;
+    private ScrollContainer _side = null!;
+    private OptionButton _follow = null!;
+    private readonly List<string?> _followChoices = new();
     private Label _header = null!;
     private Label _tower = null!;
     private Label _news = null!;
@@ -47,14 +51,21 @@ public partial class RaceScreen : Control
         }
         _race = race;
 
+        // The circuit sits in a clipping frame so it can be zoomed and panned under the panel.
+        _frame = new Control { ClipContents = true, MouseFilter = MouseFilterEnum.Stop };
+        AddChild(_frame);
+        _frame.GuiInput += OnTrackInput;
         _track = new TrackView();
-        AddChild(_track);
+        _frame.AddChild(_track);
         // A stable seed per circuit, so the scenery is the same every visit.
-        _track.SetTrack(TrackShape.For(race.Circuit.Id), race.Circuit.Id.Sum(ch => ch));
+        _track.SetTrack(TrackShape.For(race.Circuit.Id), race.Circuit.Id, race.Circuit.Id.Sum(ch => ch));
 
-        var panel = new VBoxContainer { Position = new Vector2(16, 16), CustomMinimumSize = new Vector2(360, 0) };
+        // The side panel scrolls when a small window can't fit the tower and the pit wall.
+        _side = new ScrollContainer { Position = new Vector2(16, 16), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        AddChild(_side);
+        var panel = new VBoxContainer { CustomMinimumSize = new Vector2(360, 0) };
         panel.AddThemeConstantOverride("separation", 8);
-        AddChild(panel);
+        _side.AddChild(panel);
 
         panel.AddChild(new Label { Text = $"{race.Event.Name}\n{race.Circuit.Name}", ThemeTypeVariation = "HeaderMedium" });
         _header = new Label();
@@ -79,6 +90,7 @@ public partial class RaceScreen : Control
         };
         controls.AddChild(skip);
         panel.AddChild(controls);
+        panel.AddChild(CameraControls());
 
         AddPitWall(panel);
 
@@ -133,12 +145,77 @@ public partial class RaceScreen : Control
         }
     }
 
+    private HBoxContainer CameraControls()
+    {
+        var row = new HBoxContainer();
+        var zoomOut = new Button { Text = "−", TooltipText = "Zoom out (or use the mouse wheel)" };
+        zoomOut.Pressed += () => _track.Zoom /= 1.5f;
+        var zoomIn = new Button { Text = "+", TooltipText = "Zoom in (or use the mouse wheel)" };
+        zoomIn.Pressed += () => _track.Zoom *= 1.5f;
+        var whole = new Button { Text = "Whole track" };
+        whole.Pressed += () =>
+        {
+            SetFollow(0);
+            _track.Zoom = 1;
+        };
+
+        _follow = new OptionButton { TooltipText = "Camera follows this car" };
+        _followChoices.Add(null);
+        _follow.AddItem("Free camera");
+        _followChoices.Add("");
+        _follow.AddItem("Follow the leader");
+        var team = RaceRequest.PlayerTeamId;
+        foreach (var car in _race.Cars().OrderBy(c => c.Entry.Team.Id == team ? 0 : 1))
+        {
+            _followChoices.Add(car.Entry.Driver.Id);
+            _follow.AddItem($"Follow {car.Entry.Driver.Name}");
+        }
+        _follow.ItemSelected += i =>
+        {
+            if (_followChoices[(int)i] is not null && _track.Zoom < 3)
+                _track.Zoom = 4;
+            Refresh();
+        };
+
+        row.AddChild(zoomOut);
+        row.AddChild(zoomIn);
+        row.AddChild(whole);
+        row.AddChild(_follow);
+        return row;
+    }
+
+    private void SetFollow(int choice)
+    {
+        _follow.Selected = choice;
+        _track.FollowDriverId = null;
+    }
+
+    private void OnTrackInput(InputEvent e)
+    {
+        switch (e)
+        {
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp } wheel:
+                _track.ZoomAt(wheel.Position, 1.15f);
+                break;
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelDown } wheel:
+                _track.ZoomAt(wheel.Position, 1 / 1.15f);
+                break;
+            case InputEventMouseMotion { ButtonMask: MouseButtonMask.Left } drag:
+                SetFollow(0);
+                _track.Pan(drag.Relative);
+                break;
+        }
+    }
+
     private void Layout()
     {
         var size = GetViewportRect().Size;
         const float panelWidth = 400;
-        _track.Area = new Rect2(panelWidth, 16, size.X - panelWidth - 16, size.Y - 32);
-        _track.QueueRedraw();
+        _side.Size = new Vector2(panelWidth - 24, size.Y - 32);
+        _frame.Position = new Vector2(panelWidth, 16);
+        _frame.Size = new Vector2(size.X - panelWidth - 16, size.Y - 32);
+        _track.Area = new Rect2(Vector2.Zero, _frame.Size);
+        _track.Zoom = _track.Zoom;
     }
 
     private bool Over => _race.IsOver && _time >= _race.FinishTime;
@@ -157,6 +234,8 @@ public partial class RaceScreen : Control
     private void Refresh()
     {
         var cars = _race.Cars();
+        var follow = _followChoices.Count == 0 ? null : _followChoices[_follow.Selected];
+        _track.FollowDriverId = follow == "" ? cars[0].Entry.Driver.Id : follow;
         _track.SetCars(cars);
 
         var laps = _race.Event.Laps;
