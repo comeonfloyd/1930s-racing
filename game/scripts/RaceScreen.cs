@@ -195,12 +195,11 @@ public partial class RaceScreen : Control
 
         var paceRow = new HBoxContainer();
         paceRow.AddThemeConstantOverride("separation", 4);
-        var group = new ButtonGroup();
         var paceButtons = Paces.Select(p =>
         {
             var b = new Button
             {
-                Text = p.ToString(), ToggleMode = true, ButtonGroup = group, ThemeTypeVariation = "Segment",
+                Text = p.ToString(), ToggleMode = true, ThemeTypeVariation = "Segment",
                 SizeFlagsHorizontal = SizeFlags.ExpandFill, ButtonPressed = p == PaceOrder.Race,
                 TooltipText = PaceTip(p),
             };
@@ -208,6 +207,7 @@ public partial class RaceScreen : Control
             paceRow.AddChild(b);
             return b;
         }).ToArray();
+        OneAtATime(paceButtons);
         box.AddChild(paceRow);
 
         var boxCall = new Button { ThemeTypeVariation = "Danger", CustomMinimumSize = new Vector2(0, 30), TooltipText = "Stop for fuel and rear tyres next time past the pits" };
@@ -297,12 +297,12 @@ public partial class RaceScreen : Control
         row.AddChild(_pause);
         row.AddChild(new VSeparator());
 
-        var group = new ButtonGroup();
+        var speedButtons = new List<Button>();
         foreach (var s in Speeds)
         {
             var b = new Button
             {
-                Text = s == 1 ? "Real time" : $"{s}×", ToggleMode = true, ButtonGroup = group, ThemeTypeVariation = "Segment",
+                Text = s == 1 ? "Real time" : $"{s}×", ToggleMode = true, ThemeTypeVariation = "Segment",
                 ButtonPressed = s == _speed, CustomMinimumSize = new Vector2(s == 1 ? 96 : 56, 0),
                 TooltipText = s == 1 ? "Watch at true race speed" : $"{s} times real speed",
             };
@@ -312,7 +312,9 @@ public partial class RaceScreen : Control
                 _pause.ButtonPressed = false;
             };
             row.AddChild(b);
+            speedButtons.Add(b);
         }
+        OneAtATime(speedButtons);
         row.AddChild(new VSeparator());
 
         var finish = new Button { Text = "Skip to finish", TooltipText = "Run the rest of the race at once" };
@@ -328,6 +330,25 @@ public partial class RaceScreen : Control
         card.GrowHorizontal = GrowDirection.Both;
         card.GrowVertical = GrowDirection.Begin;
         return card;
+    }
+
+    /// <summary>
+    /// Toggle buttons where exactly one is down. Done by hand rather than with a ButtonGroup:
+    /// a ButtonGroup made from C# is one more Godot object to outlive the engine at quit.
+    /// </summary>
+    private static void OneAtATime(IReadOnlyList<Button> buttons)
+    {
+        foreach (var button in buttons)
+            button.Toggled += on =>
+            {
+                if (!on)
+                {
+                    button.SetPressedNoSignal(true);
+                    return;
+                }
+                foreach (var other in buttons.Where(o => o != button))
+                    other.SetPressedNoSignal(false);
+            };
     }
 
     private static VBoxContainer Column()

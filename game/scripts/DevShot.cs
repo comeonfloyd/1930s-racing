@@ -27,15 +27,14 @@ public static class DevShot
         await node.ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         var folder = Arg("shot")!;
         DirAccess.MakeDirRecursiveAbsolute(folder);
-        using (var texture = node.GetViewport().GetTexture())
-        using (var image = texture.GetImage())
+        // Dispose only the image: the viewport texture is shared and used again.
+        using (var image = node.GetViewport().GetTexture().GetImage())
             GD.Print($"DevShot {file}: {image.SavePng($"{folder}/{file}")}");
-        // Quit on the next idle frame, outside this awaiter's continuation.
         var tree = node.GetTree();
         if (then is null && Arg("stay") is not null)
             return;
         if (then is null)
-            Callable.From(() => Shutdown.Quit(tree)).CallDeferred();
+            Shutdown.Quit(tree);
         else
             then();
     }

@@ -31,6 +31,7 @@ public partial class TrackView : Node2D
     // Per view, not static: Godot objects held in static C# fields crash the engine on quit.
     private Texture2D? _carBody;
     private Texture2D? _carDetail;
+    private Font? _font;
     private IReadOnlyList<LiveCar> _cars = Array.Empty<LiveCar>();
     private Vector2[] _trees = Array.Empty<Vector2>();
     private float _zoom = 1;
@@ -173,7 +174,7 @@ public partial class TrackView : Node2D
             roadWidth = scale * 0.032f;
         }
 
-        var font = ThemeDB.FallbackFont;
+        var font = _font ??= ThemeDB.FallbackFont;
         foreach (var (name, at) in _track.Corners)
         {
             const int size = 13;
