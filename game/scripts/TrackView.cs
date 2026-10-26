@@ -211,16 +211,18 @@ public partial class TrackView : Node2D
         }
         if (_creditLabel is not null)
             _creditLabel.Position = Area.End - _creditLabel.Size - new Vector2(8, 4);
-        // Leader first; a number that would sit on top of a better-placed car's number is hidden.
+        // Leader first; a number that would touch a better-placed car's number is hidden.
+        var placed = new List<Rect2>();
         for (var i = 0; i < _carLabels.Count; i++)
         {
-            var shown = i < _carLabelSpots.Length;
-            for (var j = 0; shown && j < i; j++)
-                if (_carLabels[j].Visible && _carLabelSpots[j].DistanceTo(_carLabelSpots[i]) < 14)
-                    shown = false;
-            _carLabels[i].Visible = shown;
-            if (shown)
-                _carLabels[i].Position = _carLabelSpots[i] - _carLabels[i].Size / 2;
+            var label = _carLabels[i];
+            var rect = i < _carLabelSpots.Length ? new Rect2(_carLabelSpots[i] - label.Size / 2, label.Size) : default;
+            var shown = i < _carLabelSpots.Length && !placed.Any(r => r.Grow(1).Intersects(rect));
+            label.Visible = shown;
+            if (!shown)
+                continue;
+            label.Position = rect.Position;
+            placed.Add(rect);
         }
     }
 

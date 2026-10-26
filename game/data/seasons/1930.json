@@ -6,7 +6,7 @@
   "events": [
     { "id": "1930-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1930-03-23", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
     { "id": "1930-monaco", "name": "Monaco Grand Prix", "circuitId": "monaco", "date": "1930-04-06", "laps": 100, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
-    { "id": "1930-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1930-05-30", "laps": 200, "startMoney": 0, "prizeFund": 10000, "prestige": 10 },
+    { "id": "1930-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1930-05-30", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
     { "id": "1930-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1930-06-15", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
     { "id": "1930-marne", "name": "Marne Grand Prix", "circuitId": "reims", "date": "1930-07-06", "laps": 51, "startMoney": 200, "prizeFund": 1000, "prestige": 6, "absentTeams": ["mercator-benz", "auto-unitas"] },
     { "id": "1930-belgium", "name": "Belgian Grand Prix", "circuitId": "spa", "date": "1930-07-20", "laps": 40, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },

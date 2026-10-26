@@ -94,4 +94,19 @@ public class RivalDevelopmentTests
         Assert.True(improved >= 2, $"only {improved} rival cars changed");
         Assert.Equal(data.Teams["alfa-rossa"].Car, career.CarOf("alfa-rossa"));
     }
+
+    [Fact]
+    public void BeatenWorksDevelopFaster()
+    {
+        Assert.True(DrawingOffice.RivalWeeklyChance(10000, playerWins: 5) > DrawingOffice.RivalWeeklyChance(10000));
+        Assert.True(DrawingOffice.RivalWeeklyChance(100000, playerWins: 20) <= 0.25);
+    }
+
+    [Fact]
+    public void EngineWorkStopsAQuarterAboveTheDesign()
+    {
+        var design = new Car("Test", 200, 750, 15, 0.7);
+        Assert.True(DrawingOffice.CanImprove(design, Upgrade.Engine, design));
+        Assert.False(DrawingOffice.CanImprove(design with { Horsepower = 245 }, Upgrade.Engine, design));
+    }
 }

@@ -35,9 +35,9 @@ public static class Finance
 
     /// <summary>
     /// Weekly money from the maker or a patron behind the team, as most 1930s teams had.
-    /// It grows with prestige: a pound a week per point.
+    /// It grows with prestige: two pounds a week per point.
     /// </summary>
-    public static int WeeklyBacking(int prestige) => prestige;
+    public static int WeeklyBacking(int prestige) => 2 * prestige;
 
     /// <summary>Prize money for a finishing position (1 = winner), or 0 outside the prizes.</summary>
     public static int Prize(RaceEvent ev, int position) =>

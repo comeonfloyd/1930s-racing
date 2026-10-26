@@ -6,7 +6,7 @@
   "events": [
     { "id": "1939-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1939-05-07", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
     { "id": "1939-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1939-05-21", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
-    { "id": "1939-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1939-05-30", "laps": 200, "startMoney": 0, "prizeFund": 10000, "prestige": 10 },
+    { "id": "1939-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1939-05-30", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
     { "id": "1939-belgium", "name": "Belgian Grand Prix", "circuitId": "spa", "date": "1939-06-25", "laps": 40, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
     { "id": "1939-france", "name": "French Grand Prix", "circuitId": "reims", "date": "1939-07-09", "laps": 64, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
     { "id": "1939-germany", "name": "German Grand Prix", "circuitId": "nurburgring", "date": "1939-07-23", "laps": 22, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },

@@ -515,10 +515,11 @@ public partial class RaceScreen : Control
             var fuelLaps = car.Fuel * LiveRace.TankRangeKm / _race.Circuit.LapKm;
             card.Position.Text = $"P{position + 1}";
             card.Fuel.Value = car.Fuel;
-            card.FuelText.Text = $"{fuelLaps:0} laps";
+            // After the flag the tank is all but empty by design: no need to show it.
+            card.FuelText.Text = car.Running ? $"{fuelLaps:0} laps" : "–";
             card.Tyres.Value = 1 - car.TyreWear;
             card.TyreText.Text = $"{100 - car.TyreWear * 100:0}%";
-            SetStyle(card.Fuel, "fill", fuelLaps < 2 ? _barBad : _barGood);
+            SetStyle(card.Fuel, "fill", fuelLaps < 2 && car.Running ? _barBad : _barGood);
             SetStyle(card.Tyres, "fill", car.TyreWear > 0.8 ? _barBad : car.TyreWear > 0.6 ? _barWarn : _barGood);
 
             card.Box.Text = car.PitCalled ? "Boxing this lap · cancel" : "Box this lap";

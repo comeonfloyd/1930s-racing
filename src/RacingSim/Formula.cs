@@ -31,10 +31,11 @@ public static class Formula
     public static bool Applies(Circuit circuit) => circuit.Region == Region.Europe;
 
     /// <summary>Why a car may not race at a circuit in a year, or null if it may.</summary>
-    public static string? Breach(Car car, Circuit circuit, int year)
+    public static string? Breach(Car car, Circuit circuit, int year) => Applies(circuit) ? Breach(car, year) : null;
+
+    /// <summary>Why a car may not race in Europe in a year, or null if it may.</summary>
+    public static string? Breach(Car car, int year)
     {
-        if (!Applies(circuit))
-            return null;
         if (year >= FirstLitreYear && car.EngineLitres > MaxLitres)
             return $"The {car.Name} has a {car.EngineLitres:0.0#}-litre engine; the {Name(year)} allows {MaxLitres:0.0}.";
         if (year is >= FirstWeightYear and < FirstLitreYear && car.WeightKg > MaxWeightKg)
