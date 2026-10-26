@@ -126,7 +126,7 @@ public partial class RaceScreen : Control
             var position = new Label { CustomMinimumSize = new Vector2(26, 0), HorizontalAlignment = HorizontalAlignment.Right };
             var stripe = new ColorRect { CustomMinimumSize = new Vector2(4, 18), SizeFlagsVertical = SizeFlags.ShrinkCenter };
             var name = new Label { SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
-            var gap = new Label { ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(92, 0) };
+            var gap = new Label { ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(78, 0) };
             line.AddChild(position);
             line.AddChild(stripe);
             line.AddChild(name);
@@ -148,6 +148,7 @@ public partial class RaceScreen : Control
         exit.Pressed += () => GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
         column.AddChild(exit);
 
+        column.AddChild(Margin(new Label { Text = "PIT WALL", ThemeTypeVariation = "Overline" }, 4, 0));
         var team = RaceRequest.PlayerTeamId;
         foreach (var entry in _race.Cars().Where(c => c.Entry.Team.Id == team).Select(c => c.Entry))
             column.AddChild(PitWallCard(entry));
@@ -166,18 +167,14 @@ public partial class RaceScreen : Control
     private Control PitWallCard(RaceEntry entry)
     {
         var id = entry.Driver.Id;
-        var card = Card();
+        var card = Card("CardTight");
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 8);
+        box.AddThemeConstantOverride("separation", 6);
 
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 8);
         top.AddChild(new ColorRect { Color = TrackView.TeamColor(entry.Team.Id), CustomMinimumSize = new Vector2(4, 22), SizeFlagsVertical = SizeFlags.ShrinkCenter });
-        var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        titles.AddThemeConstantOverride("separation", 0);
-        titles.AddChild(new Label { Text = "PIT WALL", ThemeTypeVariation = "Overline" });
-        titles.AddChild(new Label { Text = entry.Driver.Name, ThemeTypeVariation = "Heading" });
-        top.AddChild(titles);
+        top.AddChild(new Label { Text = entry.Driver.Name, ThemeTypeVariation = "Heading", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
         var badge = new PanelContainer { ThemeTypeVariation = "Badge", SizeFlagsVertical = SizeFlags.ShrinkCenter };
         var position = new Label { ThemeTypeVariation = "Heading" };
         badge.AddChild(position);
@@ -189,7 +186,6 @@ public partial class RaceScreen : Control
         box.AddChild(fuelRow);
         box.AddChild(tyreRow);
 
-        box.AddChild(new Label { Text = "Pace", ThemeTypeVariation = "Muted" });
         var paceRow = new HBoxContainer();
         paceRow.AddThemeConstantOverride("separation", 4);
         var group = new ButtonGroup();
@@ -207,7 +203,7 @@ public partial class RaceScreen : Control
         }).ToArray();
         box.AddChild(paceRow);
 
-        var boxCall = new Button { ThemeTypeVariation = "Danger", TooltipText = "Stop for fuel and rear tyres next time past the pits" };
+        var boxCall = new Button { ThemeTypeVariation = "Danger", CustomMinimumSize = new Vector2(0, 30), TooltipText = "Stop for fuel and rear tyres next time past the pits" };
         boxCall.Pressed += () =>
         {
             var car = _race.Cars().First(c => c.Entry.Driver.Id == id);
@@ -330,7 +326,7 @@ public partial class RaceScreen : Control
     private static VBoxContainer Column()
     {
         var column = new VBoxContainer { CustomMinimumSize = new Vector2(SideWidth, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        column.AddThemeConstantOverride("separation", 12);
+        column.AddThemeConstantOverride("separation", 10);
         return column;
     }
 
@@ -440,7 +436,8 @@ public partial class RaceScreen : Control
             var row = _tower[i];
             row.Position.Text = (i + 1).ToString();
             row.Stripe.Color = TrackView.TeamColor(c.Entry.Team.Id);
-            row.Name.Text = c.Entry.Driver.Name;
+            row.Name.Text = Short(c.Entry.Driver.Name);
+            row.Panel.TooltipText = c.Entry.Driver.Name;
             row.Gap.Text = c.Retirement?.Cause switch
             {
                 RetirementCause.MechanicalFailure => "Out · engine",
@@ -499,6 +496,13 @@ public partial class RaceScreen : Control
     {
         var laps = leader.Distance - car.Distance;
         return laps >= 1 ? $"+{Math.Floor(laps)} lap{(laps >= 2 ? "s" : "")}" : $"+{laps * averageLap:0.0}s";
+    }
+
+    /// <summary>"Giuseppe Campari" becomes "G. Campari", so the tower stays narrow.</summary>
+    private static string Short(string name)
+    {
+        var space = name.IndexOf(' ');
+        return space > 0 ? $"{name[0]}. {name[(space + 1)..]}" : name;
     }
 
     private static string Clock(double seconds)

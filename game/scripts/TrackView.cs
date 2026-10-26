@@ -28,8 +28,9 @@ public partial class TrackView : Node2D
 
     private TrackShape? _track;
     private Texture2D? _ground;
-    private static Texture2D? _carBody;
-    private static Texture2D? _carDetail;
+    // Per view, not static: Godot objects held in static C# fields crash the engine on quit.
+    private Texture2D? _carBody;
+    private Texture2D? _carDetail;
     private IReadOnlyList<LiveCar> _cars = Array.Empty<LiveCar>();
     private Vector2[] _trees = Array.Empty<Vector2>();
     private float _zoom = 1;

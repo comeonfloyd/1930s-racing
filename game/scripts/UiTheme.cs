@@ -21,9 +21,11 @@ public static class UiTheme
     public static readonly Color Danger = new("d9503f");
     public static readonly Color Good = new("6cc47a");
 
-    private static Theme? _theme;
-
-    public static Theme Get() => _theme ??= Build();
+    /// <summary>
+    /// A fresh theme for a screen. Not cached in a static field: Godot objects held statically
+    /// outlive the engine at quit and crash it ("!rc_owner").
+    /// </summary>
+    public static Theme Get() => Build();
 
     private static Theme Build()
     {
