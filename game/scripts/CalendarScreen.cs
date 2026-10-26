@@ -83,7 +83,7 @@ public partial class CalendarScreen : Control
             var ev = _career?.CurrentSeason.Events.FirstOrDefault(e => e.Id == DevShot.Arg("race"));
             if (ev is null)
             {
-                GetTree().Quit();
+                Shutdown.Quit(GetTree());
                 return;
             }
             _career!.Enter(ev.Id);

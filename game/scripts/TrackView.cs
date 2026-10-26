@@ -256,6 +256,8 @@ public partial class TrackView : Node2D
         if (error != Error.Ok)
             return null;
         image.GenerateMipmaps();
-        return ImageTexture.CreateFromImage(image);
+        var texture = ImageTexture.CreateFromImage(image);
+        image.Dispose();
+        return texture;
     }
 }

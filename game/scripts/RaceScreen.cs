@@ -37,6 +37,13 @@ public partial class RaceScreen : Control
     private readonly List<TowerRow> _tower = new();
     private readonly List<PitCard> _pitWall = new();
     private VBoxContainer _news = null!;
+    // Made once and reused: a new style box every frame floods the garbage collector with
+    // Godot objects, and finalizing those during shutdown crashed the engine.
+    private readonly StyleBoxFlat _rowMine = UiTheme.Box(new Color(UiTheme.Accent, 0.16f), 6, 6, vertical: 3);
+    private readonly StyleBoxFlat _rowOther = UiTheme.Box(Colors.Transparent, 6, 6, vertical: 3);
+    private readonly StyleBoxFlat _barGood = UiTheme.Box(UiTheme.Good, 4, 0);
+    private readonly StyleBoxFlat _barWarn = UiTheme.Box(UiTheme.Accent, 4, 0);
+    private readonly StyleBoxFlat _barBad = UiTheme.Box(UiTheme.Danger, 4, 0);
     private double _time;
     private int _speed = 60;
     private bool _paused;
@@ -126,7 +133,7 @@ public partial class RaceScreen : Control
             var position = new Label { CustomMinimumSize = new Vector2(26, 0), HorizontalAlignment = HorizontalAlignment.Right };
             var stripe = new ColorRect { CustomMinimumSize = new Vector2(4, 18), SizeFlagsVertical = SizeFlags.ShrinkCenter };
             var name = new Label { SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
-            var gap = new Label { ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(78, 0) };
+            var gap = new Label { ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(72, 0) };
             line.AddChild(position);
             line.AddChild(stripe);
             line.AddChild(name);
@@ -449,7 +456,7 @@ public partial class RaceScreen : Control
                 _ => Gap(cars[0], c, averageLap),
             };
             var mine = c.Entry.Team.Id == team;
-            row.Panel.AddThemeStyleboxOverride("panel", UiTheme.Box(mine ? new Color(UiTheme.Accent, 0.16f) : Colors.Transparent, 6, 6, vertical: 3));
+            SetStyle(row.Panel, "panel", mine ? _rowMine : _rowOther);
             row.Name.Modulate = c.Retirement is null ? Colors.White : new Color(1, 1, 1, 0.45f);
         }
 
@@ -463,8 +470,8 @@ public partial class RaceScreen : Control
             card.FuelText.Text = $"{fuelLaps:0} laps";
             card.Tyres.Value = 1 - car.TyreWear;
             card.TyreText.Text = $"{100 - car.TyreWear * 100:0}%";
-            card.Fuel.AddThemeStyleboxOverride("fill", UiTheme.Box(fuelLaps < 2 ? UiTheme.Danger : UiTheme.Good, 4, 0));
-            card.Tyres.AddThemeStyleboxOverride("fill", UiTheme.Box(car.TyreWear > 0.8 ? UiTheme.Danger : car.TyreWear > 0.6 ? UiTheme.Accent : UiTheme.Good, 4, 0));
+            SetStyle(card.Fuel, "fill", fuelLaps < 2 ? _barBad : _barGood);
+            SetStyle(card.Tyres, "fill", car.TyreWear > 0.8 ? _barBad : car.TyreWear > 0.6 ? _barWarn : _barGood);
 
             card.Box.Text = car.PitCalled ? "Boxing this lap · cancel" : "Box this lap";
             card.Box.Disabled = !car.Running;
@@ -489,6 +496,12 @@ public partial class RaceScreen : Control
             label.Visible = i < Math.Max(1, news.Count);
             label.Text = i < news.Count ? $"Lap {news[i].Lap} · {news[i].Text}" : "Cars on the grid.";
         }
+    }
+
+    private static void SetStyle(Control control, string name, StyleBox style)
+    {
+        if (control.GetThemeStylebox(name) != style)
+            control.AddThemeStyleboxOverride(name, style);
     }
 
     /// <summary>Gap to the leader: whole laps when lapped, otherwise roughly in seconds.</summary>

@@ -29,7 +29,7 @@ public static class DevShot
         var error = node.GetViewport().GetTexture().GetImage().SavePng($"{folder}/{file}");
         GD.Print($"DevShot {file}: {error}");
         if (then is null)
-            node.GetTree().Quit();
+            Shutdown.Quit(node.GetTree());
         else
             then();
     }
