@@ -31,7 +31,12 @@ public partial class TrackView : Node2D
     // Per view, not static: Godot objects held in static C# fields crash the engine on quit.
     private Texture2D? _carBody;
     private Texture2D? _carDetail;
-    private Font? _font;
+    // Text is shown with Label nodes, not drawn with a Font from C#: holding the fallback
+    // font in C# and drawing with it every frame crashed Godot ("!rc_owner") and hung it at quit.
+    private readonly List<(Label Label, Vector2 At)> _cornerLabels = new();
+    private readonly List<Label> _carLabels = new();
+    private Vector2[] _carLabelSpots = Array.Empty<Vector2>();
+    private Label? _creditLabel;
     private IReadOnlyList<LiveCar> _cars = Array.Empty<LiveCar>();
     private Vector2[] _trees = Array.Empty<Vector2>();
     private float _zoom = 1;
@@ -71,9 +76,19 @@ public partial class TrackView : Node2D
     {
         _track = track;
         TextureFilter = TextureFilterEnum.LinearWithMipmaps;
-        _ground = LoadTexture($"res://art/tracks/{circuitId}.jpg");
-        _carBody ??= LoadTexture("res://art/car-body.png");
-        _carDetail ??= LoadTexture("res://art/car-detail.png");
+        if (DevShot.Arg("no-textures") is null)
+        {
+            _ground = LoadTexture($"res://art/tracks/{circuitId}.jpg");
+            _carBody ??= LoadTexture("res://art/car-body.png");
+            _carDetail ??= LoadTexture("res://art/car-detail.png");
+        }
+        foreach (var (label, _) in _cornerLabels)
+            label.QueueFree();
+        _cornerLabels.Clear();
+        foreach (var (name, at) in track.Corners)
+            _cornerLabels.Add((TextLabel(name, 13, new Color(1, 0.97f, 0.88f, 0.95f)), at));
+        _creditLabel?.QueueFree();
+        _creditLabel = track.Credit.Length > 0 ? TextLabel(track.Credit, 11, new Color(1, 1, 1, 0.7f)) : null;
         // Trees scattered away from the road for circuits without a painting; seeded so the scenery stays put.
         var rng = new Random(seed);
         _trees = Enumerable.Range(0, 400)
@@ -88,6 +103,8 @@ public partial class TrackView : Node2D
     public void SetCars(IReadOnlyList<LiveCar> cars)
     {
         _cars = cars;
+        while (_carLabels.Count < cars.Count)
+            _carLabels.Add(TextLabel((_carLabels.Count + 1).ToString(), 14, Colors.White));
         var followed = cars.FirstOrDefault(c => c.Entry.Driver.Id == FollowDriverId);
         if (followed is not null && _track is not null)
             Focus = _focus.Lerp(_track.At(followed.Distance), 0.25f);
@@ -174,28 +191,41 @@ public partial class TrackView : Node2D
             roadWidth = scale * 0.032f;
         }
 
-        var font = _font ??= ThemeDB.FallbackFont;
-        foreach (var (name, at) in _track.Corners)
-        {
-            const int size = 13;
-            var width = font.GetStringSize(name, HorizontalAlignment.Left, -1, size).X;
-            var p = Map(at) + new Vector2(-width / 2, size / 3f);
-            DrawString(font, p + new Vector2(1, 1), name, HorizontalAlignment.Left, -1, size, new Color(0, 0, 0, 0.6f));
-            DrawString(font, p, name, HorizontalAlignment.Left, -1, size, new Color(1, 0.97f, 0.88f, 0.95f));
-        }
+        DrawCars(scale, roadWidth);
+    }
 
-        DrawCars(font, scale, roadWidth);
-
-        if (_track.Credit.Length > 0)
+    /// <summary>Moves the text labels to where the last drawing put things.</summary>
+    public override void _Process(double delta)
+    {
+        foreach (var (label, at) in _cornerLabels)
+            label.Position = Map(at) - label.Size / 2;
+        if (_creditLabel is not null)
+            _creditLabel.Position = Area.End - _creditLabel.Size - new Vector2(8, 4);
+        for (var i = 0; i < _carLabels.Count; i++)
         {
-            const int size = 11;
-            var width = font.GetStringSize(_track.Credit, HorizontalAlignment.Left, -1, size).X;
-            DrawString(font, Area.End - new Vector2(width + 8, 8), _track.Credit, HorizontalAlignment.Left, -1, size, new Color(1, 1, 1, 0.7f));
+            var shown = i < _carLabelSpots.Length;
+            _carLabels[i].Visible = shown;
+            if (shown)
+                _carLabels[i].Position = _carLabelSpots[i] - _carLabels[i].Size / 2;
         }
     }
 
-    private void DrawCars(Font font, float scale, float roadWidth)
+    private Label TextLabel(string text, int size, Color color)
     {
+        var label = new Label { Text = text, MouseFilter = Control.MouseFilterEnum.Ignore };
+        label.AddThemeFontSizeOverride("font_size", size);
+        label.AddThemeColorOverride("font_color", color);
+        label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.7f));
+        label.AddThemeConstantOverride("shadow_offset_x", 1);
+        label.AddThemeConstantOverride("shadow_offset_y", 1);
+        AddChild(label);
+        return label;
+    }
+
+    private void DrawCars(float scale, float roadWidth)
+    {
+        if (_carLabelSpots.Length != _cars.Count)
+            _carLabelSpots = new Vector2[_cars.Count];
         // Cars are drawn bigger than life so they read at full view; up close they reach true size.
         var length = Mathf.Clamp(scale * 0.026f, 16, 110);
         // Leader drawn last, on top.
@@ -239,10 +269,7 @@ public partial class TrackView : Node2D
                 DrawCircle(p, length * 0.25f, color);
             }
 
-            var label = (index + 1).ToString();
-            var at = p + new Vector2(-12, -length * 0.45f - 4);
-            DrawString(font, at + new Vector2(1, 1), label, HorizontalAlignment.Center, 24, 14, new Color(0, 0, 0, 0.7f));
-            DrawString(font, at, label, HorizontalAlignment.Center, 24, 14, Colors.White);
+            _carLabelSpots[index] = p + new Vector2(0, -length * 0.45f - 12);
         }
     }
 

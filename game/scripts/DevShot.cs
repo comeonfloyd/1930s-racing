@@ -11,6 +11,7 @@ namespace RacingManager;
 ///   --race=1930-monza            go straight to this race (with --team)
 ///   --team=alfa-rossa
 ///   --stay=1                     keep running after the last picture
+///   --no-textures                draw the race without the painted art (for debugging)
 /// It saves calendar.png, then race-start.png and race-zoom.png, then quits.
 /// </summary>
 public static class DevShot
