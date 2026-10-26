@@ -26,7 +26,7 @@ public partial class TravelMap : Control
     private List<Panel> _panels = new();
     private Career? _career;
     private GameData? _data;
-    private readonly List<(Label Label, Vector2 At, bool Below)> _labels = new();
+    private readonly List<(Label Label, Vector2 At, bool Below, bool Centred)> _labels = new();
 
     /// <summary>Called with an event id when the player clicks a race they can still enter.</summary>
     public Action<string>? EnterRace { get; set; }
@@ -55,9 +55,15 @@ public partial class TravelMap : Control
     {
         _data = data;
         _career = career;
-        foreach (var (label, _, _) in _labels)
+        foreach (var (label, _, _, _) in _labels)
             label.QueueFree();
         _labels.Clear();
+
+        if (_panels.Count == 2)
+        {
+            var gap = new Vector2((_panels[0].Box.End.X + _panels[1].Box.Position.X) / 2, _mapSize.Y * 0.42f);
+            AddLabel("ATLANTIC\n7 days\nby liner", gap, Ink, null, centred: true);
+        }
 
         var bases = data.Cities[career.Team.BaseCityId];
         AddLabel($"{bases.Name} (works)", Project(bases.Region, bases.Latitude, bases.Longitude), Ink, null, below: true);
@@ -90,7 +96,7 @@ public partial class TravelMap : Control
         {
             var scale = Mathf.Min(Size.X / _mapSize.X, Size.Y / _mapSize.Y);
             var size = _mapSize * scale;
-            return new Rect2((Size - size) / 2, size);
+            return new Rect2(new Vector2((Size.X - size.X) / 2, 0), size);
         }
     }
 
@@ -148,13 +154,6 @@ public partial class TravelMap : Control
             }
         }
 
-        // Pins: the works as a square, races as round pins.
-        if (Project(home.Region, home.Latitude, home.Longitude) is { } homeAt)
-        {
-            var p = ToScreen(homeAt);
-            DrawRect(new Rect2(p - new Vector2(6, 6), new Vector2(12, 12)), TrackView.TeamColor(_career.Team.Id));
-            DrawRect(new Rect2(p - new Vector2(6, 6), new Vector2(12, 12)), Ink, false, 2);
-        }
         var next = _career.NextRace;
         foreach (var ev in _career.CurrentSeason.Events)
         {
@@ -168,6 +167,14 @@ public partial class TravelMap : Control
                 DrawCircle(p, 13, new Color(UiTheme.Accent, 0.6f));
             DrawCircle(p, 8, Ink);
             DrawCircle(p, 6, run ? new Color("b8a888") : entered ? new Color("c0281c") : new Color("f2e6c8"));
+        }
+
+        // The works as a small square in team colour, on top so it shows beside a race next door.
+        if (Project(home.Region, home.Latitude, home.Longitude) is { } homeAt)
+        {
+            var p = ToScreen(homeAt) + new Vector2(-10, 8);
+            DrawRect(new Rect2(p - new Vector2(5, 5), new Vector2(10, 10)), TrackView.TeamColor(_career.Team.Id));
+            DrawRect(new Rect2(p - new Vector2(5, 5), new Vector2(10, 10)), Ink, false, 2);
         }
     }
 
@@ -187,11 +194,15 @@ public partial class TravelMap : Control
 
     // ------------------------------------------------------------------ labels
 
-    private void AddLabel(string text, Vector2? at, Color color, Action? onClick, bool below = false)
+    private void AddLabel(string text, Vector2? at, Color color, Action? onClick, bool below = false, bool centred = false)
     {
         if (at is null)
             return;
-        var label = new Label { Text = text, MouseFilter = onClick is null ? MouseFilterEnum.Ignore : MouseFilterEnum.Stop };
+        var label = new Label
+        {
+            Text = text, MouseFilter = onClick is null ? MouseFilterEnum.Ignore : MouseFilterEnum.Stop,
+            HorizontalAlignment = centred ? HorizontalAlignment.Center : HorizontalAlignment.Left,
+        };
         label.AddThemeColorOverride("font_color", color);
         label.AddThemeFontSizeOverride("font_size", 13);
         label.AddThemeColorOverride("font_outline_color", new Color("efe2c2"));
@@ -207,7 +218,7 @@ public partial class TravelMap : Control
             };
         }
         AddChild(label);
-        _labels.Add((label, at.Value, below));
+        _labels.Add((label, at.Value, below, centred));
     }
 
     public override void _Process(double delta) => PlaceLabels();
@@ -221,14 +232,19 @@ public partial class TravelMap : Control
         var pins = _labels.Select(l => ToScreen(l.At)).ToList();
         for (var i = 0; i < _labels.Count; i++)
         {
-            var (label, _, below) = _labels[i];
+            var (label, _, below, centred) = _labels[i];
             var p = pins[i];
-            if (below)
+            if (centred)
             {
-                label.Position = p + new Vector2(-label.Size.X - 8, 6);
+                label.Position = p - label.Size / 2;
                 continue;
             }
-            var crowded = pins.Where((q, j) => j != i && !_labels[j].Below)
+            if (below)
+            {
+                label.Position = p + new Vector2(-label.Size.X - 18, 2);
+                continue;
+            }
+            var crowded = pins.Where((q, j) => j != i && !_labels[j].Below && !_labels[j].Centred)
                 .Any(q => q.X > p.X && q.X - p.X < 160 && Math.Abs(q.Y - p.Y) < 40);
             label.Position = crowded ? p + new Vector2(-label.Size.X - 12, -10) : p + new Vector2(12, -10);
         }

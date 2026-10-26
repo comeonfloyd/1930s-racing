@@ -48,6 +48,7 @@ public partial class RaceScreen : Control
     private int _speed = 60;
     private bool _paused;
     private bool _resultShown;
+    private readonly List<Button> _speedButtons = new();
 
     private sealed record TowerRow(PanelContainer Panel, Label Position, ColorRect Stripe, Label Name, Label Gap);
 
@@ -90,13 +91,13 @@ public partial class RaceScreen : Control
 
         if (DevShot.Active)
         {
-            _speed = 240;
+            SetSpeed(240);
             DevShot.Capture(this, "race.png", 5, () =>
             {
                 var mine = _followChoices.IndexOf(_race.Cars().First(c => c.Entry.Team.Id == RaceRequest.PlayerTeamId).Entry.Driver.Id);
                 _follow.Selected = Math.Max(0, mine);
                 _track.Zoom = 5;
-                _speed = 10;
+                SetSpeed(10);
                 DevShot.Capture(this, "race-zoom.png", 2, () =>
                 {
                     _race.RunToEnd();
@@ -155,6 +156,15 @@ public partial class RaceScreen : Control
         }
         tower.AddChild(rows);
         column.AddChild(tower);
+
+        var news = Card("CardTight");
+        _news = new VBoxContainer();
+        _news.AddThemeConstantOverride("separation", 4);
+        var newsBox = new VBoxContainer();
+        newsBox.AddChild(Margin(new Label { Text = "RACE NEWS", ThemeTypeVariation = "Overline" }, 6, 2));
+        newsBox.AddChild(Margin(_news, 6, 2));
+        news.AddChild(newsBox);
+        column.AddChild(news);
         return Scrolling(column, left: true);
     }
 
@@ -167,14 +177,6 @@ public partial class RaceScreen : Control
         foreach (var entry in _race.Cars().Where(c => c.Entry.Team.Id == team).Select(c => c.Entry))
             column.AddChild(PitWallCard(entry));
 
-        var news = Card();
-        _news = new VBoxContainer();
-        _news.AddThemeConstantOverride("separation", 6);
-        var newsBox = new VBoxContainer();
-        newsBox.AddChild(new Label { Text = "RACE NEWS", ThemeTypeVariation = "Overline" });
-        newsBox.AddChild(_news);
-        news.AddChild(newsBox);
-        column.AddChild(news);
         return Scrolling(column, left: false);
     }
 
@@ -304,7 +306,6 @@ public partial class RaceScreen : Control
         row.AddChild(_pause);
         row.AddChild(new VSeparator());
 
-        var speedButtons = new List<Button>();
         foreach (var s in Speeds)
         {
             var b = new Button
@@ -319,9 +320,9 @@ public partial class RaceScreen : Control
                 _pause.ButtonPressed = false;
             };
             row.AddChild(b);
-            speedButtons.Add(b);
+            _speedButtons.Add(b);
         }
-        OneAtATime(speedButtons);
+        OneAtATime(_speedButtons);
         row.AddChild(new VSeparator());
 
         var finish = new Button { Text = "Skip to finish", TooltipText = "Run the rest of the race at once" };
@@ -356,6 +357,14 @@ public partial class RaceScreen : Control
                 foreach (var other in buttons.Where(o => o != button))
                     other.SetPressedNoSignal(false);
             };
+    }
+
+    /// <summary>Changes the playback speed from code, keeping the speed buttons in step.</summary>
+    private void SetSpeed(int speed)
+    {
+        _speed = speed;
+        for (var i = 0; i < Speeds.Length; i++)
+            _speedButtons[i].SetPressedNoSignal(Speeds[i] == speed);
     }
 
     private static VBoxContainer Column()
@@ -481,6 +490,7 @@ public partial class RaceScreen : Control
                 RetirementCause.OutOfFuel => "Out · fuel",
                 _ when c.InPits => "In pits",
                 _ when i == 0 => c.Finished ? "Winner" : "Leader",
+                _ when c.Finished && cars[0].Finished && c.Distance >= cars[0].Distance => $"+{c.FinishedAt - cars[0].FinishedAt:0.0}s",
                 _ => Gap(cars[0], c, averageLap),
             };
             var mine = c.Entry.Team.Id == team;
@@ -521,9 +531,9 @@ public partial class RaceScreen : Control
             AddChild(ResultCard());
         }
 
-        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(4).Reverse().ToList();
+        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(3).Reverse().ToList();
         while (_news.GetChildCount() < Math.Max(1, news.Count))
-            _news.AddChild(new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(SideWidth - 40, 0) });
+            _news.AddChild(new Label { ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(SideWidth - 40, 0) });
         for (var i = 0; i < _news.GetChildCount(); i++)
         {
             var label = (Label)_news.GetChild(i);

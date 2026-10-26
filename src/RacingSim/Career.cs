@@ -27,7 +27,7 @@ public sealed record RaceRecord(RaceEvent Event, RaceResult Result, bool Entered
 }
 
 /// <summary>What the player's team did in one season.</summary>
-public sealed record SeasonSummary(int Year, int Races, int Wins, int Podiums, int Income, int Costs, int CashAtEnd, IReadOnlyList<string> DriversLost);
+public sealed record SeasonSummary(int Year, int Races, int Wins, int Podiums, int CashAtStart, int Income, int Costs, int CashAtEnd, IReadOnlyList<string> DriversLost);
 
 /// <summary>
 /// The player's running career: which team they run, today's date, which events they have
@@ -232,8 +232,11 @@ public sealed class Career
             .Where(c => c.Entry.Team.Id == Team.Id && c.Retirement?.Cause == RetirementCause.FatalCrash)
             .Select(c => c.Entry.Driver.Name)
             .ToList();
+        var income = money.Where(t => t.Amount > 0).Sum(t => t.Amount);
+        var costs = -money.Where(t => t.Amount < 0).Sum(t => t.Amount);
+        var cashAtEnd = Cash - _ledger.Where(t => t.Date.Year > year).Sum(t => t.Amount);
         return new SeasonSummary(year, mine.Count, mine.Count(r => Best(r) == 1), mine.Count(r => Best(r) <= 3),
-            money.Where(t => t.Amount > 0).Sum(t => t.Amount), -money.Where(t => t.Amount < 0).Sum(t => t.Amount), Cash, lost);
+            cashAtEnd - income + costs, income, costs, cashAtEnd, lost);
     }
 
     public static string Place(int position) => position switch

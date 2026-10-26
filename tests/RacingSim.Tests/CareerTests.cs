@@ -132,7 +132,8 @@ public class SeasonTests
         Assert.True(career.SeasonOver);
         var summary = career.Summary(1930);
         Assert.Equal(4, summary.Races);
-        Assert.Equal(career.Cash, 11000 + summary.Income - summary.Costs);
+        Assert.Equal(11000, summary.CashAtStart);
+        Assert.Equal(career.Cash, summary.CashAtStart + summary.Income - summary.Costs);
 
         career.StartNextSeason();
         Assert.Equal(1931, career.CurrentSeason.Year);

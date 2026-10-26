@@ -190,10 +190,7 @@ def paint():
 
     # The Atlantic gap between the panels.
     gap_x = (PANELS[0]["x"] + PANELS[0]["w"] + PANELS[1]["x"]) / 2 * SS
-    small = font(16)
-    for i, text in enumerate(["ATLANTIC", "OCEAN", "", "7 days", "by liner"]):
-        tw = draw.textlength(text, font=small)
-        draw.text((gap_x - tw / 2, (H / 2 - 70 + i * 26) * SS), text, font=small, fill=INK)
+    # The game writes "Atlantic, 7 days by liner" over the gap itself, so it stays readable.
     compass(draw, gap_x, (H - 200) * SS, 34 * SS)
 
     img = img.resize((W, H), Image.LANCZOS)

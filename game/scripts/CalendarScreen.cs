@@ -101,7 +101,7 @@ public partial class CalendarScreen : Control
 
         _calendarScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _body.AddThemeConstantOverride("separation", 10);
+        _body.AddThemeConstantOverride("separation", 8);
         _calendarScroll.AddChild(_body);
         row.AddChild(_calendarScroll);
 
@@ -224,9 +224,9 @@ public partial class CalendarScreen : Control
 
         if (career.SeasonOver)
             _side.AddChild(SummaryCard(career));
-        _side.AddChild(TeamCard(career));
-        _side.AddChild(DrawingOfficeCard(career));
         _side.AddChild(MoneyCard(career));
+        _side.AddChild(DrawingOfficeCard(career));
+        _side.AddChild(TeamCard(career));
         if (career.News.Count > 0)
             _side.AddChild(NewsCard(career));
     }
@@ -376,17 +376,24 @@ public partial class CalendarScreen : Control
         foreach (var kind in DrawingOffice.Kinds)
         {
             var cost = career.ProjectCost(kind.Id);
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 8);
+            var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            text.AddThemeConstantOverride("separation", -2);
+            text.AddChild(new Label { Text = kind.Name });
+            var queued = career.Projects.Count(p => p.Upgrade == kind.Id);
+            text.AddChild(new Label
+            {
+                Text = $"{kind.Effect} · {kind.Weeks} weeks" + (queued > 0 ? $" · {queued} ordered" : ""),
+                ThemeTypeVariation = "Muted",
+            });
+            line.AddChild(text);
             var button = new Button
             {
-                Text = $"{kind.Name}  {kind.Effect}",
-                Alignment = HorizontalAlignment.Left,
-                TooltipText = $"£{cost:N0}, {kind.Weeks} weeks of work after anything already queued",
+                Text = $"£{cost:N0}", CustomMinimumSize = new Vector2(84, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter,
+                TooltipText = $"Order {kind.Name.ToLowerInvariant()}: paid now, {kind.Weeks} weeks of work after anything already ordered",
                 Disabled = cost > career.Cash,
             };
-            var price = new Label { Text = $"£{cost:N0} · {kind.Weeks} wk", ThemeTypeVariation = "Muted", MouseFilter = MouseFilterEnum.Ignore };
-            price.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterRight, LayoutPresetMode.KeepSize, 12);
-            price.GrowHorizontal = GrowDirection.Begin;
-            button.AddChild(price);
             button.Pressed += () =>
             {
                 var result = career.StartProject(kind.Id);
@@ -399,7 +406,8 @@ public partial class CalendarScreen : Control
                 _notice.Visible = _notice.Text.Length > 0;
                 Refresh();
             };
-            box.AddChild(button);
+            line.AddChild(button);
+            box.AddChild(line);
         }
         return card;
     }
@@ -449,9 +457,9 @@ public partial class CalendarScreen : Control
         card.AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, 12, 16, border: new Color(UiTheme.Accent, 0.6f)));
         var box = Stack(card, 6);
         box.AddChild(new Label { Text = $"{year} SEASON OVER", ThemeTypeVariation = "Overline" });
-        box.AddChild(new Label { Text = s.Wins > 0 ? $"{s.Wins} win{(s.Wins > 1 ? "s" : "")} from {s.Races} races" : $"{s.Races} races, no wins", ThemeTypeVariation = "Heading" });
-        box.AddChild(new Label { Text = $"Podiums in {s.Podiums} races", ThemeTypeVariation = "Muted" });
-        box.AddChild(new Label { Text = $"Income £{s.Income:N0} · costs £{s.Costs:N0}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label { Text = s.Wins > 0 ? $"{Count(s.Wins, "win")} from {Count(s.Races, "race")}" : $"{Count(s.Races, "race")}, no wins", ThemeTypeVariation = "Heading" });
+        box.AddChild(new Label { Text = $"On the podium in {Count(s.Podiums, "race")}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label { Text = $"Started with £{s.CashAtStart:N0} · income £{s.Income:N0} · costs £{s.Costs:N0}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         box.AddChild(new Label { Text = $"Cash at the end: £{s.CashAtEnd:N0}" });
         if (s.DriversLost.Count > 0)
             box.AddChild(new Label { Text = $"Lost: {string.Join(", ", s.DriversLost)}", Modulate = new Color(1, 0.65f, 0.55f), AutowrapMode = TextServer.AutowrapMode.WordSmart });
@@ -464,9 +472,9 @@ public partial class CalendarScreen : Control
         var entered = career.Entries.Contains(ev);
         var record = career.ResultOf(ev);
         var isNext = career.NextRace?.Id == ev.Id;
-        var card = Card();
+        var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
         if (isNext)
-            card.AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, 12, 16, border: new Color(UiTheme.Accent, 0.7f)));
+            card.AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, 10, 10, border: new Color(UiTheme.Accent, 0.7f)));
         else if (record is not null)
             card.Modulate = new Color(1, 1, 1, 0.82f);
         var row = new HBoxContainer();
@@ -558,6 +566,8 @@ public partial class CalendarScreen : Control
         tag.AddChild(new Label { Text = text, Modulate = color, HorizontalAlignment = HorizontalAlignment.Center });
         return tag;
     }
+
+    private static string Count(int n, string thing) => $"{n} {thing}{(n == 1 ? "" : "s")}";
 
     private static string Money(int amount) => amount < 0 ? $"−£{-amount:N0}" : $"+£{amount:N0}";
 }
