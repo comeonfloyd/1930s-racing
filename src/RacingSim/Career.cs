@@ -10,6 +10,14 @@ public enum EntryResult
     NoDrivers,
 }
 
+public enum SignResult
+{
+    Signed,
+    NotAvailable,
+    TeamFull,
+    NotEnoughMoney,
+}
+
 public enum ProjectResult
 {
     Queued,
@@ -52,6 +60,13 @@ public sealed partial class Career
     private readonly Dictionary<Upgrade, int> _upgradesDone = new();
     private readonly List<NewsItem> _news = new();
     private readonly Dictionary<string, Car> _rivalCars = new();
+    private readonly List<string> _roster;
+
+    /// <summary>Everyone signed to the team, including drivers killed racing.</summary>
+    public IReadOnlyList<string> Roster => _roster;
+
+    /// <summary>Most cars a team can run at one race.</summary>
+    public const int MaxDrivers = 4;
 
     public Team Team { get; }
     public DateOnly Today { get; private set; }
@@ -85,6 +100,50 @@ public sealed partial class Career
         _paidUntil = Today;
         Cash = Team.StartingCash;
         Car = Team.Car;
+        _roster = Team.DriverIds.ToList();
+    }
+
+    /// <summary>
+    /// Drivers anyone can sign this year: alive, racing this year, and not under contract with
+    /// another works. Drivers the player releases join them.
+    /// </summary>
+    public IReadOnlyList<Driver> FreeAgents
+    {
+        get
+        {
+            var contracted = _data.Teams.Values.Where(t => t.Id != Team.Id).SelectMany(t => t.DriverIds).Concat(_roster).ToHashSet();
+            return _data.Drivers.Values
+                .Where(d => !contracted.Contains(d.Id) && !_deadDrivers.Contains(d.Id) && Racing(d))
+                .OrderByDescending(d => d.Skills.Speed)
+                .ToList();
+        }
+    }
+
+    private bool Racing(Driver d) => d.FirstYear <= Today.Year && Today.Year <= d.LastYear;
+
+    public SignResult Sign(string driverId)
+    {
+        var driver = FreeAgents.FirstOrDefault(d => d.Id == driverId);
+        if (driver is null)
+            return SignResult.NotAvailable;
+        if (Drivers.Count >= MaxDrivers)
+            return SignResult.TeamFull;
+        var fee = Finance.SigningFee(driver);
+        if (fee > Cash)
+            return SignResult.NotEnoughMoney;
+        Pay(MoneyKind.Wages, $"Signing fee, {driver.Name}", -fee);
+        _roster.Add(driverId);
+        _news.Add(new NewsItem(Today, $"{driver.Name} signs for {Team.Name} at £{Finance.DriverWage(driver)} a week."));
+        return SignResult.Signed;
+    }
+
+    /// <summary>Lets a driver go; the team must keep at least one.</summary>
+    public bool Release(string driverId)
+    {
+        if (Drivers.Count <= 1 || !_roster.Remove(driverId))
+            return false;
+        _news.Add(new NewsItem(Today, $"{_data.Drivers[driverId].Name} leaves {Team.Name}."));
+        return true;
     }
 
     public int TimesDone(Upgrade upgrade) =>
@@ -151,9 +210,9 @@ public sealed partial class Career
 
     /// <summary>The team's drivers still alive.</summary>
     public IReadOnlyList<Driver> Drivers =>
-        Team.DriverIds.Where(id => !_deadDrivers.Contains(id)).Select(id => _data.Drivers[id]).ToList();
+        _roster.Where(id => !_deadDrivers.Contains(id)).Select(id => _data.Drivers[id]).ToList();
 
-    public int WeeklyCosts => Finance.WeeklyCosts(Drivers.Count);
+    public int WeeklyCosts => Finance.WeeklyCosts(Drivers);
 
     public int WeeklyBacking => Finance.WeeklyBacking(Team.Prestige);
 
@@ -171,10 +230,14 @@ public sealed partial class Career
 
     /// <summary>The cars on the grid: every living driver, with the player's team only if entered.</summary>
     public IReadOnlyList<RaceEntry> GridFor(RaceEvent ev) =>
-        RaceSim.FullGrid(_data)
+        _data.Teams.Values
+            .Where(t => t.Id != Team.Id || _entries.Contains(ev))
+            .SelectMany(t =>
+            {
+                var team = t with { Car = CarOf(t.Id) };
+                return (t.Id == Team.Id ? _roster : t.DriverIds).Select(id => new RaceEntry(_data.Drivers[id], team));
+            })
             .Where(e => !_deadDrivers.Contains(e.Driver.Id))
-            .Where(e => e.Team.Id != Team.Id || _entries.Contains(ev))
-            .Select(e => e with { Team = e.Team with { Car = CarOf(e.Team.Id) } })
             .ToList();
 
     /// <summary>
@@ -242,6 +305,14 @@ public sealed partial class Career
         if (!HasNextSeason)
             throw new InvalidOperationException("No data for the next season yet.");
         AdvanceTo(new DateOnly(Today.Year + 1, 1, 1));
+        // Drivers whose careers ended last year retire from the team.
+        foreach (var id in _roster.Where(id => !Racing(_data.Drivers[id])).ToList())
+        {
+            if (Drivers.Count <= 1)
+                break;
+            _roster.Remove(id);
+            _news.Add(new NewsItem(Today, $"{_data.Drivers[id].Name} retires from racing."));
+        }
     }
 
     public SeasonSummary Summary(int year)
