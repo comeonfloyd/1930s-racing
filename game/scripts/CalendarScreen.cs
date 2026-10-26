@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Godot;
 using RacingSim;
@@ -19,7 +20,17 @@ public partial class CalendarScreen : Control
 
     public override void _Ready()
     {
-        _data = DataLoader.Load();
+        try
+        {
+            _data = DataLoader.Load();
+        }
+        catch (Exception e)
+        {
+            // Show data problems on screen instead of leaving an empty window.
+            GD.PushError(e.ToString());
+            AddChild(new Label { Text = $"Could not load game data:\n{e.Message}", Position = new Vector2(24, 24) });
+            return;
+        }
 
         var margin = new MarginContainer();
         margin.SetAnchorsPreset(LayoutPreset.FullRect);

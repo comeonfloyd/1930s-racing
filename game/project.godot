@@ -17,6 +17,7 @@ window/size/viewport_height=720
 [dotnet]
 
 project/assembly_name="RacingManager"
+project/solution_directory=".."
 
 [rendering]
 
