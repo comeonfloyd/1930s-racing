@@ -201,8 +201,9 @@ public partial class TrackView : Node2D
     /// <summary>Moves the text labels to where the last drawing put things.</summary>
     public override void _Process(double delta)
     {
+        // Corner names stay inside the drawing, even for a corner right at its edge.
         foreach (var (label, at) in _cornerLabels)
-            label.Position = Map(at) - label.Size / 2;
+            label.Position = (Map(at) - label.Size / 2).Clamp(Area.Position, Area.End - label.Size);
         if (_creditLabel is not null)
             _creditLabel.Position = Area.End - _creditLabel.Size - new Vector2(8, 4);
         // Leader first; a number that would sit on top of a better-placed car's number is hidden.

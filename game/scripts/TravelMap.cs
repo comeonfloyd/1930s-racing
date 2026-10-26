@@ -73,10 +73,10 @@ public partial class TravelMap : Control
             var record = career.ResultOf(ev);
             var entered = career.Entries.Contains(ev);
             var text = $"{ShortName(ev)} · {ev.Date.ToString("d MMM", CultureInfo.InvariantCulture)}";
+            // One line for a race still to come (the hand cursor shows it can be entered), so a full
+            // calendar's labels fit; the winner under a race that has been run.
             if (record is not null)
                 text += $"\nWon by {record.Winner.Entry.Driver.Name}";
-            else if (!entered && ev.Date >= career.Today)
-                text += "\nClick to enter";
             var color = record is not null ? new Color(Ink, 0.55f) : entered ? new Color("8e1b12") : Ink;
             var id = ev.Id;
             AddLabel(text, Project(circuit.Region, circuit.Latitude, circuit.Longitude), color,
@@ -229,29 +229,43 @@ public partial class TravelMap : Control
     public override void _Process(double delta) => PlaceLabels();
 
     /// <summary>
-    /// Labels sit to the right of their pin, or to the left when another pin is close on the
-    /// right (Spa and the Nürburgring), and the works label sits below, clear of nearby races.
+    /// Each label takes the first spot round its pin (right, left, above, below, and the corners)
+    /// that stays on the map and clear of the pins and of labels already placed; the Atlantic and
+    /// the works label go first. With twelve races on a small map, some may still touch.
     /// </summary>
     private void PlaceLabels()
     {
+        var map = MapRect;
         var pins = _labels.Select(l => ToScreen(l.At)).ToList();
-        for (var i = 0; i < _labels.Count; i++)
+        var taken = pins.Select(p => new Rect2(p - new Vector2(9, 9), new Vector2(18, 18))).ToList();
+        var order = Enumerable.Range(0, _labels.Count).OrderBy(i => _labels[i].Centred ? 0 : _labels[i].Below ? 1 : 2).ToList();
+        foreach (var i in order)
         {
             var (label, _, below, centred) = _labels[i];
             var p = pins[i];
+            var size = label.Size;
             if (centred)
             {
-                label.Position = p - label.Size / 2;
+                label.Position = p - size / 2;
+                taken.Add(new Rect2(label.Position, size));
                 continue;
             }
-            if (below)
+            Vector2[] spots = below
+                ? [new(-size.X - 18, 2), new(-size.X - 18, -size.Y - 2), new(14, 6)]
+                : [new(14, -size.Y / 2), new(-size.X - 14, -size.Y / 2), new(-size.X / 2, -size.Y - 10), new(-size.X / 2, 10),
+                   new(10, 4), new(10, -size.Y - 4), new(-size.X - 10, 4), new(-size.X - 10, -size.Y - 4)];
+            var best = spots[0];
+            foreach (var spot in spots)
             {
-                label.Position = p + new Vector2(-label.Size.X - 18, 2);
-                continue;
+                var rect = new Rect2(p + spot, size);
+                if (map.Encloses(rect) && !taken.Any(t => t.Intersects(rect)))
+                {
+                    best = spot;
+                    break;
+                }
             }
-            var crowded = pins.Where((q, j) => j != i && !_labels[j].Below && !_labels[j].Centred)
-                .Any(q => q.X > p.X && q.X - p.X < 160 && Math.Abs(q.Y - p.Y) < 40);
-            label.Position = crowded ? p + new Vector2(-label.Size.X - 12, -10) : p + new Vector2(16, -10);
+            label.Position = p + best;
+            taken.Add(new Rect2(label.Position, size).Grow(2));
         }
     }
 }

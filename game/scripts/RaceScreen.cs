@@ -133,9 +133,21 @@ public partial class RaceScreen : Control
         header.AddChild(box);
         column.AddChild(header);
 
+        // News above the tower, so a full grid does not push it off the screen.
+        var news = Card("CardTight");
+        _news = new VBoxContainer();
+        _news.AddThemeConstantOverride("separation", 4);
+        var newsBox = new VBoxContainer();
+        newsBox.AddChild(Margin(new Label { Text = "RACE NEWS", ThemeTypeVariation = "Overline" }, 6, 2));
+        newsBox.AddChild(Margin(_news, 6, 2));
+        news.AddChild(newsBox);
+        column.AddChild(news);
+
         var tower = Card("CardTight");
         var rows = new VBoxContainer();
-        rows.AddThemeConstantOverride("separation", 2);
+        // A 1930s grid can have twenty cars or more: smaller rows so the tower still fits.
+        var compact = _race.Cars().Count > 14;
+        rows.AddThemeConstantOverride("separation", compact ? 0 : 2);
         rows.AddChild(Margin(new Label { Text = "TIMING", ThemeTypeVariation = "Overline" }, 6, 4));
         foreach (var _ in _race.Cars())
         {
@@ -146,6 +158,12 @@ public partial class RaceScreen : Control
             var stripe = new ColorRect { CustomMinimumSize = new Vector2(4, 18), SizeFlagsVertical = SizeFlags.ShrinkCenter };
             var name = new Label { SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
             var gap = new Label { ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(72, 0) };
+            if (compact)
+            {
+                foreach (var label in new[] { position, name, gap })
+                    label.AddThemeFontSizeOverride("font_size", 13);
+                stripe.CustomMinimumSize = new Vector2(4, 13);
+            }
             line.AddChild(position);
             line.AddChild(stripe);
             line.AddChild(name);
@@ -157,14 +175,6 @@ public partial class RaceScreen : Control
         tower.AddChild(rows);
         column.AddChild(tower);
 
-        var news = Card("CardTight");
-        _news = new VBoxContainer();
-        _news.AddThemeConstantOverride("separation", 4);
-        var newsBox = new VBoxContainer();
-        newsBox.AddChild(Margin(new Label { Text = "RACE NEWS", ThemeTypeVariation = "Overline" }, 6, 2));
-        newsBox.AddChild(Margin(_news, 6, 2));
-        news.AddChild(newsBox);
-        column.AddChild(news);
         return Scrolling(column, left: true);
     }
 
@@ -576,6 +586,19 @@ public partial class RaceScreen : Control
         header.AddChild(new Label { Text = "YOUR PRIZES", ThemeTypeVariation = "Overline", HorizontalAlignment = HorizontalAlignment.Right });
         box.AddChild(header);
 
+        // The finishing order scrolls when a full grid does not fit the window.
+        var rowHeight = 28;
+        var scroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            CustomMinimumSize = new Vector2(0, Math.Min(result.Classification.Count * rowHeight, GetViewportRect().Size.Y - 300)),
+        };
+        var list = new VBoxContainer();
+        list.AddThemeConstantOverride("separation", 6);
+        list.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        scroll.AddChild(list);
+        box.AddChild(scroll);
+
         for (var i = 0; i < result.Classification.Count; i++)
         {
             var c = result.Classification[i];
@@ -599,7 +622,7 @@ public partial class RaceScreen : Control
             var prize = c.Finished && mine ? Finance.Prize(_race.Event, i + 1) : 0;
             line.AddChild(new Label { Text = status, ThemeTypeVariation = "Muted", CustomMinimumSize = new Vector2(96, 0), HorizontalAlignment = HorizontalAlignment.Right });
             line.AddChild(new Label { Text = prize > 0 ? $"£{prize:N0}" : "", Modulate = UiTheme.Good, CustomMinimumSize = new Vector2(64, 0), HorizontalAlignment = HorizontalAlignment.Right });
-            box.AddChild(line);
+            list.AddChild(line);
         }
 
         box.AddChild(new HSeparator());
