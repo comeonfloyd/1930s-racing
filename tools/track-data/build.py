@@ -24,11 +24,14 @@ def dist(a, b):
 
 
 class Graph:
-    def __init__(self, files, exclude=None, snap=20, links=()):
+    def __init__(self, files, exclude=None, snap=20, links=(), highways=None):
+        """highways, if given, keeps only ways of those highway types (the big files hold every path)."""
         self.ways, self.adj = [], {}
         for f in files:
             for e in json.load(open(os.path.join(HERE, "osm", f)))["elements"]:
                 if e["type"] != "way" or e.get("tags", {}).get("area") == "yes":
+                    continue
+                if highways and e.get("tags", {}).get("highway") not in highways:
                     continue
                 name = e["tags"].get("name") or ""
                 if exclude and re.search(exclude, name):
@@ -185,7 +188,120 @@ def monaco():
                  ["Tunnel", *c[47]], ["Tabac", *c[66]], ["Gasometer", *c[104]]])
 
 
-BUILDERS = dict(nurburgring=nurburgring, monza=monza, montlhery=montlhery, indianapolis=indianapolis, spa=spa, monaco=monaco)
+ROADS = {"motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential",
+         "motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link", "raceway"}
+
+
+def reims():
+    # The roads are straight between the three corners, so the lap is drawn through them
+    # directly; routing through the village streets wanders.
+    thillois, gueux, garenne = [3.9500, 49.2603], [3.9062, 49.2528], [3.9200, 49.2688]
+    pts = [thillois, [3.9400, 49.2576], [3.9300, 49.2550], [3.9215, 49.2526], [3.9150, 49.2527], [3.9080, 49.2527],
+           gueux, [3.9055, 49.2555], [3.9060, 49.2580], [3.9100, 49.2610], [3.9150, 49.2650], [3.9185, 49.2672],
+           garenne, [3.9300, 49.2660], [3.9400, 49.2632]]
+    return dict(
+        loop=densify(pts), clockwise=False, start=[3.9300, 49.2550],
+        note="Reims-Gueux as raced before 1952, drawn along the roads in OpenStreetMap: the pits on the Gueux road, through the village, up to La Garenne, along the Soissons road to the Thillois hairpin and back.",
+        corners=[["Gueux", *gueux], ["La Garenne", *garenne], ["Thillois", *thillois]])
+
+
+def densify(pts, step=0.0005):
+    """Straight lines between the points, cut into short pieces for convert.py."""
+    out = []
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        n = max(1, round(math.hypot(b[0] - a[0], b[1] - a[1]) / step))
+        out += [[a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n] for i in range(n)]
+    return out
+
+
+def pescara():
+    g = Graph(["pescara.json"], highways=ROADS)
+    start, spoltore, cappelle = [14.1990, 42.4830], [14.1400, 42.4560], [14.1050, 42.4660]
+    montesilvano, marina = [14.1270, 42.4960], [14.1450, 42.5200]
+    wps = [start, [14.1960, 42.4720], [14.1600, 42.4610], spoltore, cappelle, montesilvano, marina]
+    return dict(
+        loop=g.route(wps), clockwise=True, samples=200,
+        note="Circuito di Pescara, routed along today's roads from OpenStreetMap: from the seafront up into the hills through Spoltore and Cappelle sul Tavo, down the long Montesilvano straight and back along the coast. Approximate: some 1930s roads have since been rebuilt.",
+        corners=[["Spoltore", *spoltore], ["Cappelle", *cappelle], ["Montesilvano straight", *montesilvano], ["Montesilvano", *marina]])
+
+
+def avus():
+    # The two carriageways of the motorway lie a few metres apart, too close to tell apart in the
+    # drawing: drive down one and back up a copy set off to the side, joined by the two curves.
+    g = Graph(["avus.json"], highways={"motorway"})
+    north, south = [13.2745, 52.4985], [13.1985, 52.4345]
+    line = g.route([north, [13.2350, 52.4670], south], closed=False)
+    gap = 0.005  # set off about 450 m to the south-east
+    back = [[lon + gap, lat - gap * 0.6] for lon, lat in reversed(line)]
+    def bend(a, b, out):
+        mid = [(a[0] + b[0]) / 2 + out[0], (a[1] + b[1]) / 2 + out[1]]
+        return [[(1 - t) ** 2 * a[0] + 2 * t * (1 - t) * mid[0] + t * t * b[0],
+                 (1 - t) ** 2 * a[1] + 2 * t * (1 - t) * mid[1] + t * t * b[1]] for t in [i / 8 for i in range(1, 8)]]
+    loop = line + bend(line[-1], back[0], [-0.0012, -0.0012]) + back + bend(back[-1], line[0], [0.0012, 0.0012])
+    return dict(
+        loop=loop, clockwise=False, start=[13.2450, 52.4750], rotate=54,
+        note="AVUS, Berlin, traced from the motorway in OpenStreetMap: two straights of nine kilometres joined by the south curve and the north curve, which was banked in 1937. The carriageways are drawn further apart than they are, so both can be seen.",
+        corners=[["Nordkurve", 13.2770, 52.5005], ["Südkurve", 13.1960, 52.4325]])
+
+
+def bremgarten():
+    # The forest tracks in OpenStreetMap do not join up into the old lap, and the motorway now
+    # cuts across it, so the lap is drawn through points along its course in the Bremgartenwald.
+    forsthaus, eymatt, glasbrunnen = [7.4180, 46.9615], [7.3870, 46.9688], [7.4130, 46.9702]
+    pts = [forsthaus, [7.4100, 46.9603], [7.4020, 46.9622], [7.3950, 46.9638], [7.3900, 46.9662], eymatt,
+           [7.3892, 46.9703], [7.3950, 46.9708], [7.4020, 46.9694], [7.4085, 46.9706], glasbrunnen,
+           [7.4190, 46.9690], [7.4232, 46.9668], [7.4226, 46.9638], [7.4204, 46.9620]]
+    return dict(
+        loop=smooth(pts), clockwise=False, start=forsthaus,
+        credit="Drawn from period maps",
+        note="Bremgarten, Bern: a fast loop through the Bremgartenwald with hardly a straight, drawn through points along its course. The motorway now cuts across where it ran.",
+        corners=[["Forsthaus", *forsthaus], ["Eymatt", *eymatt], ["Glasbrunnen", *glasbrunnen]])
+
+
+def smooth(pts, steps=10):
+    """A closed Catmull-Rom curve through the points, so bends come out round."""
+    loop = []
+    for i in range(len(pts)):
+        p0, p1, p2, p3 = (pts[(i + k) % len(pts)] for k in (-1, 0, 1, 2))
+        for t in [j / steps for j in range(steps)]:
+            loop.append([0.5 * (2 * p1[d] + (-p0[d] + p2[d]) * t + (2 * p0[d] - 5 * p1[d] + 4 * p2[d] - p3[d]) * t * t
+                                + (-p0[d] + 3 * p1[d] - 3 * p2[d] + p3[d]) * t ** 3) for d in (0, 1)])
+    return loop
+
+
+def tripoli():
+    # The circuit ran round the Mellaha salt lake, where Mitiga airport is now. Today's streets
+    # round the airport do not follow it, so the lap is drawn round the lake's edge, along the
+    # coast road in the north.
+    pts = [[13.2625, 32.9075], [13.2700, 32.9085], [13.2820, 32.9095], [13.2900, 32.9085], [13.3000, 32.9040],
+           [13.3100, 32.9000], [13.3195, 32.8970], [13.3185, 32.8920], [13.3160, 32.8865], [13.3050, 32.8845],
+           [13.2930, 32.8870], [13.2800, 32.8890], [13.2700, 32.8905], [13.2620, 32.8925], [13.2600, 32.8970],
+           [13.2610, 32.9030]]
+    return dict(
+        loop=smooth(pts), clockwise=True, start=[13.2820, 32.9095],
+        credit="Drawn from period maps",
+        note="Mellaha, Tripoli: a very fast lap round the Mellaha salt lake, where Mitiga airport is now, drawn round the lake's edge with the coast road in the north.",
+        corners=[["Mellaha", 13.2900, 32.9085], ["Tagiura bend", 13.3190, 32.8945], ["Lake side", 13.2930, 32.8870]])
+
+
+def brooklands():
+    # Almost none of the outer circuit is in OpenStreetMap, so the lap is drawn through points
+    # along its known course: the Members' banking in the north-east, the Railway straight beside
+    # the line to the north-west, the Byfleet banking over the River Wey in the south, and back
+    # past the Fork.
+    pts = [[-0.4615, 51.3568], [-0.4625, 51.3590], [-0.4655, 51.3597], [-0.4700, 51.3572], [-0.4760, 51.3530],
+           [-0.4790, 51.3490], [-0.4772, 51.3455], [-0.4712, 51.3440], [-0.4657, 51.3462], [-0.4630, 51.3500],
+           [-0.4612, 51.3535]]
+    return dict(
+        loop=smooth(pts), clockwise=False, start=[-0.4630, 51.3500],
+        credit="Drawn from period maps",
+        note="Brooklands outer circuit, drawn through its known course: most of it is gone or not mapped. Members' banking, the Railway straight, the Byfleet banking and the Fork.",
+        corners=[["Members' banking", -0.4635, 51.3593], ["Railway straight", -0.4730, 51.3552],
+                 ["Byfleet banking", -0.4760, 51.3450], ["The Fork", -0.4625, 51.3510]])
+
+
+BUILDERS = dict(nurburgring=nurburgring, monza=monza, montlhery=montlhery, indianapolis=indianapolis, spa=spa, monaco=monaco,
+                reims=reims, pescara=pescara, avus=avus, bremgarten=bremgarten, tripoli=tripoli, brooklands=brooklands)
 
 if __name__ == "__main__":
     for cid in sys.argv[1:] or BUILDERS:

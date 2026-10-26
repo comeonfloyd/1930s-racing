@@ -2,7 +2,7 @@
 
 `game/data/tracks/*.json` are generated from real map data. Don't hand-edit them; change `build.py` and rerun:
 
-    python3 tools/track-data/build.py            # all six circuits
+    python3 tools/track-data/build.py            # all twelve circuits
     python3 tools/track-data/build.py spa        # just one
 
 - `osm/` holds raw Overpass API responses (`out geom`) for each circuit. © OpenStreetMap contributors, available under the [ODbL](https://opendatacommons.org/licenses/odbl/). The game shows that credit under the track drawing.
@@ -20,5 +20,13 @@ What each lap follows:
 | Nürburgring | Nordschleife from T13; the 1930s start loop through today's GP area is simplified |
 | Spa | The old public-road triangle: Les Combes, Burnenville, Malmedy, Masta, Stavelot, Blanchimont |
 | Indianapolis | The oval, anticlockwise |
+| Reims | Before 1952, through Gueux village: drawn straight between the corners on the OpenStreetMap roads |
+| Pescara | Routed on today's roads: Spoltore, Cappelle sul Tavo, the Montesilvano straight, the coast road |
+| AVUS | One motorway carriageway, with the return leg set further apart than it is so both show |
+| Bremgarten | Drawn through points in the Bremgartenwald; the forest tracks in OpenStreetMap do not join up |
+| Tripoli | Drawn round the Mellaha lake, where Mitiga airport is now |
+| Brooklands | Drawn along the outer circuit's known course; almost none of it is mapped |
+
+The `osm/` files for the newer circuits are trimmed to road ways with only their `highway` and `name` tags. Overpass now refuses requests without a User-Agent header, so send one when fetching.
 
 Lap lengths for the simulation stay in `game/data/circuits.json` (period figures), not from these drawings.

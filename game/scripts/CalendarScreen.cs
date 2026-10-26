@@ -131,7 +131,8 @@ public partial class CalendarScreen : Control
         DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.AlwaysOnTop, true);
         if (DevShot.Arg("team") is { } team && Career is null)
         {
-            Career = new Career(_data, team, Session.StartYear);
+            var year = int.TryParse(DevShot.Arg("year"), out var y) ? y : Session.StartYear;
+            Career = new Career(_data, team, year);
             Career.StartProject(Upgrade.Engine);
             if (DevShot.Arg("race") is { } race)
                 Career.Enter(race);
