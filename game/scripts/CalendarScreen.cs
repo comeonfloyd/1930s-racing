@@ -23,6 +23,14 @@ public partial class CalendarScreen : Control
     private Label _status = null!;
     private Button _action = null!;
     private Label _notice = null!;
+    private ScrollContainer _calendarScroll = null!;
+    private TravelMap _map = null!;
+    private HBoxContainer _tabs = null!;
+    private Button _calendarTab = null!;
+    private Button _mapTab = null!;
+
+    // Kept across scene changes, so coming back from a race shows the same view.
+    private static bool _showMap;
 
     private static Career? Career
     {
@@ -77,15 +85,28 @@ public partial class CalendarScreen : Control
         _notice = new Label { Modulate = new Color(1, 0.7f, 0.6f), Visible = false };
         column.AddChild(_notice);
 
+        _tabs = new HBoxContainer();
+        _tabs.AddThemeConstantOverride("separation", 4);
+        _calendarTab = new Button { Text = "Calendar", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(110, 0) };
+        _mapTab = new Button { Text = "Travel map", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(110, 0) };
+        _calendarTab.Pressed += () => { _showMap = false; Refresh(); };
+        _mapTab.Pressed += () => { _showMap = true; Refresh(); };
+        _tabs.AddChild(_calendarTab);
+        _tabs.AddChild(_mapTab);
+        column.AddChild(_tabs);
+
         var row = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         row.AddThemeConstantOverride("separation", 16);
         column.AddChild(row);
 
-        var scroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _calendarScroll = new ScrollContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _body.AddThemeConstantOverride("separation", 10);
-        scroll.AddChild(_body);
-        row.AddChild(scroll);
+        _calendarScroll.AddChild(_body);
+        row.AddChild(_calendarScroll);
+
+        _map = new TravelMap { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, EnterRace = OnEnter };
+        row.AddChild(_map);
 
         var sideScroll = new ScrollContainer { CustomMinimumSize = new Vector2(SideWidth, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _side = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -117,7 +138,13 @@ public partial class CalendarScreen : Control
                 Shutdown.Quit(GetTree());
                 return;
             }
-            GoToRace();
+            _showMap = true;
+            Refresh();
+            DevShot.Capture(this, "map.png", 1, () =>
+            {
+                _showMap = false;
+                GoToRace();
+            });
         });
     }
 
@@ -150,6 +177,12 @@ public partial class CalendarScreen : Control
     {
         foreach (var child in _body.GetChildren().Concat(_side.GetChildren()))
             child.QueueFree();
+
+        _tabs.Visible = Career is not null;
+        _calendarScroll.Visible = Career is null || !_showMap;
+        _map.Visible = Career is not null && _showMap;
+        _calendarTab.SetPressedNoSignal(!_showMap);
+        _mapTab.SetPressedNoSignal(_showMap);
 
         if (Career is not { } career)
         {
@@ -185,9 +218,9 @@ public partial class CalendarScreen : Control
             ? "No more races entered: run the rest of the season without your team"
             : "";
 
-        _body.AddChild(new Label { Text = "CALENDAR", ThemeTypeVariation = "Overline" });
         foreach (var ev in career.CurrentSeason.Events)
             _body.AddChild(EventCard(career, ev));
+        _map.SetSeason(_data, career);
 
         if (career.SeasonOver)
             _side.AddChild(SummaryCard(career));

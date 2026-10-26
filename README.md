@@ -11,6 +11,7 @@ The design plan lives in [docs/design.md](docs/design.md).
 | `src/RacingSim/` | Game rules and simulation in plain C# with no engine code, so it can be unit tested and run headless |
 | `tests/RacingSim.Tests/` | xUnit tests for the sim core |
 | `tools/RaceRunner/` | Console app that runs one race headless and prints the result and a lap chart |
+| `tools/world-map/` | Paints the sepia travel map (`game/art/map.jpg`) from Natural Earth coastlines |
 | `tools/SeasonRunner/` | Console app that plays many seasons headless to check the money balance |
 | `tools/track-art/` | Scripts that paint the ground picture for each circuit and draw the car sprite (`game/art/`) |
 | `tools/track-data/` | Real map data (OpenStreetMap) and the scripts that turn it into the circuit drawings |
@@ -35,3 +36,5 @@ Historical dates, lap counts, lap lengths and coordinates are approximate and st
 ## Credits
 
 Circuit outlines: map data © OpenStreetMap contributors (ODbL); Monaco outline from bacinger/f1-circuits (MIT). See `tools/track-data/README.md`.
+
+Travel map coastlines, lakes and rivers: Natural Earth (public domain), drawn by `tools/world-map/paint.py`.
