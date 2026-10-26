@@ -9,7 +9,7 @@ public enum Upgrade
 }
 
 /// <summary>One kind of work the drawing office can do on the car, with its base cost and time.</summary>
-public sealed record UpgradeKind(Upgrade Id, string Name, string Effect, int BaseCost, int Weeks);
+public sealed record UpgradeKind(Upgrade Id, string Name, string Effect, int BaseCost, int Weeks, string RivalNews);
 
 /// <summary>A project in the drawing office: paid for when queued, done after its weeks of work.</summary>
 public sealed record Project(Upgrade Upgrade, int Cost, int Weeks)
@@ -37,11 +37,17 @@ public static class DrawingOffice
 
     public static readonly IReadOnlyList<UpgradeKind> Kinds =
     [
-        new(Upgrade.Engine, "Engine tuning", $"+{HorsepowerStep} hp", 1800, 5),
-        new(Upgrade.Lightening, "Lighter chassis", $"−{WeightStep} kg", 1500, 6),
-        new(Upgrade.Handling, "Suspension and steering", $"+{HandlingStep} handling", 1400, 5),
-        new(Upgrade.Reliability, "Reliability work", $"+{ReliabilityStep * 100:0}% reliability", 1000, 4),
+        new(Upgrade.Engine, "Engine tuning", $"+{HorsepowerStep} hp", 1800, 5, "more power from a reworked engine"),
+        new(Upgrade.Lightening, "Lighter chassis", $"−{WeightStep} kg", 1500, 6, "a lighter chassis"),
+        new(Upgrade.Handling, "Suspension and steering", $"+{HandlingStep} handling", 1400, 5, "new suspension and steering"),
+        new(Upgrade.Reliability, "Reliability work", $"+{ReliabilityStep * 100:0}% reliability", 1000, 4, "a stronger, more reliable car"),
     ];
+
+    /// <summary>
+    /// Chance each week that a rival works finishes a piece of work: about four a season for a
+    /// team with £10,000, fewer for a poorer one.
+    /// </summary>
+    public static double RivalWeeklyChance(int startingCash) => Math.Clamp(startingCash / 130000.0, 0.02, 0.15);
 
     public static UpgradeKind Kind(Upgrade upgrade) => Kinds.First(k => k.Id == upgrade);
 

@@ -51,6 +51,7 @@ public sealed partial class Career
     private readonly List<Project> _projects = new();
     private readonly Dictionary<Upgrade, int> _upgradesDone = new();
     private readonly List<NewsItem> _news = new();
+    private readonly Dictionary<string, Car> _rivalCars = new();
 
     public Team Team { get; }
     public DateOnly Today { get; private set; }
@@ -64,6 +65,9 @@ public sealed partial class Career
 
     /// <summary>The team's car as developed so far.</summary>
     public Car Car { get; private set; }
+
+    /// <summary>Every other team's car as its works have developed it so far.</summary>
+    public Car CarOf(string teamId) => teamId == Team.Id ? Car : _rivalCars.GetValueOrDefault(teamId) ?? _data.Teams[teamId].Car;
 
     /// <summary>Drawing-office work: the first project is being worked on, the rest wait.</summary>
     public IReadOnlyList<Project> Projects => _projects;
@@ -102,6 +106,29 @@ public sealed partial class Career
         Pay(MoneyKind.Development, kind.Name, -cost);
         _projects.Add(new Project(upgrade, cost, kind.Weeks));
         return ProjectResult.Queued;
+    }
+
+    /// <summary>
+    /// The other works develop their cars too: each week a team may finish a piece of work, more
+    /// often the richer it is. Seeded by the career and the week, so a season always plays out the
+    /// same. Rates are first-pass placeholders, balanced with tools/SeasonRunner.
+    /// </summary>
+    private void DevelopRivals(DateOnly week)
+    {
+        var rng = new Random(unchecked(Seed * 7919 + week.DayNumber));
+        foreach (var team in _data.Teams.Values.Where(t => t.Id != Team.Id).OrderBy(t => t.Id, StringComparer.Ordinal))
+        {
+            var chance = DrawingOffice.RivalWeeklyChance(team.StartingCash);
+            if (rng.NextDouble() >= chance)
+                continue;
+            var car = CarOf(team.Id);
+            var options = DrawingOffice.Kinds.Select(k => k.Id).Where(u => DrawingOffice.CanImprove(car, u)).ToList();
+            if (options.Count == 0)
+                continue;
+            var upgrade = options[rng.Next(options.Count)];
+            _rivalCars[team.Id] = DrawingOffice.Apply(car, upgrade);
+            _news.Add(new NewsItem(week, $"{team.Name}: {DrawingOffice.Kind(upgrade).RivalNews}."));
+        }
     }
 
     /// <summary>A week of drawing-office work on the first project in the queue.</summary>
@@ -147,7 +174,7 @@ public sealed partial class Career
         RaceSim.FullGrid(_data)
             .Where(e => !_deadDrivers.Contains(e.Driver.Id))
             .Where(e => e.Team.Id != Team.Id || _entries.Contains(ev))
-            .Select(e => e.Team.Id == Team.Id ? e with { Team = Team with { Car = Car } } : e)
+            .Select(e => e with { Team = e.Team with { Car = CarOf(e.Team.Id) } })
             .ToList();
 
     /// <summary>
@@ -271,6 +298,7 @@ public sealed partial class Career
             Pay(MoneyKind.Wages, "Wages and works", -WeeklyCosts, _paidUntil);
             Pay(MoneyKind.Backing, "Works backing", WeeklyBacking, _paidUntil);
             WorkOnProjects(_paidUntil);
+            DevelopRivals(_paidUntil);
         }
     }
 

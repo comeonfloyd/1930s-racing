@@ -23,7 +23,8 @@ public sealed record CareerSave(
     IReadOnlyList<string> DeadDrivers,
     IReadOnlyList<Project> Projects,
     IReadOnlyDictionary<Upgrade, int> UpgradesDone,
-    IReadOnlyList<NewsItem> News);
+    IReadOnlyList<NewsItem> News,
+    IReadOnlyDictionary<string, Car>? RivalCars = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -48,7 +49,8 @@ public sealed partial class Career
         _deadDrivers.ToList(),
         _projects.ToList(),
         new Dictionary<Upgrade, int>(_upgradesDone),
-        _news.ToList());
+        _news.ToList(),
+        new Dictionary<string, Car>(_rivalCars));
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -84,6 +86,8 @@ public sealed partial class Career
         foreach (var (upgrade, count) in save.UpgradesDone)
             career._upgradesDone[upgrade] = count;
         career._news.AddRange(save.News);
+        foreach (var (teamId, car) in save.RivalCars ?? new Dictionary<string, Car>())
+            career._rivalCars[teamId] = car;
         return career;
     }
 }

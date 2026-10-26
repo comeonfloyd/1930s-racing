@@ -233,6 +233,7 @@ public partial class CalendarScreen : Control
         _side.AddChild(TeamCard(career));
         if (career.News.Count > 0)
             _side.AddChild(NewsCard(career));
+        _side.AddChild(RivalsCard(career));
     }
 
     private void OnAction()
@@ -451,6 +452,24 @@ public partial class CalendarScreen : Control
                 Text = $"{item.Date.ToString("d MMM", English)} · {item.Text}",
                 ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
             });
+        return card;
+    }
+
+    private Control RivalsCard(Career career)
+    {
+        var card = Card();
+        var box = Stack(card, 4);
+        box.AddChild(new Label { Text = "THE CARS", ThemeTypeVariation = "Overline" });
+        foreach (var team in _data.Teams.Values.OrderByDescending(t => career.CarOf(t.Id).Horsepower))
+        {
+            var car = career.CarOf(team.Id);
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 8);
+            line.AddChild(new ColorRect { Color = TrackView.TeamColor(team.Id), CustomMinimumSize = new Vector2(4, 16), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+            line.AddChild(new Label { Text = team.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill, Modulate = team.Id == career.Team.Id ? UiTheme.Accent : Colors.White });
+            line.AddChild(new Label { Text = $"{car.Horsepower} hp · {car.WeightKg} kg · H{car.Handling} · {car.Reliability:P0}", ThemeTypeVariation = "Muted", TooltipText = "Power, weight, handling (1–20) and reliability", MouseFilter = MouseFilterEnum.Pass });
+            box.AddChild(line);
+        }
         return card;
     }
 
