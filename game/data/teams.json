@@ -1,10 +1,10 @@
 // Brands are altered from the real makers' trademarks but stay recognisable:
 // Alfa Rossa = Alfa Romeo, Bugetti = Bugatti, Masarelli = Maserati,
 // Mercator-Benz = Mercedes-Benz. Players can rename them here.
-// Cash and prestige are placeholder game values.
+// Cash, prestige and car stats are placeholder game values.
 [
-  { "id": "alfa-rossa", "name": "Alfa Rossa", "nationality": "Italy", "baseCityId": "milan", "startingCash": 12000, "prestige": 70, "playable": true, "driverIds": ["tazio-nuvolari", "giuseppe-campari", "luigi-arcangeli"] },
-  { "id": "bugetti", "name": "Bugetti", "nationality": "France", "baseCityId": "molsheim", "startingCash": 11000, "prestige": 75, "playable": true, "driverIds": ["louis-chiron", "guy-bouriat", "william-grover-williams"] },
-  { "id": "masarelli", "name": "Masarelli", "nationality": "Italy", "baseCityId": "bologna", "startingCash": 6000, "prestige": 50, "playable": false, "driverIds": ["achille-varzi", "luigi-fagioli"] },
-  { "id": "mercator-benz", "name": "Mercator-Benz", "nationality": "Germany", "baseCityId": "stuttgart", "startingCash": 9000, "prestige": 60, "playable": false, "driverIds": ["rudolf-caracciola"] }
+  { "id": "alfa-rossa", "name": "Alfa Rossa", "nationality": "Italy", "baseCityId": "milan", "startingCash": 12000, "prestige": 70, "playable": true, "driverIds": ["tazio-nuvolari", "giuseppe-campari", "luigi-arcangeli"], "car": { "name": "Alfa Rossa P2", "horsepower": 155, "weightKg": 820, "handling": 15, "reliability": 0.7 } },
+  { "id": "bugetti", "name": "Bugetti", "nationality": "France", "baseCityId": "molsheim", "startingCash": 11000, "prestige": 75, "playable": true, "driverIds": ["louis-chiron", "guy-bouriat", "william-grover-williams"], "car": { "name": "Bugetti Type 35B", "horsepower": 135, "weightKg": 750, "handling": 17, "reliability": 0.75 } },
+  { "id": "masarelli", "name": "Masarelli", "nationality": "Italy", "baseCityId": "bologna", "startingCash": 6000, "prestige": 50, "playable": false, "driverIds": ["achille-varzi", "luigi-fagioli"], "car": { "name": "Masarelli 26M", "horsepower": 185, "weightKg": 900, "handling": 13, "reliability": 0.62 } },
+  { "id": "mercator-benz", "name": "Mercator-Benz", "nationality": "Germany", "baseCityId": "stuttgart", "startingCash": 9000, "prestige": 60, "playable": false, "driverIds": ["rudolf-caracciola"], "car": { "name": "Mercator-Benz SSK", "horsepower": 225, "weightKg": 1500, "handling": 9, "reliability": 0.78 } }
 ]
