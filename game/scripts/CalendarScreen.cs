@@ -189,6 +189,8 @@ public partial class CalendarScreen : Control
             _title.Text = $"The {Session.StartYear} season";
             _status.Text = "Choose a team to begin";
             _action.Visible = false;
+            if (!DevShot.Active && SaveGame.Load(_data) is { } saved)
+                _body.AddChild(ContinueCard(saved));
             _body.AddChild(new Label { Text = "CHOOSE YOUR TEAM", ThemeTypeVariation = "Overline" });
             var teams = new HBoxContainer();
             teams.AddThemeConstantOverride("separation", 16);
@@ -199,6 +201,8 @@ public partial class CalendarScreen : Control
             return;
         }
 
+        if (!DevShot.Active)
+            SaveGame.Save(career);
         _title.Text = $"The {career.CurrentSeason.Year} season";
         _status.Text = $"{career.Today.ToString("d MMMM yyyy", English)}  ·  £{career.Cash:N0}";
         _action.Visible = true;
@@ -292,6 +296,30 @@ public partial class CalendarScreen : Control
         return card;
     }
 
+    private Control ContinueCard(Career saved)
+    {
+        var card = Card();
+        card.AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, 12, 16, border: new Color(UiTheme.Accent, 0.7f)));
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 14);
+        row.AddChild(new ColorRect { Color = TrackView.TeamColor(saved.Team.Id), CustomMinimumSize = new Vector2(5, 40), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+        var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        titles.AddThemeConstantOverride("separation", 0);
+        titles.AddChild(new Label { Text = "SAVED GAME", ThemeTypeVariation = "Overline" });
+        titles.AddChild(new Label { Text = $"{saved.Team.Name}, {saved.Today.ToString("d MMMM yyyy", English)}", ThemeTypeVariation = "Heading" });
+        titles.AddChild(new Label { Text = $"£{saved.Cash:N0} · {saved.Results.Count(r => r.Entered)} races run", ThemeTypeVariation = "Muted" });
+        row.AddChild(titles);
+        var go = new Button { Text = "Continue  ›", ThemeTypeVariation = "Accent", SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        go.Pressed += () =>
+        {
+            Career = saved;
+            Refresh();
+        };
+        row.AddChild(go);
+        card.AddChild(row);
+        return card;
+    }
+
     private static Control HowToPlay()
     {
         var card = Card();
@@ -321,7 +349,7 @@ public partial class CalendarScreen : Control
         titles.AddChild(new Label { Text = "YOUR TEAM", ThemeTypeVariation = "Overline" });
         titles.AddChild(new Label { Text = career.Team.Name, ThemeTypeVariation = "Heading" });
         top.AddChild(titles);
-        var change = new Button { Text = "New game", SizeFlagsVertical = SizeFlags.ShrinkCenter, TooltipText = "Pick a team again and start over in 1930" };
+        var change = new Button { Text = "Main menu", SizeFlagsVertical = SizeFlags.ShrinkCenter, TooltipText = "Back to the team choice. The game is saved; pick Continue to come back to it." };
         change.Pressed += () =>
         {
             Career = null;

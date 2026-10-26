@@ -38,7 +38,7 @@ public sealed record SeasonSummary(int Year, int Races, int Wins, int Podiums, i
 /// did not enter are run in the background. An entered race is run with <see cref="PrepareRace"/>
 /// and <see cref="FinishRace"/>, so the player can watch it and give orders in between.
 /// </summary>
-public sealed class Career
+public sealed partial class Career
 {
     private readonly GameData _data;
     private readonly SortedSet<RaceEvent> _entries = new(Comparer<RaceEvent>.Create((a, b) =>
