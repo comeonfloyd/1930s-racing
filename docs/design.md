@@ -22,8 +22,8 @@ Monaco, Montlhéry, Monza, Nürburgring, Spa-Francorchamps and Indianapolis firs
 
 ## Milestones
 
-1. Skeleton: Godot 4 C# project, data for 6 circuits and the 1930 calendar, a calendar screen. *(this PR)*
-2. Race sim headless: one race, 15 cars, lap chart output.
+1. Skeleton: Godot 4 C# project, data for 6 circuits and the 1930 calendar, a calendar screen. *(done)*
+2. Race sim headless: one race, the full grid, lap chart output. *(in progress)*
 3. Animated race view for one circuit (Monza), driven by the sim.
 4. Team and car building screens, R&D queue, money, travel map with entry choice; 1930 season playable.
 5. Seasons 1931 to 1939: rule changes, driver careers, deaths, works teams; the other 6 MVP venues.

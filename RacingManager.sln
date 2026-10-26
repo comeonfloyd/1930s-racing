@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RacingSim.Tests", "tests\Ra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RacingManager", "game\RacingManager.csproj", "{9D2145D7-36B8-4494-A8E0-204F28FDF668}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{25DFABF8-FFF4-4AAB-B2D2-0145500B2206}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaceRunner", "tools\RaceRunner\RaceRunner.csproj", "{EF738D14-662D-4601-9B7E-7D1A23CFE5D2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,9 +38,14 @@ Global
 		{9D2145D7-36B8-4494-A8E0-204F28FDF668}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D2145D7-36B8-4494-A8E0-204F28FDF668}.Release|Any CPU.ActiveCfg = Debug|Any CPU
 		{9D2145D7-36B8-4494-A8E0-204F28FDF668}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{EF738D14-662D-4601-9B7E-7D1A23CFE5D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF738D14-662D-4601-9B7E-7D1A23CFE5D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF738D14-662D-4601-9B7E-7D1A23CFE5D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF738D14-662D-4601-9B7E-7D1A23CFE5D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{9C0F3074-3378-46C8-A71A-C2A1C8682AC5} = {FED11FCE-A732-4B4E-AED5-55CF61648621}
 		{C3D002E8-D4FB-4454-A6F5-F45D9774F883} = {7545920C-58FA-486A-8145-A41A0ABC140D}
+		{EF738D14-662D-4601-9B7E-7D1A23CFE5D2} = {25DFABF8-FFF4-4AAB-B2D2-0145500B2206}
 	EndGlobalSection
 EndGlobal

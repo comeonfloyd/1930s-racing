@@ -10,6 +10,7 @@ The design plan lives in [docs/design.md](docs/design.md).
 | --- | --- |
 | `src/RacingSim/` | Game rules and simulation in plain C# with no engine code, so it can be unit tested and run headless |
 | `tests/RacingSim.Tests/` | xUnit tests for the sim core |
+| `tools/RaceRunner/` | Console app that runs one race headless and prints the result and a lap chart |
 | `game/` | The Godot 4 project (scenes, scripts) |
 | `game/data/` | World data as JSON: circuits, team bases, drivers, teams, and one file per season |
 
@@ -18,6 +19,7 @@ The design plan lives in [docs/design.md](docs/design.md).
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download) and [Godot 4.3 .NET edition](https://godotengine.org/download).
 
 - Tests: `dotnet test` from the repo root.
+- One race in the terminal: `dotnet run --project tools/RaceRunner -- 1930-monza 42` (event id, seed; add `--no-fatal` to turn fatal crashes into injuries).
 - Game: open the `game/` folder in Godot and press Play. The first screen lets you pick Alfa Rossa or Bugetti and enter 1930 races; it shows travel time and cost, and refuses entries the cars cannot reach in time.
 
 When exporting, add `data/*` to the export preset's "Filters to export non-resource files" so the JSON files ship with the game.
