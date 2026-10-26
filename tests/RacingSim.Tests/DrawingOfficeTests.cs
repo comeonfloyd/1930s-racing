@@ -15,7 +15,7 @@ public class DrawingOfficeTests
         Assert.Equal(before, career.Car.Horsepower);
 
         career.AdvanceDays(7 * DrawingOffice.Kind(Upgrade.Engine).Weeks);
-        Assert.Equal(before + DrawingOffice.HorsepowerStep, career.Car.Horsepower);
+        Assert.Equal(before + DrawingOffice.HorsepowerStep(career.Team.Car), career.Car.Horsepower);
         Assert.Empty(career.Projects);
         Assert.Contains(career.News, n => n.Text.StartsWith("Engine tuning finished"));
     }

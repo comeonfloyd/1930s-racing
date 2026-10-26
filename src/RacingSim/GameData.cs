@@ -63,9 +63,22 @@ public sealed class GameData
         {
             if (!Cities.ContainsKey(team.BaseCityId))
                 throw new InvalidDataException($"Team {team.Id} has unknown base city {team.BaseCityId}");
-            foreach (var driverId in team.DriverIds)
+            foreach (var driverId in team.DriverIds.Concat(team.Rosters?.Values.SelectMany(r => r) ?? []))
                 if (!Drivers.ContainsKey(driverId))
                     throw new InvalidDataException($"Team {team.Id} has unknown driver {driverId}");
+            foreach (var year in (team.Rosters?.Keys ?? []).Concat(team.Cars?.Keys ?? []))
+                if (!int.TryParse(year, out _))
+                    throw new InvalidDataException($"Team {team.Id} has a roster or car for \"{year}\", which is not a year");
+        }
+
+        // A driver drives for one works at a time.
+        foreach (var year in Seasons.Keys)
+        {
+            var taken = new Dictionary<string, string>();
+            foreach (var team in Teams.Values)
+            foreach (var driverId in team.RosterFor(year))
+                if (!taken.TryAdd(driverId, team.Id))
+                    throw new InvalidDataException($"{driverId} drives for both {taken[driverId]} and {team.Id} in {year}");
         }
 
         foreach (var season in Seasons.Values)
@@ -77,6 +90,9 @@ public sealed class GameData
                 throw new InvalidDataException($"Event {ev.Id} is dated outside season {season.Year}");
             if (season.Year < circuit.FirstYear || season.Year > circuit.LastYear)
                 throw new InvalidDataException($"Event {ev.Id} uses {circuit.Id} outside its active years");
+            foreach (var teamId in ev.AbsentTeams ?? [])
+                if (!Teams.ContainsKey(teamId))
+                    throw new InvalidDataException($"Event {ev.Id} lists unknown team {teamId} as absent");
         }
     }
 }

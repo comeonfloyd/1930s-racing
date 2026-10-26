@@ -6,6 +6,7 @@ public enum Upgrade
     Lightening,
     Handling,
     Reliability,
+    NewCar,
 }
 
 /// <summary>One kind of work the drawing office can do on the car, with its base cost and time.</summary>
@@ -15,6 +16,9 @@ public sealed record UpgradeKind(Upgrade Id, string Name, string Effect, int Bas
 public sealed record Project(Upgrade Upgrade, int Cost, int Weeks)
 {
     public int WeeksDone { get; init; }
+
+    /// <summary>For a new car: the year of the works model being built.</summary>
+    public int ModelYear { get; init; }
     public double Progress => Weeks == 0 ? 1 : WeeksDone / (double)Weeks;
 }
 
@@ -24,7 +28,9 @@ public sealed record Project(Upgrade Upgrade, int Cost, int Weeks)
 /// </summary>
 public static class DrawingOffice
 {
-    public const int HorsepowerStep = 8;
+    /// <summary>Engine work adds this share of the car's power, and at least <see cref="MinHorsepowerStep"/>.</summary>
+    public const double HorsepowerShare = 0.05;
+    public const int MinHorsepowerStep = 8;
     public const int WeightStep = 20;
     public const int HandlingStep = 1;
     public const double ReliabilityStep = 0.04;
@@ -37,11 +43,17 @@ public static class DrawingOffice
 
     public static readonly IReadOnlyList<UpgradeKind> Kinds =
     [
-        new(Upgrade.Engine, "Engine tuning", $"+{HorsepowerStep} hp", 1800, 5, "more power from a reworked engine"),
+        new(Upgrade.Engine, "Engine tuning", $"+{HorsepowerShare * 100:0}% power", 1800, 5, "more power from a reworked engine"),
         new(Upgrade.Lightening, "Lighter chassis", $"−{WeightStep} kg", 1500, 6, "a lighter chassis"),
         new(Upgrade.Handling, "Suspension and steering", $"+{HandlingStep} handling", 1400, 5, "new suspension and steering"),
         new(Upgrade.Reliability, "Reliability work", $"+{ReliabilityStep * 100:0}% reliability", 1000, 4, "a stronger, more reliable car"),
+        new(Upgrade.NewCar, "New car", "the works' next model", 6000, 14, "a new car"),
     ];
+
+    /// <summary>Work the other works choose from each week; their new cars come from the data.</summary>
+    public static IEnumerable<UpgradeKind> Tuning => Kinds.Where(k => k.Id != Upgrade.NewCar);
+
+    public static int HorsepowerStep(Car car) => Math.Max(MinHorsepowerStep, (int)Math.Round(car.Horsepower * HorsepowerShare));
 
     /// <summary>
     /// Chance each week that a rival works finishes a piece of work: about four a season for a
@@ -54,18 +66,22 @@ public static class DrawingOffice
     public static int Cost(Upgrade upgrade, int timesDone) =>
         (int)(Math.Round(Kind(upgrade).BaseCost * Math.Pow(CostGrowth, timesDone) / 50) * 50);
 
-    /// <summary>False when the car is already at the limit for this kind of work.</summary>
+    /// <summary>
+    /// False when the car is already at the limit for this kind of work. A new car is decided by
+    /// the career, which knows the works' models (<see cref="Career.NextModel"/>).
+    /// </summary>
     public static bool CanImprove(Car car, Upgrade upgrade) => upgrade switch
     {
         Upgrade.Lightening => car.WeightKg - WeightStep >= MinWeightKg,
         Upgrade.Handling => car.Handling + HandlingStep <= MaxHandling,
         Upgrade.Reliability => car.Reliability < MaxReliability,
+        Upgrade.NewCar => false,
         _ => true,
     };
 
     public static Car Apply(Car car, Upgrade upgrade) => upgrade switch
     {
-        Upgrade.Engine => car with { Horsepower = car.Horsepower + HorsepowerStep },
+        Upgrade.Engine => car with { Horsepower = car.Horsepower + HorsepowerStep(car) },
         Upgrade.Lightening => car with { WeightKg = Math.Max(MinWeightKg, car.WeightKg - WeightStep) },
         Upgrade.Handling => car with { Handling = Math.Min(MaxHandling, car.Handling + HandlingStep) },
         Upgrade.Reliability => car with { Reliability = Math.Min(MaxReliability, car.Reliability + ReliabilityStep) },

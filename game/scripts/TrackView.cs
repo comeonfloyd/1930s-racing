@@ -133,6 +133,10 @@ public partial class TrackView : Node2D
         "bugetti" => new Color(0.16f, 0.32f, 0.72f),
         "masarelli" => new Color(0.95f, 0.55f, 0.1f),
         "mercator-benz" => new Color(0.92f, 0.92f, 0.9f),
+        "auto-unitas" => new Color(0.72f, 0.74f, 0.78f),
+        "millard" => new Color(0.2f, 0.55f, 0.35f),
+        "duesenhoff" => new Color(0.55f, 0.3f, 0.6f),
+        "privateers" or "us-privateers" => new Color(0.45f, 0.38f, 0.3f),
         _ => new Color(0.6f, 0.6f, 0.6f),
     };
 

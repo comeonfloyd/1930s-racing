@@ -1,0 +1,20 @@
+// 1935 calendar, MVP venues only. Dates and lap counts are approximate and still to
+// be checked; money and prestige are placeholder game values.
+{
+  "year": 1935,
+  "events": [
+    { "id": "1935-monaco", "name": "Monaco Grand Prix", "circuitId": "monaco", "date": "1935-04-22", "laps": 100, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
+    { "id": "1935-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1935-05-12", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
+    { "id": "1935-avus", "name": "Avusrennen", "circuitId": "avus", "date": "1935-05-26", "laps": 15, "startMoney": 300, "prizeFund": 1500, "prestige": 7 },
+    { "id": "1935-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1935-05-30", "laps": 200, "startMoney": 0, "prizeFund": 10000, "prestige": 10 },
+    { "id": "1935-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1935-06-16", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
+    { "id": "1935-france", "name": "French Grand Prix", "circuitId": "montlhery", "date": "1935-06-23", "laps": 40, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
+    { "id": "1935-marne", "name": "Marne Grand Prix", "circuitId": "reims", "date": "1935-07-07", "laps": 51, "startMoney": 200, "prizeFund": 1000, "prestige": 6, "absentTeams": ["mercator-benz", "auto-unitas"] },
+    { "id": "1935-belgium", "name": "Belgian Grand Prix", "circuitId": "spa", "date": "1935-07-14", "laps": 40, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
+    { "id": "1935-germany", "name": "German Grand Prix", "circuitId": "nurburgring", "date": "1935-07-28", "laps": 22, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
+    { "id": "1935-acerbo", "name": "Coppa Acerbo", "circuitId": "pescara", "date": "1935-08-15", "laps": 20, "startMoney": 250, "prizeFund": 1200, "prestige": 7 },
+    { "id": "1935-switzerland", "name": "Swiss Grand Prix", "circuitId": "bremgarten", "date": "1935-08-25", "laps": 70, "startMoney": 300, "prizeFund": 1800, "prestige": 8 },
+    { "id": "1935-italy", "name": "Italian Grand Prix", "circuitId": "monza", "date": "1935-09-08", "laps": 70, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
+    { "id": "1935-brdc500", "name": "BRDC 500 Miles", "circuitId": "brooklands", "date": "1935-09-21", "laps": 182, "startMoney": 150, "prizeFund": 1000, "prestige": 5, "absentTeams": ["alfa-rossa", "bugetti", "masarelli", "mercator-benz", "auto-unitas"] }
+  ]
+}

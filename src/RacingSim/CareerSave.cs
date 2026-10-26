@@ -25,7 +25,9 @@ public sealed record CareerSave(
     IReadOnlyDictionary<Upgrade, int> UpgradesDone,
     IReadOnlyList<NewsItem> News,
     IReadOnlyDictionary<string, Car>? RivalCars = null,
-    IReadOnlyList<string>? Roster = null);
+    IReadOnlyList<string>? Roster = null,
+    int? ModelYear = null,
+    int? CarsYear = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -52,7 +54,9 @@ public sealed partial class Career
         new Dictionary<Upgrade, int>(_upgradesDone),
         _news.ToList(),
         new Dictionary<string, Car>(_rivalCars),
-        _roster.ToList());
+        _roster.ToList(),
+        ModelYear,
+        _carsYear);
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -95,6 +99,8 @@ public sealed partial class Career
             career._roster.Clear();
             career._roster.AddRange(roster);
         }
+        career.ModelYear = save.ModelYear ?? career.Team.CarYearFor(save.Today.Year);
+        career._carsYear = save.CarsYear ?? save.Today.Year;
         return career;
     }
 }

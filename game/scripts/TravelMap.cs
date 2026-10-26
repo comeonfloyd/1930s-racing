@@ -59,7 +59,7 @@ public partial class TravelMap : Control
             label.QueueFree();
         _labels.Clear();
 
-        if (_panels.Count == 2)
+        if (_panels.Count >= 2)
         {
             var gap = new Vector2((_panels[0].Box.End.X + _panels[1].Box.Position.X) / 2, _mapSize.Y * 0.42f);
             AddLabel("ATLANTIC\n7 days\nby liner", gap, Ink, null, centred: true);
@@ -100,10 +100,15 @@ public partial class TravelMap : Control
         }
     }
 
-    /// <summary>A place on the map in map-picture pixels, or null outside every panel.</summary>
+    /// <summary>
+    /// A place on the map in map-picture pixels, or null outside every panel. A place inside an
+    /// inset (Tripoli) goes there; anything else goes on its region's main panel.
+    /// </summary>
     private Vector2? Project(Region region, double lat, double lon)
     {
-        var panel = _panels.FirstOrDefault(p => p.Region == region);
+        var panels = _panels.Where(p => p.Region == region).ToList();
+        var panel = panels.Skip(1).FirstOrDefault(p => p.LonMin <= lon && lon <= p.LonMax && p.LatMin <= lat && lat <= p.LatMax)
+                    ?? panels.FirstOrDefault();
         if (panel is null)
             return null;
         var x = panel.Box.Position.X + (lon - panel.LonMin) / (panel.LonMax - panel.LonMin) * panel.Box.Size.X;

@@ -77,8 +77,8 @@ public class SeasonTests
         var career = NewCareer();
         career.AdvanceTo(new DateOnly(1930, 5, 1));
 
-        var monaco = Assert.Single(career.Results);
-        Assert.Equal("1930-monaco", monaco.Event.Id);
+        Assert.Equal(new[] { "1930-tripoli", "1930-monaco" }, career.Results.Select(r => r.Event.Id));
+        var monaco = career.Results[1];
         Assert.False(monaco.Entered);
         Assert.DoesNotContain(monaco.Result.Classification, c => c.Entry.Team.Id == "alfa-rossa");
     }

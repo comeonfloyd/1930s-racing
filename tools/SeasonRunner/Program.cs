@@ -2,9 +2,12 @@ using RacingSim;
 
 // Plays many 1930 seasons headless to check the money balance: the team enters every race it
 // can reach, in date order, and the AI runs its pit wall.
-// With --develop the team also orders one project of each kind in January.
+// With --develop the team also orders one project of each kind in January. With --winners it
+// also lists how many races each team won, the player's team included.
 // Usage: dotnet run --project tools/SeasonRunner -- [teamId] [seasons] [year] [--develop]
 var develop = args.Contains("--develop");
+var listWinners = args.Contains("--winners");
+var winners = new Dictionary<string, int>();
 args = args.Where(a => !a.StartsWith("--")).ToArray();
 var teamId = args.ElementAtOrDefault(0) ?? "alfa-rossa";
 var seasons = int.TryParse(args.ElementAtOrDefault(1), out var n) ? n : 200;
@@ -17,17 +20,20 @@ for (var seed = 0; seed < seasons; seed++)
 {
     var career = new Career(data, teamId, year, seed);
     if (develop)
-        foreach (var kind in DrawingOffice.Kinds)
+        foreach (var kind in DrawingOffice.Tuning)
             career.StartProject(kind.Id);
     foreach (var ev in career.CurrentSeason.Events)
         career.Enter(ev.Id);
     while (career.NextRace is not null)
     {
         var race = career.PrepareRace();
+        race.HandOverPitWall(career.Team.Id);
         race.RunToEnd();
         career.FinishRace(race);
     }
     career.AdvanceTo(new DateOnly(year, 12, 31));
+    foreach (var record in career.Results)
+        winners[record.Winner.Entry.Team.Name] = winners.GetValueOrDefault(record.Winner.Entry.Team.Name) + 1;
     summaries.Add(career.Summary(year));
     deaths += career.DeadDrivers.Count;
 }
@@ -41,6 +47,9 @@ Console.WriteLine($"  income            £{summaries.Average(s => s.Income):N0}"
 Console.WriteLine($"  costs             £{summaries.Average(s => s.Costs):N0}");
 Console.WriteLine($"  cash at year end  £{summaries.Average(s => s.CashAtEnd):N0} (start £{team.StartingCash:N0}; worst £{summaries.Min(s => s.CashAtEnd):N0}, best £{summaries.Max(s => s.CashAtEnd):N0})");
 Console.WriteLine($"  drivers killed    {deaths / (double)seasons:0.00} per season, all teams");
+if (listWinners)
+    foreach (var (name, wins) in winners.OrderByDescending(w => w.Value))
+        Console.WriteLine($"  won by {name,-18}{wins / (double)seasons:0.00} races a season");
 
 static string FindDataDir()
 {
