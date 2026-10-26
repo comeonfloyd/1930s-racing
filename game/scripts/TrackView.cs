@@ -14,6 +14,8 @@ public partial class TrackView : Node2D
     private static readonly Color Tarmac = new(0.24f, 0.24f, 0.25f);
     private static readonly Color Tree = new(0.2f, 0.32f, 0.18f);
     private static readonly Color Stand = new(0.55f, 0.36f, 0.24f);
+    private static readonly Color Water = new(0.27f, 0.43f, 0.59f);
+    private static readonly Color DisusedTrack = new(0.47f, 0.47f, 0.43f);
 
     private TrackShape? _track;
     private IReadOnlyList<CarPosition> _cars = Array.Empty<CarPosition>();
@@ -29,6 +31,7 @@ public partial class TrackView : Node2D
         _trees = Enumerable.Range(0, 400)
             .Select(_ => new Vector2((float)rng.NextDouble(), (float)rng.NextDouble()))
             .Where(p => track.Points.Min(q => q.DistanceTo(p)) > 0.05f)
+            .Where(p => !track.Water.Any(w => w.HasPoint(p)))
             .Take(160)
             .ToArray();
         QueueRedraw();
@@ -72,10 +75,15 @@ public partial class TrackView : Node2D
         DrawRect(Area, Grass);
         var scale = Box.Size.Y;
 
+        foreach (var w in _track.Water)
+            DrawRect(new Rect2(Map(w.Position), w.Size * Box.Size), Water);
         foreach (var t in _trees)
             DrawCircle(Map(t), scale * 0.012f, Tree);
         foreach (var s in _track.Grandstands)
             DrawRect(new Rect2(Map(s.Position), s.Size * Box.Size), Stand);
+
+        foreach (var u in _track.Unused)
+            DrawPolyline(u.Select(Map).ToArray(), DisusedTrack, scale * 0.025f, true);
 
         var road = _track.Points.Select(Map).Append(Map(_track.Points[0])).ToArray();
         DrawPolyline(road, Verge, scale * 0.045f, true);
@@ -88,6 +96,13 @@ public partial class TrackView : Node2D
         DrawLine(start - across, start + across, Colors.White, 3);
 
         var font = ThemeDB.FallbackFont;
+        foreach (var (name, at) in _track.Corners)
+        {
+            const int size = 13;
+            var width = font.GetStringSize(name, HorizontalAlignment.Left, -1, size).X;
+            DrawString(font, Map(at) + new Vector2(-width / 2, size / 3f), name, HorizontalAlignment.Left, -1, size, new Color(1, 1, 1, 0.85f));
+        }
+
         // Leader drawn last, on top.
         foreach (var (car, index) in _cars.Select((c, i) => (c, i)).Reverse())
         {

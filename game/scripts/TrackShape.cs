@@ -17,14 +17,29 @@ public sealed class TrackShape
 
     public IReadOnlyList<Vector2> Points => _points;
     public IReadOnlyList<Rect2> Grandstands { get; }
+    public IReadOnlyList<Rect2> Water { get; }
 
-    private TrackShape(IReadOnlyList<Vector2> controlPoints, IReadOnlyList<Rect2> grandstands)
+    /// <summary>Track that exists but this race does not use, such as the rest of a banked bowl.</summary>
+    public IReadOnlyList<Vector2[]> Unused { get; }
+
+    /// <summary>Corner names and where to print them.</summary>
+    public IReadOnlyList<(string Name, Vector2 At)> Corners { get; }
+
+    private TrackShape(
+        IReadOnlyList<Vector2> controlPoints,
+        IReadOnlyList<Rect2> grandstands,
+        IReadOnlyList<Rect2>? water = null,
+        IReadOnlyList<Vector2[]>? unused = null,
+        IReadOnlyList<(string, Vector2)>? corners = null)
     {
         _points = Smooth(controlPoints, 16);
         _distances = new float[_points.Length + 1];
         for (var i = 1; i <= _points.Length; i++)
             _distances[i] = _distances[i - 1] + _points[i - 1].DistanceTo(_points[i % _points.Length]);
         Grandstands = grandstands;
+        Water = water ?? Array.Empty<Rect2>();
+        Unused = unused ?? Array.Empty<Vector2[]>();
+        Corners = corners ?? Array.Empty<(string, Vector2)>();
     }
 
     /// <summary>Loads res://data/tracks/{circuitId}.json, or a plain oval when there is no file yet.</summary>
@@ -35,13 +50,18 @@ public sealed class TrackShape
             return Oval();
 
         using var doc = JsonDocument.Parse(FileAccess.GetFileAsString(path));
-        var points = doc.RootElement.GetProperty("points").EnumerateArray()
-            .Select(p => new Vector2(p[0].GetSingle(), p[1].GetSingle()))
-            .ToList();
-        var stands = doc.RootElement.TryGetProperty("grandstands", out var g)
-            ? g.EnumerateArray().Select(r => new Rect2(r[0].GetSingle(), r[1].GetSingle(), r[2].GetSingle(), r[3].GetSingle())).ToList()
-            : new List<Rect2>();
-        return new TrackShape(points, stands);
+        var root = doc.RootElement;
+        static Vector2 Point(JsonElement p) => new(p[0].GetSingle(), p[1].GetSingle());
+        static Rect2 Box(JsonElement r) => new(r[0].GetSingle(), r[1].GetSingle(), r[2].GetSingle(), r[3].GetSingle());
+        List<T> Optional<T>(string name, Func<JsonElement, T> read) =>
+            root.TryGetProperty(name, out var e) ? e.EnumerateArray().Select(read).ToList() : new List<T>();
+
+        return new TrackShape(
+            root.GetProperty("points").EnumerateArray().Select(Point).ToList(),
+            Optional("grandstands", Box),
+            Optional("water", Box),
+            Optional("unused", u => u.EnumerateArray().Select(Point).ToArray()),
+            Optional("corners", c => (c[0].GetString() ?? "", new Vector2(c[1].GetSingle(), c[2].GetSingle()))));
     }
 
     private static TrackShape Oval()

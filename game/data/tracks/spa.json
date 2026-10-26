@@ -1,0 +1,40 @@
+{
+  "circuitId": "spa",
+  "note": "Stylised 1930 Spa-Francorchamps road triangle: La Source, Eau Rouge, the climb to Les Combes, Burnenville, Malmedy, the Masta straight, Stavelot and Blanchimont.",
+  "points": [
+    [0.74, 0.3],
+    [0.73, 0.14],
+    [0.7, 0.08],
+    [0.66, 0.1],
+    [0.62, 0.2],
+    [0.58, 0.24],
+    [0.54, 0.2],
+    [0.45, 0.24],
+    [0.35, 0.28],
+    [0.28, 0.36],
+    [0.2, 0.44],
+    [0.14, 0.56],
+    [0.15, 0.64],
+    [0.4, 0.72],
+    [0.62, 0.8],
+    [0.66, 0.79],
+    [0.78, 0.86],
+    [0.84, 0.84],
+    [0.86, 0.76],
+    [0.84, 0.6],
+    [0.8, 0.46],
+    [0.76, 0.38]
+  ],
+  "grandstands": [
+    [0.77, 0.18, 0.025, 0.12]
+  ],
+  "corners": [
+    ["La Source", 0.6, 0.06],
+    ["Eau Rouge", 0.6, 0.3],
+    ["Les Combes", 0.34, 0.2],
+    ["Malmedy", 0.24, 0.58],
+    ["Masta", 0.4, 0.8],
+    ["Stavelot", 0.8, 0.93],
+    ["Blanchimont", 0.7, 0.52]
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "circuitId": "nurburgring",
+  "note": "Stylised Nurburgring Nordschleife: Hatzenbach, Flugplatz, Adenauer Forst, Bergwerk, the Karussell, Hohe Acht, Brunnchen, Pflanzgarten, Schwalbenschwanz and the Dottinger Hohe straight.",
+  "points": [
+    [0.4, 0.82],
+    [0.3, 0.78],
+    [0.24, 0.7],
+    [0.2, 0.66],
+    [0.22, 0.6],
+    [0.17, 0.55],
+    [0.14, 0.46],
+    [0.16, 0.38],
+    [0.12, 0.3],
+    [0.18, 0.24],
+    [0.26, 0.26],
+    [0.32, 0.2],
+    [0.4, 0.22],
+    [0.46, 0.16],
+    [0.55, 0.12],
+    [0.6, 0.1],
+    [0.62, 0.15],
+    [0.68, 0.1],
+    [0.76, 0.14],
+    [0.8, 0.22],
+    [0.86, 0.26],
+    [0.84, 0.34],
+    [0.88, 0.42],
+    [0.84, 0.5],
+    [0.86, 0.58],
+    [0.8, 0.66],
+    [0.7, 0.76],
+    [0.56, 0.82]
+  ],
+  "grandstands": [
+    [0.4, 0.86, 0.14, 0.025]
+  ],
+  "corners": [
+    ["Hatzenbach", 0.32, 0.66],
+    ["Flugplatz", 0.26, 0.46],
+    ["Bergwerk", 0.4, 0.3],
+    ["Karussell", 0.56, 0.05],
+    ["Hohe Acht", 0.74, 0.06],
+    ["Brunnchen", 0.72, 0.24],
+    ["Pflanzgarten", 0.72, 0.42],
+    ["Dottinger Hohe", 0.72, 0.86]
+  ]
+}
