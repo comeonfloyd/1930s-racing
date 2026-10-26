@@ -14,7 +14,9 @@ public partial class CalendarScreen : Control
     private const int StartYear = 1930;
 
     private GameData _data = null!;
-    private Career? _career;
+
+    // Kept across scene changes, so coming back from a race keeps the team and entries.
+    private static Career? _career;
     private VBoxContainer _eventList = null!;
     private Label _status = null!;
 
@@ -61,6 +63,12 @@ public partial class CalendarScreen : Control
         _eventList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         scroll.AddChild(_eventList);
         column.AddChild(scroll);
+
+        if (_career is not null)
+        {
+            _status.Text = $"{_career.Team.Name} · cash £{_career.Cash:N0}";
+            Refresh();
+        }
     }
 
     private void StartCareer(string teamId)
@@ -92,6 +100,9 @@ public partial class CalendarScreen : Control
             if (entered)
             {
                 row.AddChild(new Label { Text = "Entered" });
+                var watch = new Button { Text = "Watch race" };
+                watch.Pressed += () => WatchRace(ev);
+                row.AddChild(watch);
             }
             else
             {
@@ -105,12 +116,18 @@ public partial class CalendarScreen : Control
         }
     }
 
+    private void WatchRace(RaceEvent ev)
+    {
+        RaceRequest.Result = RaceSim.Run(ev, _data.Circuits[ev.CircuitId], RaceSim.FullGrid(_data), Random.Shared.Next());
+        GetTree().ChangeSceneToFile("res://scenes/Race.tscn");
+    }
+
     private void OnEnter(string eventId)
     {
         var result = _career!.Enter(eventId);
         _status.Text = result switch
         {
-            EntryResult.Entered => $"{_career.Team.Name} · entered {_career.Entries.Count} races",
+            EntryResult.Entered => $"{_career.Team.Name} · entered {_career.Entries.Count} race{(_career.Entries.Count == 1 ? "" : "s")}",
             EntryResult.CannotArriveInTime => "The cars cannot get there in time from the previous race.",
             EntryResult.EventPassed => "That race has already been run.",
             _ => result.ToString(),

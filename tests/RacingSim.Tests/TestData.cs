@@ -6,6 +6,8 @@ internal static class TestData
 
     public static GameData Load() => Shared.Value;
 
+    public static string DataDir => FindDataDir();
+
     private static string FindDataDir()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
