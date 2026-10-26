@@ -571,6 +571,10 @@ public partial class RaceScreen : Control
         var winner = result.Classification[0];
         box.AddChild(new Label { Text = $"{winner.Entry.Driver.Name} wins for {winner.Entry.Team.Name} in {Clock(winner.TotalTime)}", ThemeTypeVariation = "Muted" });
         box.AddChild(new HSeparator());
+        var header = new HBoxContainer();
+        header.AddChild(new Label { Text = "", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        header.AddChild(new Label { Text = "YOUR PRIZES", ThemeTypeVariation = "Overline", HorizontalAlignment = HorizontalAlignment.Right });
+        box.AddChild(header);
 
         for (var i = 0; i < result.Classification.Count; i++)
         {

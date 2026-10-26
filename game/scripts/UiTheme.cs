@@ -86,8 +86,8 @@ public static class UiTheme
         t.SetFontSize("font_size", "ProgressBar", 1);
 
         // Scrollbars: thin and quiet.
-        t.SetStylebox("scroll", "VScrollBar", Box(new Color(1, 1, 1, 0.03f), 3, 0));
-        t.SetStylebox("grabber", "VScrollBar", Box(new Color(1, 1, 1, 0.18f), 3, 0));
+        t.SetStylebox("scroll", "VScrollBar", Box(new Color(1, 1, 1, 0.06f), 3, 0));
+        t.SetStylebox("grabber", "VScrollBar", Box(new Color(1, 1, 1, 0.3f), 3, 0));
         t.SetStylebox("grabber_highlight", "VScrollBar", Box(new Color(1, 1, 1, 0.3f), 3, 0));
         t.SetStylebox("grabber_pressed", "VScrollBar", Box(Accent, 3, 0));
 

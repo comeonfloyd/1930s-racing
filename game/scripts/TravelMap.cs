@@ -246,7 +246,7 @@ public partial class TravelMap : Control
             }
             var crowded = pins.Where((q, j) => j != i && !_labels[j].Below && !_labels[j].Centred)
                 .Any(q => q.X > p.X && q.X - p.X < 160 && Math.Abs(q.Y - p.Y) < 40);
-            label.Position = crowded ? p + new Vector2(-label.Size.X - 12, -10) : p + new Vector2(12, -10);
+            label.Position = crowded ? p + new Vector2(-label.Size.X - 12, -10) : p + new Vector2(16, -10);
         }
     }
 }

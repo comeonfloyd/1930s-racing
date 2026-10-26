@@ -391,7 +391,7 @@ public partial class CalendarScreen : Control
             var button = new Button
             {
                 Text = $"£{cost:N0}", CustomMinimumSize = new Vector2(84, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter,
-                TooltipText = $"Order {kind.Name.ToLowerInvariant()}: paid now, {kind.Weeks} weeks of work after anything already ordered",
+                TooltipText = $"Order {kind.Name.ToLowerInvariant()}: paid now, {kind.Weeks} weeks of work after anything already ordered. Each one of a kind costs more than the last.",
                 Disabled = cost > career.Cash,
             };
             button.Pressed += () =>
@@ -442,7 +442,11 @@ public partial class CalendarScreen : Control
         foreach (var t in recent)
         {
             var line = new HBoxContainer();
-            line.AddChild(new Label { Text = t.Text, ThemeTypeVariation = "Muted", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true, TooltipText = t.Text, MouseFilter = MouseFilterEnum.Pass });
+            line.AddChild(new Label
+            {
+                Text = t.Text, ThemeTypeVariation = "Muted", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, TooltipText = t.Text, MouseFilter = MouseFilterEnum.Pass,
+            });
             line.AddChild(new Label { Text = Money(t.Amount), Modulate = t.Amount < 0 ? new Color(1, 0.65f, 0.55f) : UiTheme.Good });
             box.AddChild(line);
         }
@@ -459,7 +463,8 @@ public partial class CalendarScreen : Control
         box.AddChild(new Label { Text = $"{year} SEASON OVER", ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = s.Wins > 0 ? $"{Count(s.Wins, "win")} from {Count(s.Races, "race")}" : $"{Count(s.Races, "race")}, no wins", ThemeTypeVariation = "Heading" });
         box.AddChild(new Label { Text = $"On the podium in {Count(s.Podiums, "race")}", ThemeTypeVariation = "Muted" });
-        box.AddChild(new Label { Text = $"Started with £{s.CashAtStart:N0} · income £{s.Income:N0} · costs £{s.Costs:N0}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        box.AddChild(new Label { Text = $"Started with £{s.CashAtStart:N0}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label { Text = $"Income £{s.Income:N0} · costs £{s.Costs:N0}", ThemeTypeVariation = "Muted" });
         box.AddChild(new Label { Text = $"Cash at the end: £{s.CashAtEnd:N0}" });
         if (s.DriversLost.Count > 0)
             box.AddChild(new Label { Text = $"Lost: {string.Join(", ", s.DriversLost)}", Modulate = new Color(1, 0.65f, 0.55f), AutowrapMode = TextServer.AutowrapMode.WordSmart });
