@@ -1,0 +1,10 @@
+// Brands are altered from the real makers' trademarks but stay recognisable:
+// Alfa Rossa = Alfa Romeo, Bugetti = Bugatti, Masarelli = Maserati,
+// Mercator-Benz = Mercedes-Benz. Players can rename them here.
+// Cash and prestige are placeholder game values.
+[
+  { "id": "alfa-rossa", "name": "Alfa Rossa", "nationality": "Italy", "baseCityId": "milan", "startingCash": 12000, "prestige": 70, "playable": true, "driverIds": ["tazio-nuvolari", "giuseppe-campari", "luigi-arcangeli"] },
+  { "id": "bugetti", "name": "Bugetti", "nationality": "France", "baseCityId": "molsheim", "startingCash": 11000, "prestige": 75, "playable": true, "driverIds": ["louis-chiron", "guy-bouriat", "william-grover-williams"] },
+  { "id": "masarelli", "name": "Masarelli", "nationality": "Italy", "baseCityId": "bologna", "startingCash": 6000, "prestige": 50, "playable": false, "driverIds": ["achille-varzi", "luigi-fagioli"] },
+  { "id": "mercator-benz", "name": "Mercator-Benz", "nationality": "Germany", "baseCityId": "stuttgart", "startingCash": 9000, "prestige": 60, "playable": false, "driverIds": ["rudolf-caracciola"] }
+]

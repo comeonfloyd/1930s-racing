@@ -1,0 +1,7 @@
+// Team bases. Coordinates are approximate.
+[
+  { "id": "milan", "name": "Milan", "country": "Italy", "region": "Europe", "latitude": 45.464, "longitude": 9.190 },
+  { "id": "molsheim", "name": "Molsheim", "country": "France", "region": "Europe", "latitude": 48.541, "longitude": 7.492 },
+  { "id": "bologna", "name": "Bologna", "country": "Italy", "region": "Europe", "latitude": 44.494, "longitude": 11.343 },
+  { "id": "stuttgart", "name": "Stuttgart", "country": "Germany", "region": "Europe", "latitude": 48.776, "longitude": 9.183 }
+]

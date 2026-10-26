@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FED11FCE-A732-4B4E-AED5-55CF61648621}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RacingSim", "src\RacingSim\RacingSim.csproj", "{9C0F3074-3378-46C8-A71A-C2A1C8682AC5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{7545920C-58FA-486A-8145-A41A0ABC140D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RacingSim.Tests", "tests\RacingSim.Tests\RacingSim.Tests.csproj", "{C3D002E8-D4FB-4454-A6F5-F45D9774F883}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RacingManager", "game\RacingManager.csproj", "{9D2145D7-36B8-4494-A8E0-204F28FDF668}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9C0F3074-3378-46C8-A71A-C2A1C8682AC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C0F3074-3378-46C8-A71A-C2A1C8682AC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C0F3074-3378-46C8-A71A-C2A1C8682AC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C0F3074-3378-46C8-A71A-C2A1C8682AC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3D002E8-D4FB-4454-A6F5-F45D9774F883}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3D002E8-D4FB-4454-A6F5-F45D9774F883}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3D002E8-D4FB-4454-A6F5-F45D9774F883}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3D002E8-D4FB-4454-A6F5-F45D9774F883}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D2145D7-36B8-4494-A8E0-204F28FDF668}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D2145D7-36B8-4494-A8E0-204F28FDF668}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D2145D7-36B8-4494-A8E0-204F28FDF668}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D2145D7-36B8-4494-A8E0-204F28FDF668}.Release|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9C0F3074-3378-46C8-A71A-C2A1C8682AC5} = {FED11FCE-A732-4B4E-AED5-55CF61648621}
+		{C3D002E8-D4FB-4454-A6F5-F45D9774F883} = {7545920C-58FA-486A-8145-A41A0ABC140D}
+	EndGlobalSection
+EndGlobal
