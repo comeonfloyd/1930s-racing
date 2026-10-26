@@ -9,3 +9,6 @@ obj/
 *.user
 .vs/
 TestResults/
+
+# Natural Earth downloads (only the clipped file is kept)
+tools/world-map/data/ne_*.geojson

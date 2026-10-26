@@ -17,9 +17,10 @@ public sealed record RaceMessage(double Time, int Lap, string DriverId, string T
 
 /// <summary>Where one car is at a moment of the race, with the state the pit wall can see.</summary>
 /// <param name="Distance">Laps covered so far, e.g. 3.25 is a quarter of the way round lap 4.</param>
+/// <param name="FinishedAt">Race time in seconds when the car took the flag, or 0 before then.</param>
 public sealed record LiveCar(
     RaceEntry Entry, double Distance, bool Running, Retirement? Retirement, bool Finished,
-    bool InPits, double Fuel, double TyreWear, PaceOrder Pace, bool PitCalled, int PitStops);
+    bool InPits, double Fuel, double TyreWear, PaceOrder Pace, bool PitCalled, int PitStops, double FinishedAt = 0);
 
 /// <summary>
 /// A race that runs as time goes on, so the player can give orders while it is on: call a car in
@@ -112,7 +113,7 @@ public sealed class LiveRace
             else if (!inPits)
                 distance += Math.Clamp((Time - driving) / (car.LapEnd - driving), 0, 0.999);
             list.Add(new LiveCar(car.Entry, distance, !finished && !stopped, stopped ? car.Retirement : null, finished,
-                inPits, car.Fuel, car.Tyres, car.Pace, car.PitCalled, car.PitStops));
+                inPits, car.Fuel, car.Tyres, car.Pace, car.PitCalled, car.PitStops, finished ? car.LapEnd : 0));
         }
         // Finished cars by finishing time, then everyone else by distance covered.
         return list

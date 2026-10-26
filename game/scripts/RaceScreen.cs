@@ -47,6 +47,8 @@ public partial class RaceScreen : Control
     private double _time;
     private int _speed = 60;
     private bool _paused;
+    private bool _resultShown;
+    private readonly List<Button> _speedButtons = new();
 
     private sealed record TowerRow(PanelContainer Panel, Label Position, ColorRect Stripe, Label Name, Label Gap);
 
@@ -89,14 +91,24 @@ public partial class RaceScreen : Control
 
         if (DevShot.Active)
         {
-            _speed = 240;
+            SetSpeed(240);
             DevShot.Capture(this, "race.png", 5, () =>
             {
                 var mine = _followChoices.IndexOf(_race.Cars().First(c => c.Entry.Team.Id == RaceRequest.PlayerTeamId).Entry.Driver.Id);
                 _follow.Selected = Math.Max(0, mine);
                 _track.Zoom = 5;
-                _speed = 10;
-                DevShot.Capture(this, "race-zoom.png", 2);
+                SetSpeed(10);
+                DevShot.Capture(this, "race-zoom.png", 2, () =>
+                {
+                    _race.RunToEnd();
+                    _time = _race.FinishTime;
+                    Refresh();
+                    DevShot.Capture(this, "race-result.png", 1, () =>
+                    {
+                        Session.Career?.FinishRace(_race);
+                        GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+                    });
+                });
             });
         }
     }
@@ -144,6 +156,15 @@ public partial class RaceScreen : Control
         }
         tower.AddChild(rows);
         column.AddChild(tower);
+
+        var news = Card("CardTight");
+        _news = new VBoxContainer();
+        _news.AddThemeConstantOverride("separation", 4);
+        var newsBox = new VBoxContainer();
+        newsBox.AddChild(Margin(new Label { Text = "RACE NEWS", ThemeTypeVariation = "Overline" }, 6, 2));
+        newsBox.AddChild(Margin(_news, 6, 2));
+        news.AddChild(newsBox);
+        column.AddChild(news);
         return Scrolling(column, left: true);
     }
 
@@ -151,23 +172,11 @@ public partial class RaceScreen : Control
     {
         var column = Column();
 
-        var exit = new Button { Text = "Exit race", SizeFlagsHorizontal = SizeFlags.ShrinkEnd };
-        exit.Pressed += () => GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
-        column.AddChild(exit);
-
         column.AddChild(Margin(new Label { Text = "PIT WALL", ThemeTypeVariation = "Overline" }, 4, 0));
         var team = RaceRequest.PlayerTeamId;
         foreach (var entry in _race.Cars().Where(c => c.Entry.Team.Id == team).Select(c => c.Entry))
             column.AddChild(PitWallCard(entry));
 
-        var news = Card();
-        _news = new VBoxContainer();
-        _news.AddThemeConstantOverride("separation", 6);
-        var newsBox = new VBoxContainer();
-        newsBox.AddChild(new Label { Text = "RACE NEWS", ThemeTypeVariation = "Overline" });
-        newsBox.AddChild(_news);
-        news.AddChild(newsBox);
-        column.AddChild(news);
         return Scrolling(column, left: false);
     }
 
@@ -297,7 +306,6 @@ public partial class RaceScreen : Control
         row.AddChild(_pause);
         row.AddChild(new VSeparator());
 
-        var speedButtons = new List<Button>();
         foreach (var s in Speeds)
         {
             var b = new Button
@@ -312,9 +320,9 @@ public partial class RaceScreen : Control
                 _pause.ButtonPressed = false;
             };
             row.AddChild(b);
-            speedButtons.Add(b);
+            _speedButtons.Add(b);
         }
-        OneAtATime(speedButtons);
+        OneAtATime(_speedButtons);
         row.AddChild(new VSeparator());
 
         var finish = new Button { Text = "Skip to finish", TooltipText = "Run the rest of the race at once" };
@@ -349,6 +357,14 @@ public partial class RaceScreen : Control
                 foreach (var other in buttons.Where(o => o != button))
                     other.SetPressedNoSignal(false);
             };
+    }
+
+    /// <summary>Changes the playback speed from code, keeping the speed buttons in step.</summary>
+    private void SetSpeed(int speed)
+    {
+        _speed = speed;
+        for (var i = 0; i < Speeds.Length; i++)
+            _speedButtons[i].SetPressedNoSignal(Speeds[i] == speed);
     }
 
     private static VBoxContainer Column()
@@ -474,6 +490,7 @@ public partial class RaceScreen : Control
                 RetirementCause.OutOfFuel => "Out · fuel",
                 _ when c.InPits => "In pits",
                 _ when i == 0 => c.Finished ? "Winner" : "Leader",
+                _ when c.Finished && cars[0].Finished && c.Distance >= cars[0].Distance => $"+{c.FinishedAt - cars[0].FinishedAt:0.0}s",
                 _ => Gap(cars[0], c, averageLap),
             };
             var mine = c.Entry.Team.Id == team;
@@ -508,9 +525,15 @@ public partial class RaceScreen : Control
             card.Warning.Visible = card.Warning.Text.Length > 0;
         }
 
-        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(4).Reverse().ToList();
+        if (Over && !_resultShown)
+        {
+            _resultShown = true;
+            AddChild(ResultCard());
+        }
+
+        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(3).Reverse().ToList();
         while (_news.GetChildCount() < Math.Max(1, news.Count))
-            _news.AddChild(new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(SideWidth - 40, 0) });
+            _news.AddChild(new Label { ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(SideWidth - 40, 0) });
         for (var i = 0; i < _news.GetChildCount(); i++)
         {
             var label = (Label)_news.GetChild(i);
@@ -523,6 +546,82 @@ public partial class RaceScreen : Control
     {
         if (control.GetThemeStylebox(name) != style)
             control.AddThemeStyleboxOverride(name, style);
+    }
+
+    /// <summary>The finishing order and the team's money, over a dimmed screen, with a way back to the season.</summary>
+    private Control ResultCard()
+    {
+        var result = _race.Result();
+        var team = RaceRequest.PlayerTeamId;
+        var shade = new ColorRect { Color = new Color(0, 0, 0, 0.55f), MouseFilter = MouseFilterEnum.Stop };
+        shade.SetAnchorsPreset(LayoutPreset.FullRect);
+
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        center.SetAnchorsPreset(LayoutPreset.FullRect);
+        shade.AddChild(center);
+        var card = Card();
+        card.CustomMinimumSize = new Vector2(520, 0);
+        center.AddChild(card);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 6);
+        card.AddChild(box);
+
+        box.AddChild(new Label { Text = "RESULT", ThemeTypeVariation = "Overline" });
+        box.AddChild(new Label { Text = _race.Event.Name, ThemeTypeVariation = "Title" });
+        var winner = result.Classification[0];
+        box.AddChild(new Label { Text = $"{winner.Entry.Driver.Name} wins for {winner.Entry.Team.Name} in {Clock(winner.TotalTime)}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new HSeparator());
+        var header = new HBoxContainer();
+        header.AddChild(new Label { Text = "", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        header.AddChild(new Label { Text = "YOUR PRIZES", ThemeTypeVariation = "Overline", HorizontalAlignment = HorizontalAlignment.Right });
+        box.AddChild(header);
+
+        for (var i = 0; i < result.Classification.Count; i++)
+        {
+            var c = result.Classification[i];
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 10);
+            var mine = c.Entry.Team.Id == team;
+            line.AddChild(new Label { Text = c.Finished ? (i + 1).ToString() : "–", CustomMinimumSize = new Vector2(24, 0), HorizontalAlignment = HorizontalAlignment.Right });
+            line.AddChild(new ColorRect { Color = TrackView.TeamColor(c.Entry.Team.Id), CustomMinimumSize = new Vector2(4, 18), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+            line.AddChild(new Label { Text = c.Entry.Driver.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill, Modulate = mine ? UiTheme.Accent : Colors.White });
+            line.AddChild(new Label { Text = c.Entry.Team.Name, ThemeTypeVariation = "Muted", CustomMinimumSize = new Vector2(120, 0) });
+            var status = c.Retirement?.Cause switch
+            {
+                RetirementCause.MechanicalFailure => $"out, lap {c.Retirement.Lap}",
+                RetirementCause.Crash => $"crashed, lap {c.Retirement.Lap}",
+                RetirementCause.FatalCrash => "killed",
+                RetirementCause.OutOfFuel => $"no fuel, lap {c.Retirement.Lap}",
+                _ when i == 0 => Clock(c.TotalTime),
+                _ when c.LapsCompleted < winner.LapsCompleted => $"+{winner.LapsCompleted - c.LapsCompleted} lap{(winner.LapsCompleted - c.LapsCompleted > 1 ? "s" : "")}",
+                _ => $"+{c.TotalTime - winner.TotalTime:0.0}s",
+            };
+            var prize = c.Finished && mine ? Finance.Prize(_race.Event, i + 1) : 0;
+            line.AddChild(new Label { Text = status, ThemeTypeVariation = "Muted", CustomMinimumSize = new Vector2(96, 0), HorizontalAlignment = HorizontalAlignment.Right });
+            line.AddChild(new Label { Text = prize > 0 ? $"£{prize:N0}" : "", Modulate = UiTheme.Good, CustomMinimumSize = new Vector2(64, 0), HorizontalAlignment = HorizontalAlignment.Right });
+            box.AddChild(line);
+        }
+
+        box.AddChild(new HSeparator());
+        var starters = result.Classification.Count(c => c.Entry.Team.Id == team);
+        var prizes = result.Classification.Select((c, i) => c.Finished && c.Entry.Team.Id == team ? Finance.Prize(_race.Event, i + 1) : 0).Sum();
+        var start = _race.Event.StartMoney * starters;
+        var bottom = new HBoxContainer();
+        bottom.AddChild(new Label
+        {
+            Text = $"Start money £{start:N0} + prizes £{prizes:N0} = £{start + prizes:N0}",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center,
+        });
+        var next = new Button { Text = "Back to the season  ›", ThemeTypeVariation = "Accent" };
+        next.Pressed += () =>
+        {
+            next.Disabled = true;
+            Session.Career?.FinishRace(_race);
+            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+        };
+        bottom.AddChild(next);
+        box.AddChild(bottom);
+        return shade;
     }
 
     /// <summary>Gap to the leader: whole laps when lapped, otherwise roughly in seconds.</summary>
