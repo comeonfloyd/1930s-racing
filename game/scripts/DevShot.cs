@@ -10,6 +10,7 @@ namespace RacingManager;
 ///   --shot=/tmp/shots            folder for the pictures
 ///   --race=1930-monza            go straight to this race (with --team)
 ///   --team=alfa-rossa
+///   --stay=1                     keep running after the last picture
 /// It saves calendar.png, then race-start.png and race-zoom.png, then quits.
 /// </summary>
 public static class DevShot
@@ -26,10 +27,15 @@ public static class DevShot
         await node.ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         var folder = Arg("shot")!;
         DirAccess.MakeDirRecursiveAbsolute(folder);
-        var error = node.GetViewport().GetTexture().GetImage().SavePng($"{folder}/{file}");
-        GD.Print($"DevShot {file}: {error}");
+        using (var texture = node.GetViewport().GetTexture())
+        using (var image = texture.GetImage())
+            GD.Print($"DevShot {file}: {image.SavePng($"{folder}/{file}")}");
+        // Quit on the next idle frame, outside this awaiter's continuation.
+        var tree = node.GetTree();
+        if (then is null && Arg("stay") is not null)
+            return;
         if (then is null)
-            Shutdown.Quit(node.GetTree());
+            Callable.From(() => Shutdown.Quit(tree)).CallDeferred();
         else
             then();
     }
