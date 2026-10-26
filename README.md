@@ -11,6 +11,7 @@ The design plan lives in [docs/design.md](docs/design.md).
 | `src/RacingSim/` | Game rules and simulation in plain C# with no engine code, so it can be unit tested and run headless |
 | `tests/RacingSim.Tests/` | xUnit tests for the sim core |
 | `tools/RaceRunner/` | Console app that runs one race headless and prints the result and a lap chart |
+| `tools/track-data/` | Real map data (OpenStreetMap) and the scripts that turn it into the circuit drawings |
 | `game/` | The Godot 4 project (scenes, scripts) |
 | `game/data/` | World data as JSON: circuits, team bases, drivers, teams, and one file per season |
 
@@ -27,3 +28,7 @@ When exporting, add `data/*` to the export preset's "Filters to export non-resou
 ## Data notes
 
 Historical dates, lap counts, lap lengths and coordinates are approximate and still need checking against period sources. Money, prestige and driver skills are placeholder game values. Team names are deliberately altered from the real makers' trademarks and can be edited in `game/data/teams.json`.
+
+## Credits
+
+Circuit outlines: map data © OpenStreetMap contributors (ODbL); Monaco outline from bacinger/f1-circuits (MIT). See `tools/track-data/README.md`.

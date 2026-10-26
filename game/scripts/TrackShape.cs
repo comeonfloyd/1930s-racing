@@ -25,6 +25,9 @@ public sealed class TrackShape
     /// <summary>Corner names and where to print them.</summary>
     public IReadOnlyList<(string Name, Vector2 At)> Corners { get; }
 
+    /// <summary>Where the outline came from, shown under the drawing (map data licences ask for it).</summary>
+    public string Credit { get; private init; } = "";
+
     private TrackShape(
         IReadOnlyList<Vector2> controlPoints,
         IReadOnlyList<Rect2> grandstands,
@@ -61,7 +64,10 @@ public sealed class TrackShape
             Optional("grandstands", Box),
             Optional("water", Box),
             Optional("unused", u => u.EnumerateArray().Select(Point).ToArray()),
-            Optional("corners", c => (c[0].GetString() ?? "", new Vector2(c[1].GetSingle(), c[2].GetSingle()))));
+            Optional("corners", c => (c[0].GetString() ?? "", new Vector2(c[1].GetSingle(), c[2].GetSingle()))))
+        {
+            Credit = root.TryGetProperty("credit", out var credit) ? credit.GetString() ?? "" : "",
+        };
     }
 
     private static TrackShape Oval()

@@ -103,6 +103,13 @@ public partial class TrackView : Node2D
             DrawString(font, Map(at) + new Vector2(-width / 2, size / 3f), name, HorizontalAlignment.Left, -1, size, new Color(1, 1, 1, 0.85f));
         }
 
+        if (_track.Credit.Length > 0)
+        {
+            const int size = 11;
+            var width = font.GetStringSize(_track.Credit, HorizontalAlignment.Left, -1, size).X;
+            DrawString(font, Area.End - new Vector2(width + 8, 8), _track.Credit, HorizontalAlignment.Left, -1, size, new Color(1, 1, 1, 0.6f));
+        }
+
         // Leader drawn last, on top.
         foreach (var (car, index) in _cars.Select((c, i) => (c, i)).Reverse())
         {
