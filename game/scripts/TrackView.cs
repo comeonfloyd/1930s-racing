@@ -139,7 +139,8 @@ public partial class TrackView : Node2D
         if (_track is null)
             return;
 
-        DrawRect(Area, Grass);
+        if (_ground is null)
+            DrawRect(Area, Grass);
         var scale = Box.Size.Y * _zoom;
         float roadWidth;
 
@@ -244,7 +245,7 @@ public partial class TrackView : Node2D
     }
 
     /// <summary>Reads a picture straight from the project files, so it needs no editor import step.</summary>
-    private static Texture2D? LoadTexture(string path)
+    public static Texture2D? LoadTexture(string path)
     {
         if (!FileAccess.FileExists(path))
             return null;

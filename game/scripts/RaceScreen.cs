@@ -16,30 +16,35 @@ public static class RaceRequest
 }
 
 /// <summary>
-/// Runs a race on the drawn circuit with a timing tower, speed controls and the player's pit
-/// wall: pace orders and pit stop calls for each of the team's cars.
+/// Race day: the circuit fills the screen, with cards over it for the timing tower, the race
+/// clock, playback speed (real time up to 240x), the camera, and the player's pit wall with
+/// fuel and tyre gauges, pace orders and a box call for each of the team's cars.
 /// </summary>
 public partial class RaceScreen : Control
 {
-    private static readonly int[] Speeds = { 10, 60, 240 };
+    private static readonly int[] Speeds = { 1, 10, 60, 240 };
     private static readonly PaceOrder[] Paces = { PaceOrder.Nurse, PaceOrder.Hold, PaceOrder.Race, PaceOrder.Push };
+    private const float SideWidth = 290;
 
     private LiveRace _race = null!;
     private TrackView _track = null!;
     private Control _frame = null!;
-    private ScrollContainer _side = null!;
     private OptionButton _follow = null!;
     private readonly List<string?> _followChoices = new();
-    private Label _header = null!;
-    private Label _tower = null!;
-    private Label _news = null!;
-    private readonly List<PitWallRow> _pitWall = new();
+    private Label _lap = null!;
+    private Label _clock = null!;
+    private Button _pause = null!;
+    private readonly List<TowerRow> _tower = new();
+    private readonly List<PitCard> _pitWall = new();
+    private VBoxContainer _news = null!;
     private double _time;
     private int _speed = 60;
     private bool _paused;
 
-    /// <summary>The controls for one of the player's cars.</summary>
-    private sealed record PitWallRow(string DriverId, Label Status, OptionButton Pace, Button Pit);
+    private sealed record TowerRow(PanelContainer Panel, Label Position, ColorRect Stripe, Label Name, Label Gap);
+
+    private sealed record PitCard(string DriverId, Label Position, ProgressBar Fuel, Label FuelText,
+        ProgressBar Tyres, Label TyreText, Button[] Pace, Button Box, Label Warning);
 
     public override void _Ready()
     {
@@ -50,9 +55,15 @@ public partial class RaceScreen : Control
             return;
         }
         _race = race;
+        Theme = UiTheme.Get();
 
-        // The circuit sits in a clipping frame so it can be zoomed and panned under the panel.
+        var backdrop = new ColorRect { Color = UiTheme.Background, MouseFilter = MouseFilterEnum.Ignore };
+        backdrop.SetAnchorsPreset(LayoutPreset.FullRect);
+        AddChild(backdrop);
+
+        // The circuit fills the window and can be zoomed and dragged under the cards.
         _frame = new Control { ClipContents = true, MouseFilter = MouseFilterEnum.Stop };
+        _frame.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(_frame);
         _frame.GuiInput += OnTrackInput;
         _track = new TrackView();
@@ -60,97 +71,182 @@ public partial class RaceScreen : Control
         // A stable seed per circuit, so the scenery is the same every visit.
         _track.SetTrack(TrackShape.For(race.Circuit.Id), race.Circuit.Id, race.Circuit.Id.Sum(ch => ch));
 
-        // The side panel scrolls when a small window can't fit the tower and the pit wall.
-        _side = new ScrollContainer { Position = new Vector2(16, 16), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        AddChild(_side);
-        var panel = new VBoxContainer { CustomMinimumSize = new Vector2(360, 0) };
-        panel.AddThemeConstantOverride("separation", 8);
-        _side.AddChild(panel);
-
-        panel.AddChild(new Label { Text = $"{race.Event.Name}\n{race.Circuit.Name}", ThemeTypeVariation = "HeaderMedium" });
-        _header = new Label();
-        panel.AddChild(_header);
-
-        var controls = new HBoxContainer();
-        foreach (var s in Speeds)
-        {
-            var b = new Button { Text = $"{s}x" };
-            b.Pressed += () => { _speed = s; _paused = false; };
-            controls.AddChild(b);
-        }
-        var pause = new Button { Text = "Pause" };
-        pause.Pressed += () => _paused = !_paused;
-        controls.AddChild(pause);
-        var skip = new Button { Text = "Skip to end" };
-        skip.Pressed += () =>
-        {
-            _race.RunToEnd();
-            _time = _race.FinishTime;
-            Refresh();
-        };
-        controls.AddChild(skip);
-        panel.AddChild(controls);
-        panel.AddChild(CameraControls());
-
-        AddPitWall(panel);
-
-        _tower = new Label();
-        panel.AddChild(_tower);
-        _news = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(360, 0) };
-        panel.AddChild(_news);
-
-        var back = new Button { Text = "Back to calendar" };
-        back.Pressed += () => GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
-        panel.AddChild(back);
+        AddChild(LeftColumn());
+        AddChild(RightColumn());
+        AddChild(CameraBar());
+        AddChild(PlaybackBar());
 
         Resized += Layout;
         Layout();
         Refresh();
-    }
 
-    private void AddPitWall(VBoxContainer panel)
-    {
-        var team = RaceRequest.PlayerTeamId;
-        var mine = _race.Cars().Where(c => c.Entry.Team.Id == team).Select(c => c.Entry).ToList();
-        if (mine.Count == 0)
-            return;
-
-        panel.AddChild(new Label { Text = $"Pit wall · {mine[0].Team.Name}", ThemeTypeVariation = "HeaderSmall" });
-        foreach (var entry in mine)
+        if (DevShot.Active)
         {
-            var id = entry.Driver.Id;
-            var box = new VBoxContainer();
-            var status = new Label();
-            box.AddChild(status);
-
-            var row = new HBoxContainer();
-            var pace = new OptionButton { TooltipText = "Pace order, shown on the pit board next time the car passes" };
-            foreach (var p in Paces)
-                pace.AddItem(p.ToString());
-            pace.Selected = Array.IndexOf(Paces, PaceOrder.Race);
-            pace.ItemSelected += i => _race.SetPace(id, Paces[i]);
-            row.AddChild(pace);
-
-            var pit = new Button { Text = "Call in", TooltipText = "Stop for fuel and rear tyres at the end of this lap" };
-            pit.Pressed += () =>
+            _speed = 240;
+            DevShot.Capture(this, "race.png", 5, () =>
             {
-                var car = _race.Cars().First(c => c.Entry.Driver.Id == id);
-                _race.CallPitStop(id, !car.PitCalled);
-                Refresh();
-            };
-            row.AddChild(pit);
-            box.AddChild(row);
-            panel.AddChild(box);
-            _pitWall.Add(new PitWallRow(id, status, pace, pit));
+                var mine = _followChoices.IndexOf(_race.Cars().First(c => c.Entry.Team.Id == RaceRequest.PlayerTeamId).Entry.Driver.Id);
+                _follow.Selected = Math.Max(0, mine);
+                _track.Zoom = 5;
+                _speed = 10;
+                DevShot.Capture(this, "race-zoom.png", 2);
+            });
         }
     }
 
-    private HBoxContainer CameraControls()
+    // ------------------------------------------------------------------ layout
+
+    private Control LeftColumn()
+    {
+        var column = Column();
+
+        var header = Card();
+        var box = new VBoxContainer();
+        box.AddChild(new Label { Text = _race.Event.Date.Year + " · " + _race.Circuit.Country.ToUpperInvariant(), ThemeTypeVariation = "Overline" });
+        box.AddChild(new Label { Text = _race.Event.Name, ThemeTypeVariation = "Heading" });
+        box.AddChild(new Label { Text = $"{_race.Circuit.Name} · {_race.Circuit.LapKm:0.#} km lap", ThemeTypeVariation = "Muted" });
+        var lapRow = new HBoxContainer();
+        _lap = new Label { ThemeTypeVariation = "Big", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _clock = new Label { ThemeTypeVariation = "Muted", VerticalAlignment = VerticalAlignment.Center };
+        lapRow.AddChild(_lap);
+        lapRow.AddChild(_clock);
+        box.AddChild(lapRow);
+        header.AddChild(box);
+        column.AddChild(header);
+
+        var tower = Card("CardTight");
+        var rows = new VBoxContainer();
+        rows.AddThemeConstantOverride("separation", 2);
+        rows.AddChild(Margin(new Label { Text = "TIMING", ThemeTypeVariation = "Overline" }, 6, 4));
+        foreach (var _ in _race.Cars())
+        {
+            var panel = new PanelContainer();
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 8);
+            var position = new Label { CustomMinimumSize = new Vector2(26, 0), HorizontalAlignment = HorizontalAlignment.Right };
+            var stripe = new ColorRect { CustomMinimumSize = new Vector2(4, 18), SizeFlagsVertical = SizeFlags.ShrinkCenter };
+            var name = new Label { SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
+            var gap = new Label { ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(92, 0) };
+            line.AddChild(position);
+            line.AddChild(stripe);
+            line.AddChild(name);
+            line.AddChild(gap);
+            panel.AddChild(line);
+            rows.AddChild(panel);
+            _tower.Add(new TowerRow(panel, position, stripe, name, gap));
+        }
+        tower.AddChild(rows);
+        column.AddChild(tower);
+        return Scrolling(column, left: true);
+    }
+
+    private Control RightColumn()
+    {
+        var column = Column();
+
+        var exit = new Button { Text = "Exit race", SizeFlagsHorizontal = SizeFlags.ShrinkEnd };
+        exit.Pressed += () => GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+        column.AddChild(exit);
+
+        var team = RaceRequest.PlayerTeamId;
+        foreach (var entry in _race.Cars().Where(c => c.Entry.Team.Id == team).Select(c => c.Entry))
+            column.AddChild(PitWallCard(entry));
+
+        var news = Card();
+        _news = new VBoxContainer();
+        _news.AddThemeConstantOverride("separation", 6);
+        var newsBox = new VBoxContainer();
+        newsBox.AddChild(new Label { Text = "RACE NEWS", ThemeTypeVariation = "Overline" });
+        newsBox.AddChild(_news);
+        news.AddChild(newsBox);
+        column.AddChild(news);
+        return Scrolling(column, left: false);
+    }
+
+    private Control PitWallCard(RaceEntry entry)
+    {
+        var id = entry.Driver.Id;
+        var card = Card();
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 8);
+
+        var top = new HBoxContainer();
+        top.AddThemeConstantOverride("separation", 8);
+        top.AddChild(new ColorRect { Color = TrackView.TeamColor(entry.Team.Id), CustomMinimumSize = new Vector2(4, 22), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+        var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        titles.AddThemeConstantOverride("separation", 0);
+        titles.AddChild(new Label { Text = "PIT WALL", ThemeTypeVariation = "Overline" });
+        titles.AddChild(new Label { Text = entry.Driver.Name, ThemeTypeVariation = "Heading" });
+        top.AddChild(titles);
+        var badge = new PanelContainer { ThemeTypeVariation = "Badge", SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        var position = new Label { ThemeTypeVariation = "Heading" };
+        badge.AddChild(position);
+        top.AddChild(badge);
+        box.AddChild(top);
+
+        var (fuelRow, fuel, fuelText) = Gauge("Fuel");
+        var (tyreRow, tyres, tyreText) = Gauge("Tyres");
+        box.AddChild(fuelRow);
+        box.AddChild(tyreRow);
+
+        box.AddChild(new Label { Text = "Pace", ThemeTypeVariation = "Muted" });
+        var paceRow = new HBoxContainer();
+        paceRow.AddThemeConstantOverride("separation", 4);
+        var group = new ButtonGroup();
+        var paceButtons = Paces.Select(p =>
+        {
+            var b = new Button
+            {
+                Text = p.ToString(), ToggleMode = true, ButtonGroup = group, ThemeTypeVariation = "Segment",
+                SizeFlagsHorizontal = SizeFlags.ExpandFill, ButtonPressed = p == PaceOrder.Race,
+                TooltipText = PaceTip(p),
+            };
+            b.Pressed += () => _race.SetPace(id, p);
+            paceRow.AddChild(b);
+            return b;
+        }).ToArray();
+        box.AddChild(paceRow);
+
+        var boxCall = new Button { ThemeTypeVariation = "Danger", TooltipText = "Stop for fuel and rear tyres next time past the pits" };
+        boxCall.Pressed += () =>
+        {
+            var car = _race.Cars().First(c => c.Entry.Driver.Id == id);
+            _race.CallPitStop(id, !car.PitCalled);
+            Refresh();
+        };
+        box.AddChild(boxCall);
+        var warning = new Label { ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        box.AddChild(warning);
+
+        card.AddChild(box);
+        _pitWall.Add(new PitCard(id, position, fuel, fuelText, tyres, tyreText, paceButtons, boxCall, warning));
+        return card;
+    }
+
+    private static (HBoxContainer, ProgressBar, Label) Gauge(string name)
     {
         var row = new HBoxContainer();
-        var zoomOut = new Button { Text = "−", TooltipText = "Zoom out (or use the mouse wheel)" };
+        row.AddThemeConstantOverride("separation", 10);
+        row.AddChild(new Label { Text = name, ThemeTypeVariation = "Muted", CustomMinimumSize = new Vector2(44, 0) });
+        var bar = new ProgressBar
+        {
+            MaxValue = 1, Step = 0, ShowPercentage = false, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter, CustomMinimumSize = new Vector2(0, 8),
+        };
+        row.AddChild(bar);
+        var text = new Label { CustomMinimumSize = new Vector2(64, 0), HorizontalAlignment = HorizontalAlignment.Right };
+        row.AddChild(text);
+        return (row, bar, text);
+    }
+
+    private Control CameraBar()
+    {
+        var card = Card("CardTight");
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 6);
+        var zoomOut = new Button { Text = "−", TooltipText = "Zoom out (mouse wheel)", CustomMinimumSize = new Vector2(36, 0) };
         zoomOut.Pressed += () => _track.Zoom /= 1.5f;
-        var zoomIn = new Button { Text = "+", TooltipText = "Zoom in (or use the mouse wheel)" };
+        var zoomIn = new Button { Text = "+", TooltipText = "Zoom in (mouse wheel)", CustomMinimumSize = new Vector2(36, 0) };
         zoomIn.Pressed += () => _track.Zoom *= 1.5f;
         var whole = new Button { Text = "Whole track" };
         whole.Pressed += () =>
@@ -181,8 +277,110 @@ public partial class RaceScreen : Control
         row.AddChild(zoomIn);
         row.AddChild(whole);
         row.AddChild(_follow);
-        return row;
+        card.AddChild(row);
+        card.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterTop, LayoutPresetMode.KeepSize, 16);
+        card.GrowHorizontal = GrowDirection.Both;
+        return card;
     }
+
+    private Control PlaybackBar()
+    {
+        var card = Card("CardTight");
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 4);
+
+        _pause = new Button { Text = "Pause", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(76, 0) };
+        _pause.Toggled += on => { _paused = on; Refresh(); };
+        row.AddChild(_pause);
+        row.AddChild(new VSeparator());
+
+        var group = new ButtonGroup();
+        foreach (var s in Speeds)
+        {
+            var b = new Button
+            {
+                Text = s == 1 ? "Real time" : $"{s}×", ToggleMode = true, ButtonGroup = group, ThemeTypeVariation = "Segment",
+                ButtonPressed = s == _speed, CustomMinimumSize = new Vector2(s == 1 ? 96 : 56, 0),
+                TooltipText = s == 1 ? "Watch at true race speed" : $"{s} times real speed",
+            };
+            b.Pressed += () =>
+            {
+                _speed = s;
+                _pause.ButtonPressed = false;
+            };
+            row.AddChild(b);
+        }
+        row.AddChild(new VSeparator());
+
+        var finish = new Button { Text = "Skip to finish", TooltipText = "Run the rest of the race at once" };
+        finish.Pressed += () =>
+        {
+            _race.RunToEnd();
+            _time = _race.FinishTime;
+            Refresh();
+        };
+        row.AddChild(finish);
+        card.AddChild(row);
+        card.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterBottom, LayoutPresetMode.KeepSize, 16);
+        card.GrowHorizontal = GrowDirection.Both;
+        card.GrowVertical = GrowDirection.Begin;
+        return card;
+    }
+
+    private static VBoxContainer Column()
+    {
+        var column = new VBoxContainer { CustomMinimumSize = new Vector2(SideWidth, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        column.AddThemeConstantOverride("separation", 12);
+        return column;
+    }
+
+    /// <summary>A side column that scrolls when the window is too short for it.</summary>
+    private static ScrollContainer Scrolling(Control column, bool left)
+    {
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, MouseFilter = MouseFilterEnum.Pass };
+        scroll.SetAnchorsPreset(left ? LayoutPreset.LeftWide : LayoutPreset.RightWide);
+        scroll.OffsetTop = 16;
+        scroll.OffsetBottom = -16;
+        scroll.OffsetLeft = left ? 16 : -16 - SideWidth;
+        scroll.OffsetRight = left ? 16 + SideWidth : -16;
+        scroll.AddChild(column);
+        return scroll;
+    }
+
+    private static PanelContainer Card(string variation = "Card") =>
+        new() { ThemeTypeVariation = variation, MouseFilter = MouseFilterEnum.Stop };
+
+    private static MarginContainer Margin(Control child, int horizontal, int vertical)
+    {
+        var m = new MarginContainer();
+        m.AddThemeConstantOverride("margin_left", horizontal);
+        m.AddThemeConstantOverride("margin_right", horizontal);
+        m.AddThemeConstantOverride("margin_top", vertical);
+        m.AddThemeConstantOverride("margin_bottom", vertical);
+        m.AddChild(child);
+        return m;
+    }
+
+    private static string PaceTip(PaceOrder pace) => pace switch
+    {
+        PaceOrder.Nurse => "Save the car: slower, much kinder on tyres and engine",
+        PaceOrder.Hold => "Keep the place: a little slower, a little safer",
+        PaceOrder.Push => "Flat out: faster, but wears tyres and engine and risks a crash",
+        _ => "Normal racing pace",
+    };
+
+    private void Layout()
+    {
+        // Fit the whole circuit between the side columns; the picture still runs under them.
+        var size = GetViewportRect().Size;
+        var middle = new Rect2(SideWidth + 32, 70, size.X - 2 * (SideWidth + 32), size.Y - 140);
+        if (middle.Size.X < 200)
+            middle = new Rect2(0, 0, size.X, size.Y);
+        _track.Area = middle;
+        _track.Zoom = _track.Zoom;
+    }
+
+    // ------------------------------------------------------------------ camera input
 
     private void SetFollow(int choice)
     {
@@ -207,16 +405,7 @@ public partial class RaceScreen : Control
         }
     }
 
-    private void Layout()
-    {
-        var size = GetViewportRect().Size;
-        const float panelWidth = 400;
-        _side.Size = new Vector2(panelWidth - 24, size.Y - 32);
-        _frame.Position = new Vector2(panelWidth, 16);
-        _frame.Size = new Vector2(size.X - panelWidth - 16, size.Y - 32);
-        _track.Area = new Rect2(Vector2.Zero, _frame.Size);
-        _track.Zoom = _track.Zoom;
-    }
+    // ------------------------------------------------------------------ the race clock
 
     private bool Over => _race.IsOver && _time >= _race.FinishTime;
 
@@ -240,41 +429,69 @@ public partial class RaceScreen : Control
 
         var laps = _race.Event.Laps;
         var leaderLap = Math.Min(laps, (int)Math.Floor(cars[0].Distance) + 1);
-        _header.Text = Over
-            ? $"Chequered flag · {Clock(_time)}"
-            : $"Lap {leaderLap} of {laps} · {Clock(_time)} · {(_paused ? "paused" : $"{_speed}x")}";
+        _lap.Text = Over ? "Finished" : $"Lap {leaderLap}/{laps}";
+        _clock.Text = Clock(_time) + (_paused ? " · paused" : "");
 
+        var team = RaceRequest.PlayerTeamId;
         var averageLap = cars[0].Distance > 0.1 ? _time / cars[0].Distance : 60;
-        _tower.Text = string.Join("\n", cars.Select((c, i) =>
+        for (var i = 0; i < _tower.Count && i < cars.Count; i++)
         {
-            var gap = i == 0 ? "" : Gap(cars[0], c, averageLap);
-            var status = c.Retirement?.Cause switch
+            var c = cars[i];
+            var row = _tower[i];
+            row.Position.Text = (i + 1).ToString();
+            row.Stripe.Color = TrackView.TeamColor(c.Entry.Team.Id);
+            row.Name.Text = c.Entry.Driver.Name;
+            row.Gap.Text = c.Retirement?.Cause switch
             {
-                RetirementCause.MechanicalFailure => "out, mechanical",
-                RetirementCause.Crash => "out, crashed",
-                RetirementCause.FatalCrash => "killed",
-                RetirementCause.OutOfFuel => "out, no fuel",
-                _ when c.InPits => "in the pits",
-                _ => c.Finished ? "finished" + (i == 0 ? "" : " " + gap) : gap,
+                RetirementCause.MechanicalFailure => "Out · engine",
+                RetirementCause.Crash => "Out · crash",
+                RetirementCause.FatalCrash => "Killed",
+                RetirementCause.OutOfFuel => "Out · fuel",
+                _ when c.InPits => "In pits",
+                _ when i == 0 => c.Finished ? "Winner" : "Leader",
+                _ => Gap(cars[0], c, averageLap),
             };
-            return $"{i + 1,2}. {c.Entry.Driver.Name} ({c.Entry.Team.Name})  {status}";
-        }));
-
-        foreach (var row in _pitWall)
-        {
-            var position = cars.ToList().FindIndex(c => c.Entry.Driver.Id == row.DriverId);
-            var car = cars[position];
-            var fuelLaps = car.Fuel * LiveRace.TankRangeKm / _race.Circuit.LapKm;
-            var warning = !car.Running ? "" : fuelLaps < 2 ? "  · LOW FUEL" : car.TyreWear > 0.8 ? "  · TYRES GOING" : "";
-            row.Status.Text = $"P{position + 1} {car.Entry.Driver.Name} · fuel {fuelLaps:0} laps · tyres {100 - car.TyreWear * 100:0}%{warning}";
-            row.Status.Modulate = warning.Length > 0 ? new Color(1, 0.6f, 0.4f) : Colors.White;
-            row.Pit.Text = car.PitCalled ? "Cancel call" : "Call in";
-            row.Pit.Disabled = !car.Running;
-            row.Pace.Disabled = !car.Running;
+            var mine = c.Entry.Team.Id == team;
+            row.Panel.AddThemeStyleboxOverride("panel", UiTheme.Box(mine ? new Color(UiTheme.Accent, 0.16f) : Colors.Transparent, 6, 6, vertical: 3));
+            row.Name.Modulate = c.Retirement is null ? Colors.White : new Color(1, 1, 1, 0.45f);
         }
 
-        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(3).Reverse();
-        _news.Text = string.Join("\n", news.Select(m => $"Lap {m.Lap}: {m.Text}"));
+        foreach (var card in _pitWall)
+        {
+            var position = cars.ToList().FindIndex(c => c.Entry.Driver.Id == card.DriverId);
+            var car = cars[position];
+            var fuelLaps = car.Fuel * LiveRace.TankRangeKm / _race.Circuit.LapKm;
+            card.Position.Text = $"P{position + 1}";
+            card.Fuel.Value = car.Fuel;
+            card.FuelText.Text = $"{fuelLaps:0} laps";
+            card.Tyres.Value = 1 - car.TyreWear;
+            card.TyreText.Text = $"{100 - car.TyreWear * 100:0}%";
+            card.Fuel.AddThemeStyleboxOverride("fill", UiTheme.Box(fuelLaps < 2 ? UiTheme.Danger : UiTheme.Good, 4, 0));
+            card.Tyres.AddThemeStyleboxOverride("fill", UiTheme.Box(car.TyreWear > 0.8 ? UiTheme.Danger : car.TyreWear > 0.6 ? UiTheme.Accent : UiTheme.Good, 4, 0));
+
+            card.Box.Text = car.PitCalled ? "Boxing this lap · cancel" : "Box this lap";
+            card.Box.Disabled = !car.Running;
+            foreach (var b in card.Pace)
+                b.Disabled = !car.Running;
+
+            card.Warning.Text = !car.Running ? (car.Finished ? "Finished." : "Out of the race.")
+                : car.InPits ? "In the pits: fuel and tyres."
+                : fuelLaps < 2 ? "Low fuel: box now or the car runs dry."
+                : car.TyreWear > 0.8 ? "Rear tyres nearly gone."
+                : "";
+            card.Warning.Modulate = fuelLaps < 2 || car.TyreWear > 0.8 ? new Color(1, 0.6f, 0.5f) : Colors.White;
+            card.Warning.Visible = card.Warning.Text.Length > 0;
+        }
+
+        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(4).Reverse().ToList();
+        while (_news.GetChildCount() < Math.Max(1, news.Count))
+            _news.AddChild(new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(SideWidth - 40, 0) });
+        for (var i = 0; i < _news.GetChildCount(); i++)
+        {
+            var label = (Label)_news.GetChild(i);
+            label.Visible = i < Math.Max(1, news.Count);
+            label.Text = i < news.Count ? $"Lap {news[i].Lap} · {news[i].Text}" : "Cars on the grid.";
+        }
     }
 
     /// <summary>Gap to the leader: whole laps when lapped, otherwise roughly in seconds.</summary>
