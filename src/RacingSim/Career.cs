@@ -10,6 +10,16 @@ public enum EntryResult
     NoDrivers,
 }
 
+public enum ProjectResult
+{
+    Queued,
+    NotEnoughMoney,
+    AtLimit,
+}
+
+/// <summary>A dated line of team news, such as a finished drawing-office project.</summary>
+public sealed record NewsItem(DateOnly Date, string Text);
+
 /// <summary>A race that has been run, entered by the player or not, and what it paid the player.</summary>
 public sealed record RaceRecord(RaceEvent Event, RaceResult Result, bool Entered, int Earned)
 {
@@ -38,6 +48,9 @@ public sealed class Career
     private readonly List<RaceRecord> _results = new();
     private readonly HashSet<string> _deadDrivers = new();
     private DateOnly _paidUntil;
+    private readonly List<Project> _projects = new();
+    private readonly Dictionary<Upgrade, int> _upgradesDone = new();
+    private readonly List<NewsItem> _news = new();
 
     public Team Team { get; }
     public DateOnly Today { get; private set; }
@@ -48,6 +61,13 @@ public sealed class Career
     public IReadOnlyList<Transaction> Ledger => _ledger;
     public IReadOnlyList<RaceRecord> Results => _results;
     public IReadOnlySet<string> DeadDrivers => _deadDrivers;
+
+    /// <summary>The team's car as developed so far.</summary>
+    public Car Car { get; private set; }
+
+    /// <summary>Drawing-office work: the first project is being worked on, the rest wait.</summary>
+    public IReadOnlyList<Project> Projects => _projects;
+    public IReadOnlyList<NewsItem> News => _news;
 
     public Career(GameData data, string teamId, int startYear, int seed = 1930, RaceSettings? settings = null)
     {
@@ -60,6 +80,46 @@ public sealed class Career
         Today = new DateOnly(startYear, 1, 1);
         _paidUntil = Today;
         Cash = Team.StartingCash;
+        Car = Team.Car;
+    }
+
+    public int TimesDone(Upgrade upgrade) =>
+        _upgradesDone.GetValueOrDefault(upgrade) + _projects.Count(p => p.Upgrade == upgrade);
+
+    /// <summary>What the next project of this kind costs, counting ones already queued.</summary>
+    public int ProjectCost(Upgrade upgrade) => DrawingOffice.Cost(upgrade, TimesDone(upgrade));
+
+    /// <summary>Pays for a project and puts it at the back of the drawing-office queue.</summary>
+    public ProjectResult StartProject(Upgrade upgrade)
+    {
+        var planned = _projects.Where(p => p.Upgrade == upgrade).Aggregate(Car, (car, p) => DrawingOffice.Apply(car, p.Upgrade));
+        if (!DrawingOffice.CanImprove(planned, upgrade))
+            return ProjectResult.AtLimit;
+        var cost = ProjectCost(upgrade);
+        if (cost > Cash)
+            return ProjectResult.NotEnoughMoney;
+        var kind = DrawingOffice.Kind(upgrade);
+        Pay(MoneyKind.Development, kind.Name, -cost);
+        _projects.Add(new Project(upgrade, cost, kind.Weeks));
+        return ProjectResult.Queued;
+    }
+
+    /// <summary>A week of drawing-office work on the first project in the queue.</summary>
+    private void WorkOnProjects(DateOnly date)
+    {
+        if (_projects.Count == 0)
+            return;
+        var project = _projects[0] with { WeeksDone = _projects[0].WeeksDone + 1 };
+        if (project.WeeksDone < project.Weeks)
+        {
+            _projects[0] = project;
+            return;
+        }
+        _projects.RemoveAt(0);
+        _upgradesDone[project.Upgrade] = _upgradesDone.GetValueOrDefault(project.Upgrade) + 1;
+        Car = DrawingOffice.Apply(Car, project.Upgrade);
+        var kind = DrawingOffice.Kind(project.Upgrade);
+        _news.Add(new NewsItem(date, $"{kind.Name} finished: {kind.Effect}. The {Car.Name} now has {Car.Horsepower} hp, weighs {Car.WeightKg} kg, handling {Car.Handling}, reliability {Car.Reliability:P0}."));
     }
 
     /// <summary>The team's drivers still alive.</summary>
@@ -87,6 +147,7 @@ public sealed class Career
         RaceSim.FullGrid(_data)
             .Where(e => !_deadDrivers.Contains(e.Driver.Id))
             .Where(e => e.Team.Id != Team.Id || _entries.Contains(ev))
+            .Select(e => e.Team.Id == Team.Id ? e with { Team = Team with { Car = Car } } : e)
             .ToList();
 
     /// <summary>
@@ -206,6 +267,7 @@ public sealed class Career
             _paidUntil = _paidUntil.AddDays(7);
             Pay(MoneyKind.Wages, "Wages and works", -WeeklyCosts, _paidUntil);
             Pay(MoneyKind.Backing, "Works backing", WeeklyBacking, _paidUntil);
+            WorkOnProjects(_paidUntil);
         }
     }
 

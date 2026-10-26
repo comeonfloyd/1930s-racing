@@ -103,6 +103,7 @@ public partial class CalendarScreen : Control
         if (DevShot.Arg("team") is { } team && Career is null)
         {
             Career = new Career(_data, team, Session.StartYear);
+            Career.StartProject(Upgrade.Engine);
             if (DevShot.Arg("race") is { } race)
                 Career.Enter(race);
             Refresh();
@@ -191,7 +192,10 @@ public partial class CalendarScreen : Control
         if (career.SeasonOver)
             _side.AddChild(SummaryCard(career));
         _side.AddChild(TeamCard(career));
+        _side.AddChild(DrawingOfficeCard(career));
         _side.AddChild(MoneyCard(career));
+        if (career.News.Count > 0)
+            _side.AddChild(NewsCard(career));
     }
 
     private void OnAction()
@@ -265,6 +269,7 @@ public partial class CalendarScreen : Control
                      "Enter the races worth the trip. Each pays start money for every car, and prizes for the first four.",
                      "Travel costs money and days: the cars must get from one race to the next in time.",
                      "Wages are paid every week. Your maker's backing comes in every week too.",
+                     "The drawing office improves the car: more power, less weight, better handling, fewer failures.",
                      "On race day you run the pit wall: pace orders and pit stops.",
                  })
             box.AddChild(new Label { Text = line, ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
@@ -292,8 +297,8 @@ public partial class CalendarScreen : Control
         };
         top.AddChild(change);
         box.AddChild(top);
-        var car = career.Team.Car;
-        box.AddChild(new Label { Text = $"{car.Name} · {car.Horsepower} hp · {car.WeightKg} kg", ThemeTypeVariation = "Muted" });
+        var car = career.Car;
+        box.AddChild(new Label { Text = $"{car.Name} · {car.Horsepower} hp · {car.WeightKg} kg · handling {car.Handling} · reliability {car.Reliability:P0}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         foreach (var id in career.Team.DriverIds)
         {
             var driver = _data.Drivers[id];
@@ -306,6 +311,77 @@ public partial class CalendarScreen : Control
                 MouseFilter = MouseFilterEnum.Pass,
             });
         }
+        return card;
+    }
+
+    private Control DrawingOfficeCard(Career career)
+    {
+        var card = Card();
+        var box = Stack(card, 6);
+        box.AddChild(new Label { Text = "DRAWING OFFICE", ThemeTypeVariation = "Overline" });
+
+        if (career.Projects.Count == 0)
+            box.AddChild(new Label { Text = "Nothing on the drawing boards. Order work to improve the car.", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        for (var i = 0; i < career.Projects.Count; i++)
+        {
+            var project = career.Projects[i];
+            var kind = DrawingOffice.Kind(project.Upgrade);
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 8);
+            line.AddChild(new Label { Text = $"{kind.Name} ({kind.Effect})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
+            line.AddChild(new Label
+            {
+                Text = i == 0 ? $"{project.Weeks - project.WeeksDone} wk left" : "queued",
+                ThemeTypeVariation = "Muted",
+            });
+            box.AddChild(line);
+            if (i == 0)
+                box.AddChild(new ProgressBar { MaxValue = 1, Step = 0, Value = project.Progress, ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6) });
+        }
+
+        box.AddChild(new HSeparator());
+        foreach (var kind in DrawingOffice.Kinds)
+        {
+            var cost = career.ProjectCost(kind.Id);
+            var button = new Button
+            {
+                Text = $"{kind.Name}  {kind.Effect}",
+                Alignment = HorizontalAlignment.Left,
+                TooltipText = $"£{cost:N0}, {kind.Weeks} weeks of work after anything already queued",
+                Disabled = cost > career.Cash,
+            };
+            var price = new Label { Text = $"£{cost:N0} · {kind.Weeks} wk", ThemeTypeVariation = "Muted", MouseFilter = MouseFilterEnum.Ignore };
+            price.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterRight, LayoutPresetMode.KeepSize, 12);
+            price.GrowHorizontal = GrowDirection.Begin;
+            button.AddChild(price);
+            button.Pressed += () =>
+            {
+                var result = career.StartProject(kind.Id);
+                _notice.Text = result switch
+                {
+                    ProjectResult.NotEnoughMoney => "Not enough money for that work.",
+                    ProjectResult.AtLimit => "The car is already as good as that kind of work can make it.",
+                    _ => "",
+                };
+                _notice.Visible = _notice.Text.Length > 0;
+                Refresh();
+            };
+            box.AddChild(button);
+        }
+        return card;
+    }
+
+    private static Control NewsCard(Career career)
+    {
+        var card = Card();
+        var box = Stack(card, 6);
+        box.AddChild(new Label { Text = "TEAM NEWS", ThemeTypeVariation = "Overline" });
+        foreach (var item in career.News.TakeLast(3).Reverse())
+            box.AddChild(new Label
+            {
+                Text = $"{item.Date.ToString("d MMM", English)} · {item.Text}",
+                ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
         return card;
     }
 

@@ -7,6 +7,7 @@ public enum MoneyKind
     StartMoney,
     Prize,
     Backing,
+    Development,
 }
 
 /// <summary>One line in the team's books. Costs are negative.</summary>
