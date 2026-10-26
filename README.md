@@ -1,0 +1,27 @@
+# 1930s Racing Manager
+
+A desktop management game set in 1930s Grand Prix and Indianapolis racing. You take over a real team (with lightly renamed brands, such as Alfa Rossa and Bugetti), develop its cars and drivers, and choose which races on a map of Europe and the USA are worth the trip.
+
+The design plan lives in [docs/design.md](docs/design.md).
+
+## Layout
+
+| Path | What it is |
+| --- | --- |
+| `src/RacingSim/` | Game rules and simulation in plain C# with no engine code, so it can be unit tested and run headless |
+| `tests/RacingSim.Tests/` | xUnit tests for the sim core |
+| `game/` | The Godot 4 project (scenes, scripts) |
+| `game/data/` | World data as JSON: circuits, team bases, drivers, teams, and one file per season |
+
+## Running
+
+You need the [.NET 8 SDK](https://dotnet.microsoft.com/download) and [Godot 4.3 .NET edition](https://godotengine.org/download).
+
+- Tests: `dotnet test` from the repo root.
+- Game: open the `game/` folder in Godot and press Play. The first screen lets you pick Alfa Rossa or Bugetti and enter 1930 races; it shows travel time and cost, and refuses entries the cars cannot reach in time.
+
+When exporting, add `data/*` to the export preset's "Filters to export non-resource files" so the JSON files ship with the game.
+
+## Data notes
+
+Historical dates, lap counts, lap lengths and coordinates are approximate and still need checking against period sources. Money, prestige and driver skills are placeholder game values. Team names are deliberately altered from the real makers' trademarks and can be edited in `game/data/teams.json`.

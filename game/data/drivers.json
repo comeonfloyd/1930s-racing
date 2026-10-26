@@ -1,0 +1,14 @@
+// Real drivers. firstYear/lastYear bound their careers inside the 1930 to 1939 game
+// window; how the game uses lastYear (retirement, real deaths) is still to be decided.
+// Skills are placeholder game values, 1 to 20.
+[
+  { "id": "tazio-nuvolari", "name": "Tazio Nuvolari", "nationality": "Italy", "birthYear": 1892, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 20, "consistency": 15, "mechanicalSympathy": 11, "wet": 19, "bravery": 20 } },
+  { "id": "giuseppe-campari", "name": "Giuseppe Campari", "nationality": "Italy", "birthYear": 1892, "firstYear": 1930, "lastYear": 1933, "skills": { "speed": 16, "consistency": 14, "mechanicalSympathy": 13, "wet": 14, "bravery": 17 } },
+  { "id": "luigi-arcangeli", "name": "Luigi Arcangeli", "nationality": "Italy", "birthYear": 1894, "firstYear": 1930, "lastYear": 1931, "skills": { "speed": 16, "consistency": 12, "mechanicalSympathy": 11, "wet": 13, "bravery": 18 } },
+  { "id": "louis-chiron", "name": "Louis Chiron", "nationality": "Monaco", "birthYear": 1899, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 18, "consistency": 17, "mechanicalSympathy": 16, "wet": 15, "bravery": 15 } },
+  { "id": "guy-bouriat", "name": "Guy Bouriat", "nationality": "France", "birthYear": 1902, "firstYear": 1930, "lastYear": 1933, "skills": { "speed": 14, "consistency": 14, "mechanicalSympathy": 14, "wet": 12, "bravery": 14 } },
+  { "id": "william-grover-williams", "name": "William Grover-Williams", "nationality": "United Kingdom", "birthYear": 1903, "firstYear": 1930, "lastYear": 1936, "skills": { "speed": 16, "consistency": 16, "mechanicalSympathy": 15, "wet": 14, "bravery": 14 } },
+  { "id": "achille-varzi", "name": "Achille Varzi", "nationality": "Italy", "birthYear": 1904, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 19, "consistency": 19, "mechanicalSympathy": 17, "wet": 14, "bravery": 15 } },
+  { "id": "luigi-fagioli", "name": "Luigi Fagioli", "nationality": "Italy", "birthYear": 1898, "firstYear": 1930, "lastYear": 1937, "skills": { "speed": 17, "consistency": 14, "mechanicalSympathy": 12, "wet": 13, "bravery": 17 } },
+  { "id": "rudolf-caracciola", "name": "Rudolf Caracciola", "nationality": "Germany", "birthYear": 1901, "firstYear": 1930, "lastYear": 1939, "skills": { "speed": 19, "consistency": 18, "mechanicalSympathy": 16, "wet": 20, "bravery": 16 } }
+]
