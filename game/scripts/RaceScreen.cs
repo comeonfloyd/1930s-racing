@@ -161,8 +161,8 @@ public partial class RaceScreen : Control
             if (compact)
             {
                 foreach (var label in new[] { position, name, gap })
-                    label.AddThemeFontSizeOverride("font_size", 13);
-                stripe.CustomMinimumSize = new Vector2(4, 13);
+                    label.AddThemeFontSizeOverride("font_size", 12);
+                stripe.CustomMinimumSize = new Vector2(4, 11);
             }
             line.AddChild(position);
             line.AddChild(stripe);
@@ -541,7 +541,7 @@ public partial class RaceScreen : Control
             AddChild(ResultCard());
         }
 
-        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(3).Reverse().ToList();
+        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(_tower.Count > 14 ? 1 : 3).Reverse().ToList();
         while (_news.GetChildCount() < Math.Max(1, news.Count))
             _news.AddChild(new Label { ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(SideWidth - 40, 0) });
         for (var i = 0; i < _news.GetChildCount(); i++)
@@ -591,6 +591,8 @@ public partial class RaceScreen : Control
         var scroll = new ScrollContainer
         {
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            // A visible scrollbar, so the retirements below the fold are not missed.
+            VerticalScrollMode = ScrollContainer.ScrollMode.ShowAlways,
             CustomMinimumSize = new Vector2(0, Math.Min(result.Classification.Count * rowHeight, GetViewportRect().Size.Y - 300)),
         };
         var list = new VBoxContainer();
