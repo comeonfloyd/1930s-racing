@@ -100,7 +100,7 @@ public partial class CalendarScreen : Control
             if (entered)
             {
                 row.AddChild(new Label { Text = "Entered" });
-                var watch = new Button { Text = "Watch race" };
+                var watch = new Button { Text = "Go to race" };
                 watch.Pressed += () => WatchRace(ev);
                 row.AddChild(watch);
             }
@@ -118,7 +118,9 @@ public partial class CalendarScreen : Control
 
     private void WatchRace(RaceEvent ev)
     {
-        RaceRequest.Result = RaceSim.Run(ev, _data.Circuits[ev.CircuitId], RaceSim.FullGrid(_data), Random.Shared.Next());
+        RaceRequest.Race = new LiveRace(ev, _data.Circuits[ev.CircuitId], RaceSim.FullGrid(_data), Random.Shared.Next(),
+            manualTeams: new[] { _career!.Team.Id });
+        RaceRequest.PlayerTeamId = _career.Team.Id;
         GetTree().ChangeSceneToFile("res://scenes/Race.tscn");
     }
 

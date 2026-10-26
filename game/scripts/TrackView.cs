@@ -18,7 +18,7 @@ public partial class TrackView : Node2D
     private static readonly Color DisusedTrack = new(0.47f, 0.47f, 0.43f);
 
     private TrackShape? _track;
-    private IReadOnlyList<CarPosition> _cars = Array.Empty<CarPosition>();
+    private IReadOnlyList<LiveCar> _cars = Array.Empty<LiveCar>();
     private Vector2[] _trees = Array.Empty<Vector2>();
 
     public Rect2 Area { get; set; }
@@ -37,7 +37,7 @@ public partial class TrackView : Node2D
         QueueRedraw();
     }
 
-    public void SetCars(IReadOnlyList<CarPosition> cars)
+    public void SetCars(IReadOnlyList<LiveCar> cars)
     {
         _cars = cars;
         QueueRedraw();
@@ -114,6 +114,12 @@ public partial class TrackView : Node2D
         foreach (var (car, index) in _cars.Select((c, i) => (c, i)).Reverse())
         {
             var p = Map(_track.At(car.Distance));
+            if (car.InPits)
+            {
+                // Standing in the pits beside the start line, on the grandstand side.
+                var forward = (Map(_track.At(0.002)) - Map(_track.At(0))).Normalized();
+                p += new Vector2(forward.Y, -forward.X) * scale * 0.04f;
+            }
             var color = TeamColor(car.Entry.Team.Id);
             if (car.Retirement is not null)
                 color = color.Darkened(0.6f);
