@@ -75,23 +75,30 @@ public sealed class LiveRace
     /// <summary>Lets the AI pit wall make a manual team's pit calls from now on.</summary>
     public void HandOverPitWall(string teamId) => _manualTeams.Remove(teamId);
 
-    /// <summary>Runs the race on to a race time in seconds. Time never goes back.</summary>
+    /// <summary>Race time in seconds when the winner took the flag, or null before then.</summary>
+    public double? FlagTime { get; private set; }
+
+    /// <summary>
+    /// Runs the race on to a race time in seconds. Time never goes back. Laps are counted in the
+    /// order they end, so once the winner takes the flag every other car is flagged off the next
+    /// time it crosses the line, lapped or not.
+    /// </summary>
     public void AdvanceTo(double time)
     {
         Time = Math.Max(Time, time);
-        foreach (var car in _cars)
+        while (_cars.Where(c => !c.Done && c.Retirement is null && c.LapEnd <= Time).MinBy(c => c.LapEnd) is { } car)
         {
-            while (!car.Done && car.Retirement is null && car.LapEnd <= Time)
-            {
-                car.LapTimes.Add(car.LapEnd - car.LapStart);
-                if (car.LapTimes.Count == Event.Laps)
-                    car.Done = true;
-                else
-                    StartLap(car, car.LapEnd);
-            }
+            car.LapTimes.Add(car.LapEnd - car.LapStart);
+            if (car.LapTimes.Count == Event.Laps)
+                FlagTime ??= car.LapEnd;
+            if (FlagTime is not null)
+                car.Done = true;
+            else
+                StartLap(car, car.LapEnd);
+        }
+        foreach (var car in _cars)
             if (car.Retirement is not null && car.StopTime <= Time)
                 car.Done = true;
-        }
     }
 
     public void RunToEnd() => AdvanceTo(double.MaxValue / 4);
@@ -106,14 +113,13 @@ public sealed class LiveRace
             var stopped = car.Retirement is not null && Time >= car.StopTime;
             var driving = car.LapStart + car.PitTime;
             var inPits = !car.Done && !stopped && Time < driving;
+            // A finished car has its laps: the winner all of them, a lapped car fewer.
             double distance = car.LapTimes.Count;
-            if (finished)
-                distance = Event.Laps;
-            else if (stopped)
+            if (stopped)
                 distance += car.StopFraction;
             else if (car.Retirement is not null)
                 distance += Math.Clamp((Time - driving) / (car.StopTime - driving), 0, 1) * car.StopFraction;
-            else if (!inPits)
+            else if (!finished && !inPits)
                 distance += Math.Clamp((Time - driving) / (car.LapEnd - driving), 0, 0.999);
             list.Add(new LiveCar(car.Entry, distance, !finished && !stopped, stopped ? car.Retirement : null, finished,
                 inPits, car.Fuel, car.Tyres, car.Pace, car.PitCalled, car.PitStops, finished ? car.LapEnd : 0));

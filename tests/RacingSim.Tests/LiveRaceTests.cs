@@ -13,6 +13,29 @@ public class LiveRaceTests
         r.Classification.Select(c => (c.Entry.Driver.Id, c.TotalTime));
 
     [Fact]
+    public void LappedCarsStopWhenTheWinnerTakesTheFlag()
+    {
+        var lapped = 0;
+        foreach (var seed in Enumerable.Range(1, 8))
+        {
+            var race = Race("1930-monaco", seed);
+            race.RunToEnd();
+            var result = race.Result();
+            var flag = race.FlagTime!.Value;
+            Assert.Equal(flag, result.Classification[0].TotalTime, 6);
+            foreach (var car in result.Classification.Where(c => c.Finished))
+            {
+                // Each finisher crossed the line once after the flag, and not again.
+                Assert.True(car.TotalTime >= flag - 1e-6);
+                Assert.True(car.TotalTime - car.LapTimes[^1] < flag);
+                if (car.LapsCompleted < race.Event.Laps)
+                    lapped++;
+            }
+        }
+        Assert.True(lapped > 0, "no lapped finishers to check");
+    }
+
+    [Fact]
     public void StepSizeDoesNotChangeTheRace()
     {
         var once = Race("1930-belgium", 9);

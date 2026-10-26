@@ -19,12 +19,14 @@ public class RaceSimTests
     }
 
     [Fact]
-    public void EveryCarStartsAndFinishersRunFullDistance()
+    public void EveryCarStartsAndTheWinnerRunsFullDistance()
     {
         var result = Monza(7);
 
         Assert.Equal(RaceSim.FullGrid(TestData.Load()).Count, result.Classification.Count);
-        Assert.All(result.Classification.Where(c => c.Finished), c => Assert.Equal(35, c.LapsCompleted));
+        // Lapped cars are flagged off when the winner finishes, so they run fewer laps.
+        Assert.Equal(35, result.Classification[0].LapsCompleted);
+        Assert.All(result.Classification.Where(c => c.Finished), c => Assert.InRange(c.LapsCompleted, 1, 35));
         Assert.All(result.Classification.Where(c => !c.Finished), c => Assert.Equal(c.Retirement!.Lap - 1, c.LapsCompleted));
     }
 
