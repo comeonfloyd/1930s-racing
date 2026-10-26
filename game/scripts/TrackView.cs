@@ -133,6 +133,10 @@ public partial class TrackView : Node2D
         "bugetti" => new Color(0.16f, 0.32f, 0.72f),
         "masarelli" => new Color(0.95f, 0.55f, 0.1f),
         "mercator-benz" => new Color(0.92f, 0.92f, 0.9f),
+        "auto-unitas" => new Color(0.72f, 0.74f, 0.78f),
+        "millard" => new Color(0.2f, 0.55f, 0.35f),
+        "duesenhoff" => new Color(0.55f, 0.3f, 0.6f),
+        "privateers" or "us-privateers" => new Color(0.45f, 0.38f, 0.3f),
         _ => new Color(0.6f, 0.6f, 0.6f),
     };
 
@@ -197,8 +201,14 @@ public partial class TrackView : Node2D
     /// <summary>Moves the text labels to where the last drawing put things.</summary>
     public override void _Process(double delta)
     {
+        // Corner names stay inside the drawing, even for a corner right at its edge; a corner
+        // outside the view when zoomed in has no name shown.
         foreach (var (label, at) in _cornerLabels)
-            label.Position = Map(at) - label.Size / 2;
+        {
+            var spot = Map(at);
+            label.Visible = Area.HasPoint(spot);
+            label.Position = (spot - label.Size / 2).Clamp(Area.Position, Area.End - label.Size);
+        }
         if (_creditLabel is not null)
             _creditLabel.Position = Area.End - _creditLabel.Size - new Vector2(8, 4);
         // Leader first; a number that would sit on top of a better-placed car's number is hidden.

@@ -36,6 +36,20 @@ SCENES = {
     "nurburgring": dict(forest=0.62, fields="farm", surface="tarmac", villages=["Döttinger Höhe", "Adenauer Forst"]),
     "montlhery": dict(forest=0.4, fields="farm", surface="tarmac", villages=["Bruyères"]),
     "indianapolis": dict(forest=0.08, fields="prairie", surface="brick"),
+    "reims": dict(forest=0.04, fields="farm", surface="tarmac", villages=["Gueux", "Thillois"],
+                  note="open Champagne wheat fields"),
+    "pescara": dict(forest=0.12, fields="farm", surface="tarmac", villages=["Spoltore", "Cappelle", "Montesilvano"],
+                    # The Adriatic, beyond the coast road.
+                    sea=[(0.5, 0.0), (0.58, 0.08), (0.65, 0.2), (0.71, 0.32), (0.77, 0.44), (0.84, 0.55), (0.9, 0.64),
+                         (1.0, 0.72), (1.0, 0.0)]),
+    "avus": dict(forest=0.6, fields="park", surface="tarmac", note="the Grunewald on both sides of the motorway"),
+    "bremgarten": dict(forest=0.72, fields="farm", surface="tarmac", note="deep in the Bremgartenwald"),
+    "tripoli": dict(forest=0.02, fields="desert", surface="tarmac",
+                    # The Mediterranean to the north and the Mellaha salt lake inside the lap.
+                    sea=[(0.0, 0.0), (1.0, 0.0), (1.0, 0.33), (0.92, 0.42), (0.74, 0.33), (0.57, 0.2), (0.385, 0.13),
+                         (0.19, 0.16), (0.0, 0.2)],
+                    lake=0.8),
+    "brooklands": dict(forest=0.14, fields="park", surface="concrete", note="the airfield inside the banked oval"),
 }
 
 FIELD_COLOURS = {
@@ -43,6 +57,7 @@ FIELD_COLOURS = {
     "park": [(104, 134, 70), (116, 144, 76), (96, 126, 64), (126, 150, 82)],
     "garden": [(122, 136, 84), (136, 138, 92), (110, 124, 74)],
     "prairie": [(132, 150, 82), (144, 156, 88), (124, 144, 78), (156, 160, 96)],
+    "desert": [(196, 176, 130), (206, 186, 140), (186, 166, 120), (214, 196, 150), (178, 160, 114)],
 }
 
 
@@ -269,6 +284,11 @@ def road_surface(img, mask, surface, rng):
         yy, xx = np.mgrid[0:H, 0:W]
         joints = ((xx % 9 == 0) | (yy % 5 == 0))[..., None]
         colour = base * (0.9 + 0.2 * grain) - joints * 22
+    elif surface == "concrete":
+        base = np.array([150, 146, 136], np.float32)
+        yy, xx = np.mgrid[0:H, 0:W]
+        slabs = ((xx % 40 == 0) | (yy % 40 == 0))[..., None]
+        colour = base * (0.9 + 0.18 * grain) - slabs * 14
     else:
         base = np.array([78, 76, 72], np.float32)
         colour = base * (0.85 + 0.3 * grain)
@@ -288,6 +308,10 @@ def paint(cid):
     water_img = rect_mask(track.get("water", []) if "sea" not in scene else [])
     if "sea" in scene:
         ImageDraw.Draw(water_img).polygon([(x * W, y * H) for x, y in scene["sea"]], fill=255)
+        if "lake" in scene:  # a lake inside the lap: the lap shrunk towards its middle
+            cx, cy = np.mean(road, axis=0)
+            k = scene["lake"]
+            ImageDraw.Draw(water_img).polygon([((cx + (x - cx) * k) * W, (cy + (y - cy) * k) * H) for x, y in road], fill=255)
         water_img = water_img.filter(ImageFilter.GaussianBlur(3)).point(lambda v: 255 if v > 128 else 0)
     stand_img = rect_mask(track.get("grandstands", []))
     water = np.asarray(water_img) > 0

@@ -55,7 +55,7 @@ public sealed class LiveRace
         _settings = settings ?? new RaceSettings();
         _manualTeams = new HashSet<string>(manualTeams ?? []);
         var dayForm = new Random(seed);
-        _cars = grid.Select((entry, i) => new CarState(entry, new Random(HashCode.Combine(seed, i)),
+        _cars = grid.Select((entry, i) => new CarState(entry, new Random(unchecked(seed * 486187739 + i)),
             // Each car's form on the day: up to about 2% either way, so the fastest car does not always win.
             1 + Gaussian(dayForm) * 0.01)).ToArray();
         foreach (var car in _cars)
@@ -71,6 +71,9 @@ public sealed class LiveRace
 
     /// <summary>Calls the car in at the end of its current lap; calling again cancels.</summary>
     public void CallPitStop(string driverId, bool call = true) => Car(driverId).PitCalled = call;
+
+    /// <summary>Lets the AI pit wall make a manual team's pit calls from now on.</summary>
+    public void HandOverPitWall(string teamId) => _manualTeams.Remove(teamId);
 
     /// <summary>Runs the race on to a race time in seconds. Time never goes back.</summary>
     public void AdvanceTo(double time)

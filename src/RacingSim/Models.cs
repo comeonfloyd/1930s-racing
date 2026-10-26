@@ -43,7 +43,10 @@ public sealed record Circuit(
 /// <summary>A city a team is based in; also used as a travel start point.</summary>
 public sealed record City(string Id, string Name, string Country, Region Region, double Latitude, double Longitude);
 
-/// <summary>One race on a season's calendar. Money is in pounds sterling of the day.</summary>
+/// <summary>
+/// One race on a season's calendar. Money is in pounds sterling of the day.
+/// <see cref="AbsentTeams"/> are works that did not come (the player's own team still may).
+/// </summary>
 public sealed record RaceEvent(
     string Id,
     string Name,
@@ -52,7 +55,8 @@ public sealed record RaceEvent(
     int Laps,
     int StartMoney,
     int PrizeFund,
-    int Prestige);
+    int Prestige,
+    IReadOnlyList<string>? AbsentTeams = null);
 
 public sealed record Season(int Year, IReadOnlyList<RaceEvent> Events);
 
@@ -70,13 +74,17 @@ public sealed record Driver(
 
 /// <summary>
 /// A team's race car. Handling runs 1 to 20; reliability is the chance (0 to 1) of
-/// finishing 500 km without a mechanical failure.
+/// finishing 500 km without a mechanical failure. <see cref="EngineLitres"/> matters for the
+/// 3-litre formula from 1938 (0 means unknown and counts as within it).
 /// </summary>
-public sealed record Car(string Name, int Horsepower, int WeightKg, int Handling, double Reliability);
+public sealed record Car(string Name, int Horsepower, int WeightKg, int Handling, double Reliability, double EngineLitres = 0);
 
 /// <summary>
 /// A team. <see cref="Name"/> is the in-game brand (altered from the real maker's
-/// trademark); names live in data so players can edit them.
+/// trademark); names live in data so players can edit them. <see cref="DriverIds"/> and
+/// <see cref="Car"/> are the team in 1930 (or its first year); <see cref="Rosters"/> and
+/// <see cref="Cars"/>, keyed by year, change them from that year on. A <see cref="Privateer"/>
+/// entry is not a works: it stands for the drivers no works has signed, in bought cars.
 /// </summary>
 public sealed record Team(
     string Id,
@@ -87,4 +95,27 @@ public sealed record Team(
     int Prestige,
     bool Playable,
     IReadOnlyList<string> DriverIds,
-    Car Car);
+    Car Car,
+    int FirstYear = 1930,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? Rosters = null,
+    IReadOnlyDictionary<string, Car>? Cars = null,
+    bool Privateer = false)
+{
+    /// <summary>The works drivers in a year; empty before the team's first year or when it stays away.</summary>
+    public IReadOnlyList<string> RosterFor(int year) =>
+        year < FirstYear ? [] : Latest(Rosters, year) ?? DriverIds;
+
+    /// <summary>The car the works builds for a year.</summary>
+    public Car CarFor(int year) => Latest(Cars, year) ?? Car;
+
+    /// <summary>The year the car for this year came out (so a new model shows as a change).</summary>
+    public int CarYearFor(int year) =>
+        Cars?.Keys.Select(int.Parse).Where(y => y <= year).DefaultIfEmpty(FirstYear).Max() ?? FirstYear;
+
+    private static T? Latest<T>(IReadOnlyDictionary<string, T>? byYear, int year) where T : class =>
+        byYear?.Select(kv => (Year: int.Parse(kv.Key), kv.Value))
+            .Where(x => x.Year <= year)
+            .OrderBy(x => x.Year)
+            .Select(x => x.Value)
+            .LastOrDefault();
+}

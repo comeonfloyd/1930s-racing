@@ -1,0 +1,18 @@
+// 1937 calendar, MVP venues only. Dates and lap counts are approximate and still to
+// be checked; money and prestige are placeholder game values.
+// The Italian Grand Prix moves to Livorno, which is not in the game yet.
+{
+  "year": 1937,
+  "events": [
+    { "id": "1937-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1937-05-09", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
+    { "id": "1937-avus", "name": "Avusrennen", "circuitId": "avus", "date": "1937-05-30", "laps": 15, "startMoney": 300, "prizeFund": 1500, "prestige": 7 },
+    { "id": "1937-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1937-05-31", "laps": 200, "startMoney": 0, "prizeFund": 10000, "prestige": 10 },
+    { "id": "1937-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1937-06-13", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
+    { "id": "1937-belgium", "name": "Belgian Grand Prix", "circuitId": "spa", "date": "1937-07-11", "laps": 40, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
+    { "id": "1937-germany", "name": "German Grand Prix", "circuitId": "nurburgring", "date": "1937-07-25", "laps": 22, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
+    { "id": "1937-monaco", "name": "Monaco Grand Prix", "circuitId": "monaco", "date": "1937-08-08", "laps": 100, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
+    { "id": "1937-acerbo", "name": "Coppa Acerbo", "circuitId": "pescara", "date": "1937-08-15", "laps": 20, "startMoney": 250, "prizeFund": 1200, "prestige": 7 },
+    { "id": "1937-switzerland", "name": "Swiss Grand Prix", "circuitId": "bremgarten", "date": "1937-08-22", "laps": 70, "startMoney": 300, "prizeFund": 1800, "prestige": 8 },
+    { "id": "1937-brdc500", "name": "BRDC 500 Miles", "circuitId": "brooklands", "date": "1937-09-18", "laps": 182, "startMoney": 150, "prizeFund": 1000, "prestige": 5, "absentTeams": ["alfa-rossa", "bugetti", "masarelli", "mercator-benz", "auto-unitas"] }
+  ]
+}

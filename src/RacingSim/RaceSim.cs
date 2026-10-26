@@ -43,13 +43,23 @@ public static class RaceSim
         return race.Result();
     }
 
+    /// <summary>Power to weight (hp per tonne) that the speed formula was first set for, a 1930 car.</summary>
+    public const double ReferencePowerToWeight = 190;
+
+    /// <summary>
+    /// How power to weight turns into speed: less than in proportion, as drag and grip cap what
+    /// the 500 hp cars of 1937 gain over the 150 hp cars of 1930.
+    /// </summary>
+    public const double PowerExponent = 0.6;
+
     /// <summary>Base speed for this car and driver on this circuit, before lap-to-lap variation.</summary>
     public static double AverageSpeedKmh(RaceEntry entry, Circuit circuit)
     {
         var car = entry.Team.Car;
         var powerToWeight = car.Horsepower / (car.WeightKg / 1000.0);
+        var power = ReferencePowerToWeight * Math.Pow(powerToWeight / ReferencePowerToWeight, PowerExponent);
         return 25 + 70 * circuit.StraightShare
-            + 0.18 * powerToWeight * (0.1 + circuit.StraightShare)
+            + 0.18 * power * (0.1 + circuit.StraightShare)
             + 1.2 * car.Handling * (1.2 - circuit.StraightShare)
             + 0.8 * entry.Driver.Skills.Speed;
     }

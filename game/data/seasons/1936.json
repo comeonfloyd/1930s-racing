@@ -1,0 +1,17 @@
+// 1936 calendar, MVP venues only. Dates and lap counts are approximate and still to
+// be checked; money and prestige are placeholder game values.
+// The French Grand Prix is for sports cars this year and AVUS is being rebuilt.
+{
+  "year": 1936,
+  "events": [
+    { "id": "1936-monaco", "name": "Monaco Grand Prix", "circuitId": "monaco", "date": "1936-04-13", "laps": 100, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
+    { "id": "1936-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1936-05-10", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
+    { "id": "1936-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1936-05-30", "laps": 200, "startMoney": 0, "prizeFund": 10000, "prestige": 10 },
+    { "id": "1936-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1936-06-14", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
+    { "id": "1936-germany", "name": "German Grand Prix", "circuitId": "nurburgring", "date": "1936-07-26", "laps": 22, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
+    { "id": "1936-acerbo", "name": "Coppa Acerbo", "circuitId": "pescara", "date": "1936-08-15", "laps": 20, "startMoney": 250, "prizeFund": 1200, "prestige": 7 },
+    { "id": "1936-switzerland", "name": "Swiss Grand Prix", "circuitId": "bremgarten", "date": "1936-08-23", "laps": 70, "startMoney": 300, "prizeFund": 1800, "prestige": 8 },
+    { "id": "1936-italy", "name": "Italian Grand Prix", "circuitId": "monza", "date": "1936-09-13", "laps": 70, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
+    { "id": "1936-brdc500", "name": "BRDC 500 Miles", "circuitId": "brooklands", "date": "1936-09-19", "laps": 182, "startMoney": 150, "prizeFund": 1000, "prestige": 5, "absentTeams": ["alfa-rossa", "bugetti", "masarelli", "mercator-benz", "auto-unitas"] }
+  ]
+}

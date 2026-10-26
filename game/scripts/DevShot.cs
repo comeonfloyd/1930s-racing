@@ -10,6 +10,7 @@ namespace RacingManager;
 ///   --shot=/tmp/shots            folder for the pictures
 ///   --race=1930-monza            go straight to this race (with --team)
 ///   --team=alfa-rossa
+///   --year=1934                  start the career in this year (with --team)
 ///   --stay=1                     keep running after the last picture
 ///   --no-textures                draw the race without the painted art (for debugging)
 /// It saves calendar.png, map.png, drivers.png, race.png, race-zoom.png, race-result.png and season.png, then quits.

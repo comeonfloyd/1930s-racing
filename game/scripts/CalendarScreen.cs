@@ -131,7 +131,8 @@ public partial class CalendarScreen : Control
         DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.AlwaysOnTop, true);
         if (DevShot.Arg("team") is { } team && Career is null)
         {
-            Career = new Career(_data, team, Session.StartYear);
+            var year = int.TryParse(DevShot.Arg("year"), out var y) ? y : Session.StartYear;
+            Career = new Career(_data, team, year);
             Career.StartProject(Upgrade.Engine);
             if (DevShot.Arg("race") is { } race)
                 Career.Enter(race);
@@ -217,7 +218,7 @@ public partial class CalendarScreen : Control
 
         if (!DevShot.Active)
             SaveGame.Save(career);
-        _title.Text = $"The {career.CurrentSeason.Year} season";
+        _title.Text = $"The {career.CurrentSeason.Year} season · {Formula.Name(career.CurrentSeason.Year)}";
         _status.Text = $"{career.Today.ToString("d MMMM yyyy", English)}  ·  £{career.Cash:N0}";
         _action.Visible = true;
         _action.Disabled = false;
@@ -283,10 +284,19 @@ public partial class CalendarScreen : Control
             EntryResult.CannotArriveInTime => "The cars cannot get there in time from the race before, or on to the race after.",
             EntryResult.EventPassed => "That race has already been run.",
             EntryResult.NoDrivers => "You have no drivers left to enter.",
+            EntryResult.CarNotEligible => NotEligible(Career, eventId) ?? "The car does not meet this year's rules.",
             _ => result.ToString(),
         };
         _notice.Visible = _notice.Text.Length > 0;
         Refresh();
+    }
+
+    private string? NotEligible(Career career, string eventId)
+    {
+        var ev = career.CurrentSeason.Events.First(e => e.Id == eventId);
+        return Formula.Breach(career.Car, _data.Circuits[ev.CircuitId], ev.Date.Year) is { } why
+            ? $"{why} Order a lighter chassis or a new car from the drawing office."
+            : null;
     }
 
     // ------------------------------------------------------------------ cards
@@ -299,8 +309,9 @@ public partial class CalendarScreen : Control
         box.AddChild(new ColorRect { Color = TrackView.TeamColor(team.Id), CustomMinimumSize = new Vector2(0, 4) });
         box.AddChild(new Label { Text = team.Nationality.ToUpperInvariant(), ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = team.Name, ThemeTypeVariation = "Big" });
-        box.AddChild(new Label { Text = $"{team.Car.Name} · {team.Car.Horsepower} hp · {team.Car.WeightKg} kg", ThemeTypeVariation = "Muted" });
-        var drivers = string.Join(", ", team.DriverIds.Select(id => _data.Drivers[id].Name));
+        var startCar = team.CarFor(Session.StartYear);
+        box.AddChild(new Label { Text = $"{startCar.Name} · {startCar.Horsepower} hp · {startCar.WeightKg} kg", ThemeTypeVariation = "Muted" });
+        var drivers = string.Join(", ", team.RosterFor(Session.StartYear).Select(id => _data.Drivers[id].Name));
         box.AddChild(new Label { Text = drivers, AutowrapMode = TextServer.AutowrapMode.WordSmart });
         box.AddChild(new Label { Text = $"Budget £{team.StartingCash:N0} · prestige {team.Prestige}", ThemeTypeVariation = "Muted" });
         var run = new Button { Text = "Run this team", ThemeTypeVariation = "Accent" };
@@ -349,6 +360,7 @@ public partial class CalendarScreen : Control
                      "Travel costs money and days: the cars must get from one race to the next in time.",
                      "Wages are paid every week. Your maker's backing comes in every week too.",
                      "The drawing office improves the car: more power, less weight, better handling, fewer failures.",
+                     "The rules change: from 1934 a car may weigh at most 750 kg, from 1938 its engine may be at most 3 litres. The drawing office can build the works' next car.",
                      "Sign drivers looking for a drive, or release one to save wages.",
                      "On race day you run the pit wall: pace orders and pit stops.",
                  })
@@ -408,7 +420,8 @@ public partial class CalendarScreen : Control
             var kind = DrawingOffice.Kind(project.Upgrade);
             var line = new HBoxContainer();
             line.AddThemeConstantOverride("separation", 8);
-            line.AddChild(new Label { Text = $"{kind.Name} ({kind.Effect})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
+            var what = project.Upgrade == Upgrade.NewCar ? career.Team.CarFor(project.ModelYear).Name : kind.Effect;
+            line.AddChild(new Label { Text = $"{kind.Name} ({what})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
             line.AddChild(new Label
             {
                 Text = i == 0 ? $"{project.Weeks - project.WeeksDone} wk left" : "queued",
@@ -422,7 +435,13 @@ public partial class CalendarScreen : Control
         box.AddChild(new HSeparator());
         foreach (var kind in DrawingOffice.Kinds)
         {
+            var next = career.NextModel;
+            if (kind.Id == Upgrade.NewCar && next is null)
+                continue;
             var cost = career.ProjectCost(kind.Id);
+            var effect = kind.Id == Upgrade.NewCar && next is { } model
+                ? $"{model.Car.Name}: {model.Car.Horsepower} hp, {model.Car.WeightKg} kg, {model.Car.EngineLitres:0.0#} L"
+                : kind.Effect;
             var line = new HBoxContainer();
             line.AddThemeConstantOverride("separation", 8);
             var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -431,14 +450,16 @@ public partial class CalendarScreen : Control
             var queued = career.Projects.Count(p => p.Upgrade == kind.Id);
             text.AddChild(new Label
             {
-                Text = $"{kind.Effect} · {kind.Weeks} weeks" + (queued > 0 ? $" · {queued} ordered" : ""),
-                ThemeTypeVariation = "Muted",
+                Text = $"{effect} · {kind.Weeks} weeks" + (queued > 0 ? $" · {queued} ordered" : ""),
+                ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
             });
             line.AddChild(text);
             var button = new Button
             {
                 Text = $"£{cost:N0}", CustomMinimumSize = new Vector2(84, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter,
-                TooltipText = $"Order {kind.Name.ToLowerInvariant()}: paid now, {kind.Weeks} weeks of work after anything already ordered. Each one of a kind costs more than the last.",
+                TooltipText = kind.Id == Upgrade.NewCar
+                    ? $"Design and build the works' next car: paid now, {kind.Weeks} weeks of work after anything already ordered. It replaces the car you have, and its development starts afresh."
+                    : $"Order {kind.Name.ToLowerInvariant()}: paid now, {kind.Weeks} weeks of work after anything already ordered. Each one of a kind costs more than the last.",
                 Disabled = cost > career.Cash,
             };
             button.Pressed += () =>
@@ -448,6 +469,7 @@ public partial class CalendarScreen : Control
                 {
                     ProjectResult.NotEnoughMoney => "Not enough money for that work.",
                     ProjectResult.AtLimit => "The car is already as good as that kind of work can make it.",
+                    ProjectResult.NoNewModel => "There is no newer design to build yet.",
                     _ => "",
                 };
                 _notice.Visible = _notice.Text.Length > 0;
@@ -478,7 +500,7 @@ public partial class CalendarScreen : Control
         var card = Card();
         var box = Stack(card, 4);
         box.AddChild(new Label { Text = "THE CARS", ThemeTypeVariation = "Overline" });
-        foreach (var team in _data.Teams.Values.OrderByDescending(t => career.CarOf(t.Id).Horsepower))
+        foreach (var team in career.RivalsIn(career.Today.Year).Prepend(career.Team).OrderByDescending(t => career.CarOf(t.Id).Horsepower))
         {
             var car = career.CarOf(team.Id);
             var line = new HBoxContainer();
@@ -669,6 +691,8 @@ public partial class CalendarScreen : Control
             facts.AddChild(Chip($"Start money £{ev.StartMoney:N0}/car"));
             facts.AddChild(Chip($"Prizes £{ev.PrizeFund:N0}"));
             facts.AddChild(Chip($"Prestige {ev.Prestige}"));
+            if (ev.Date >= career.Today && !entered && Formula.Breach(career.Car, circuit, ev.Date.Year) is { } breach)
+                facts.AddChild(Chip("Car not eligible", UiTheme.Danger, breach));
             if (ev.Date >= career.Today)
             {
                 var travel = career.TravelTo(ev);
@@ -706,9 +730,9 @@ public partial class CalendarScreen : Control
         return box;
     }
 
-    private static Control Chip(string text, Color? color = null)
+    private static Control Chip(string text, Color? color = null, string tooltip = "")
     {
-        var chip = new PanelContainer { ThemeTypeVariation = "Badge" };
+        var chip = new PanelContainer { ThemeTypeVariation = "Badge", TooltipText = tooltip };
         var label = new Label { Text = text, ThemeTypeVariation = "Muted" };
         if (color is { } c)
             label.AddThemeColorOverride("font_color", c);
