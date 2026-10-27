@@ -44,9 +44,8 @@ public partial class CalendarScreen
         {
             Text = indy
                 ? $"A special for the 500, built with the engineering of {preview.Year} to its {Indianapolis.Name(preview.Year).ToLowerInvariant()}: {Indianapolis.Rule(preview.Year)}. "
-                  + "It is built in the drawing office beside your Grand Prix work and races only at Indianapolis."
-                : $"Your own car, built with the engineering of {preview.Year}. Parts not yet invented that year are greyed out. "
-                  + "The works' next model stays on offer in the drawing office as the cheaper choice.",
+                  + "It races only at Indianapolis."
+                : $"Your own car, built with the engineering of {preview.Year}. Parts not yet invented are greyed out.",
             ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
 
@@ -54,7 +53,7 @@ public partial class CalendarScreen
         // Two choices to a row, so the comparison and the Order button fit without scrolling.
         var grid = new GridContainer { Columns = 4 };
         grid.AddThemeConstantOverride("h_separation", 16);
-        grid.AddThemeConstantOverride("v_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 4);
         card.AddChild(grid);
         var year = preview.Year;
         var d = draft;
@@ -160,9 +159,9 @@ public partial class CalendarScreen
             var cost = career.ResearchCost(part);
             var study = new Button
             {
-                Text = queued ? $"{Capital(Research.Name(part))} · being studied" : $"{Capital(Research.Name(part))} · £{cost:N0} · {career.ResearchWeeks(part)} wk",
+                Text = queued ? $"{ShortName(part)} · studying" : $"{ShortName(part)} £{cost:N0}",
                 Disabled = queued || cost > career.Cash,
-                TooltipText = $"New to racing in {Research.FirstYear(part)}. Paid now, then weeks in the drawing office; once studied, every design may use it. "
+                TooltipText = $"{Capital(Research.Name(part))}, new to racing in {Research.FirstYear(part)}. Paid now, then {career.ResearchWeeks(part)} weeks in the drawing office; once studied, every design may use it. "
                               + "It gets cheaper each year as others show how it is done.",
             };
             study.Pressed += () =>
@@ -174,6 +173,15 @@ public partial class CalendarScreen
         }
         return row;
     }
+
+    private static string ShortName(Part part) => part switch
+    {
+        Part.IndependentFront => "Independent front",
+        Part.AllIndependent => "All-independent",
+        Part.TwoStage => "Two-stage",
+        Part.BoxedLadder => "Boxed frame",
+        _ => Capital(Research.Name(part)),
+    };
 
     private static CarDesign Draft => (_designIndy ? _indyDraft : _draft)!;
 
