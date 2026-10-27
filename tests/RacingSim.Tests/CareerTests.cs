@@ -70,7 +70,10 @@ public class SeasonTests
         career.AdvanceTo(new DateOnly(1930, 1, 29));
 
         Assert.Equal(4, career.Ledger.Count(t => t.Kind == MoneyKind.Wages));
-        Assert.Equal(12000 - 4 * career.WeeklyCosts + 4 * Finance.WeeklyBacking(70), career.Cash);
+        // The works' backing is what it is after world news (the Depression, in 1930).
+        var backing = career.Ledger.Where(t => t.Kind == MoneyKind.Backing).Sum(t => t.Amount);
+        Assert.Equal(12000 - 4 * career.WeeklyCosts + backing, career.Cash);
+        Assert.True(backing < 4 * Finance.WeeklyBacking(70));
     }
 
     [Fact]

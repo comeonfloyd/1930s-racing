@@ -105,7 +105,7 @@ public sealed partial class Career
     public IReadOnlyList<Part> Unresearched(CarDesign design) => Research.Uses(design).Where(p => !Knows(p)).ToList();
 
     public int ResearchCost(Part part) =>
-        (int)(Math.Round(Research.Cost(part, Today.Year) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
+        (int)(Math.Round(Research.Cost(part, Today.Year) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) * Prices / 50) * 50);
 
     public int ResearchWeeks(Part part) => Works.ProjectWeeks(Research.Weeks(part), Level(Facility.DrawingOffice));
 

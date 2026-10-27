@@ -283,6 +283,8 @@ public partial class CalendarScreen : Control
             _side.AddChild(IndyCard(career));
         _side.AddChild(RivalsCard(career));
         _side.AddChild(TeamCard(career));
+        if (career.WorldOn(career.Today).Any())
+            _side.AddChild(WorldCard(career));
         if (career.News.Count > 0)
             _side.AddChild(NewsCard(career));
     }
@@ -655,6 +657,24 @@ public partial class CalendarScreen : Control
         };
         design.Pressed += () => OpenDesigner(indy: true);
         box.AddChild(design);
+        return card;
+    }
+
+    /// <summary>The world news in force today, with what each does to the team.</summary>
+    private static Control WorldCard(Career career)
+    {
+        var card = Card();
+        var box = Stack(card, 6);
+        box.AddChild(new Label { Text = "IN THE WORLD", ThemeTypeVariation = "Overline" });
+        foreach (var news in career.WorldOn(career.Today).OrderByDescending(n => n.Start))
+        {
+            box.AddChild(new Label { Text = news.Event.Headline, AutowrapMode = TextServer.AutowrapMode.WordSmart, TooltipText = news.Event.Text, MouseFilter = MouseFilterEnum.Pass });
+            box.AddChild(new Label
+            {
+                Text = (news.EffectText.Length > 0 ? Capital(news.EffectText) + " · " : "") + $"until {news.End.ToString("MMMM yyyy", English)}",
+                ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
+        }
         return card;
     }
 

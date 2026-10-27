@@ -238,8 +238,11 @@ public sealed partial class Career
         var list = upgrade == Upgrade.NewCar && MakerPaysHalf ? DrawingOffice.Kind(upgrade).BaseCost * DrawingOffice.NewRulesCarShare
             : DrawingOffice.Cost(upgrade, TimesDone(upgrade));
         // The chief engineer's skill makes the money go further.
-        return (int)(Math.Round(list * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
+        return (int)(Math.Round(list * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) * Prices / 50) * 50);
     }
+
+    /// <summary>What world news does to works and drawing-office prices today.</summary>
+    private double Prices => WorldFactor(WorldEffect.Prices, Today);
 
     /// <summary>How many weeks a project takes in the team's drawing office.</summary>
     public int ProjectWeeks(Upgrade upgrade) => Works.ProjectWeeks(DrawingOffice.Kind(upgrade).Weeks, Level(Facility.DrawingOffice));
@@ -379,7 +382,10 @@ public sealed partial class Career
 
     public int WeeklyCosts => Finance.WeeklyCosts(Drivers) + WorksCosts;
 
-    public int WeeklyBacking => Finance.WeeklyBacking(Team.Prestige);
+    public int WeeklyBacking => BackingOn(Today);
+
+    /// <summary>The works' backing in a week, after any world news.</summary>
+    private int BackingOn(DateOnly date) => (int)Math.Round(Finance.WeeklyBacking(Team.Prestige) * WorldFactor(WorldEffect.Backing, date));
 
     /// <summary>The next entered race still to be run, if any.</summary>
     public RaceEvent? NextRace => _entries.FirstOrDefault(e => e.Date >= Today && !HasRun(e));
@@ -514,6 +520,7 @@ public sealed partial class Career
         PayWagesUntil(date);
         CatchUpYear(date.Year);
         DeliverIndyOrder(date);
+        AnnounceWorld(Today, date);
         Today = date;
     }
 
@@ -543,18 +550,20 @@ public sealed partial class Career
         for (var i = 0; i < result.Classification.Count; i++)
         {
             var car = result.Classification[i];
-            var prize = Finance.Prize(ev, i + 1);
+            var prize = (int)Math.Round(Finance.Prize(ev, i + 1) * WorldFactor(WorldEffect.Prizes, ev.Date, _data.Circuits[ev.CircuitId].Country));
             if (car.Entry.Team.Id == Team.Id && car.Finished && prize > 0)
                 earned += Pay(MoneyKind.Prize, $"{car.Entry.Driver.Name}, {Place(i + 1)} at {ev.Name}", prize);
         }
         var record = Record(result, entered: true, earned);
         LearnFromRace(record);
+        AnnounceWorld(Today, ev.Date.AddDays(1));
         Today = ev.Date.AddDays(1);
         return record;
     }
 
     /// <summary>Start money per car the organisers pay this team: the team manager bargains for more.</summary>
-    public int StartMoney(RaceEvent ev) => (int)Math.Round(ev.StartMoney * Works.StartMoneyFactor(SkillOf(StaffRole.Manager)) / 10) * 10;
+    public int StartMoney(RaceEvent ev) => (int)Math.Round(ev.StartMoney * Works.StartMoneyFactor(SkillOf(StaffRole.Manager))
+                                                           * WorldFactor(WorldEffect.StartMoney, ev.Date, _data.Circuits[ev.CircuitId].Country) / 10) * 10;
 
     /// <summary>Winter break: moves on to the first day of next year.</summary>
     public void StartNextSeason()
@@ -643,7 +652,7 @@ public sealed partial class Career
         {
             _paidUntil = _paidUntil.AddDays(7);
             Pay(MoneyKind.Wages, "Wages and works", -WeeklyCosts, _paidUntil);
-            Pay(MoneyKind.Backing, "Works backing", WeeklyBacking, _paidUntil);
+            Pay(MoneyKind.Backing, "Works backing", BackingOn(_paidUntil), _paidUntil);
             WorkOnProjects(_paidUntil);
             WorkOnBuilding(_paidUntil);
             DevelopRivals(_paidUntil);
@@ -664,9 +673,10 @@ public sealed partial class Career
     {
         var target = _data.Circuits[ev.CircuitId];
         var previous = _entries.LastOrDefault(e => e.Date < ev.Date);
-        return Works.Haul(previous is null
+        var plan = Works.Haul(previous is null
             ? Travel.Plan(_data.Cities[Team.BaseCityId], target)
             : Travel.Plan(_data.Circuits[previous.CircuitId], target), Level(Facility.Transport));
+        return plan with { Cost = (int)Math.Round(plan.Cost * WorldFactor(WorldEffect.Travel, ev.Date)) };
     }
 
     /// <summary>Earliest day the cars can leave for an event: today, or the day after the previous race.</summary>

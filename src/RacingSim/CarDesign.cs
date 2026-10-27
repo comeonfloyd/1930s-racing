@@ -294,7 +294,7 @@ public sealed partial class Career
         var ready = Today.AddDays(7 * (queued + weeks));
         var year = HasSeason(ready.Year) ? ready.Year : Today.Year;
         var car = CarDesigner.Build(design, Team.Name, year, indy);
-        var cost = (int)(Math.Round(CarDesigner.Cost(design) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
+        var cost = (int)(Math.Round(CarDesigner.Cost(design) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) * Prices / 50) * 50);
         var breach = indy ? Indianapolis.Breach(design, car.Name, year) : Formula.Breach(car, year);
         return new DesignPreview(car, cost, weeks, year, CarDesigner.TooEarly(design, year), breach, indy,
             DesignSpread, indy ? 0 : ExpectedFaults(design, year), Unresearched(design));
