@@ -137,7 +137,8 @@ public partial class CalendarScreen
         titles.AddChild(new Label { Text = career.HasTestTrack ? "Test day at the team's track" : "Test day on a hired circuit", ThemeTypeVariation = "Heading" });
         titles.AddChild(new Label
         {
-            Text = $"A driver runs the {career.Car.Name} until something breaks, and the works fixes it. A new car gains the most. Once a week; now and then the driver crashes and is hurt.",
+            Text = $"A driver runs the {career.Car.Name} until something breaks, and the works fixes it. A new car gains the most. Once a week; now and then the driver crashes and is hurt."
+                   + (career.TeethingFaults > 0 ? $" {career.TeethingFaults} teething trouble{(career.TeethingFaults == 1 ? "" : "s")} still to find." : ""),
             ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
         row.AddChild(titles);

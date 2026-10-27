@@ -74,12 +74,66 @@ public class CarDesignTests
         Assert.Null(career.NextModel);
 
         career.AdvanceDays(7 * preview.Weeks);
-        Assert.Equal(preview.Car, career.Car);
-        Assert.Equal(preview.Car, career.DesignBase);
+        AsEstimated(preview, career.Car);
+        Assert.Equal(career.Car, career.DesignBase);
+        Assert.True(career.TeethingFaults >= 1);
         // Development goes on from the design.
         Assert.Equal(ProjectResult.Queued, career.StartProject(Upgrade.Engine));
         var loaded = Career.FromJson(TestData.Load(), career.ToJson());
         Assert.Equal(career.DesignBase, loaded.DesignBase);
+        Assert.Equal(career.TeethingFaults, loaded.TeethingFaults);
+    }
+
+    /// <summary>The built car is the estimate give or take the spread.</summary>
+    public static void AsEstimated(DesignPreview preview, Car? built)
+    {
+        Assert.NotNull(built);
+        Assert.Equal(preview.Car.Name, built.Name);
+        var (low, high) = Prototype.Range(preview.Car.Horsepower, preview.Spread);
+        Assert.InRange(built.Horsepower, low, high);
+        (low, high) = Prototype.Range(preview.Car.WeightKg, preview.Spread, 0.5, higherIsBetter: false);
+        Assert.InRange(built.WeightKg, low, high);
+        Assert.True(built.Reliability <= preview.Car.Reliability * (1 + preview.Spread / 2));
+    }
+
+    [Fact]
+    public void ABetterEngineerNarrowsTheEstimateAndFindsFewerFaults()
+    {
+        Assert.True(Prototype.Spread(20) < Prototype.Spread(6));
+        var design = CarDesigner.Default(1934) with { Layout = EngineLayout.V8 };
+        Assert.True(Prototype.ExpectedFaults(design, 1934, 18) < Prototype.ExpectedFaults(design, 1934, 6));
+        // Parts new to racing bring more troubles than proven ones.
+        Assert.True(Prototype.ExpectedFaults(design, 1934, 10) > Prototype.ExpectedFaults(CarDesigner.Default(1930), 1930, 10));
+    }
+
+    [Fact]
+    public void BuiltCarsComeOutWorseThanEstimatedOnAverage()
+    {
+        var estimate = CarDesigner.Build(CarDesigner.Default(1934), "X", 1934);
+        var rng = new Random(4);
+        var cars = Enumerable.Range(0, 400).Select(_ => Prototype.Build(estimate, CarDesigner.Default(1934), 1934, 10, rng).Car).ToList();
+        Assert.True(cars.Average(c => c.Horsepower) < estimate.Horsepower);
+        Assert.Contains(cars, c => c.Horsepower > estimate.Horsepower);
+        Assert.True(cars.Average(c => c.Reliability) < estimate.Reliability - Prototype.FaultReliability);
+    }
+
+    [Fact]
+    public void TestDaysFindTeethingTroubles()
+    {
+        var career = new Career(TestData.Load(), "alfa-rossa", 1930, seed: 5);
+        var design = CarDesigner.Default(1930);
+        var preview = career.Preview(design);
+        career.StartDesign(design);
+        career.AdvanceDays(7 * preview.Weeks);
+        var faults = career.TeethingFaults;
+        var reliability = career.Car.Reliability;
+        for (var week = 0; week < 12 && career.TeethingFaults > 0; week++)
+        {
+            career.TestDay();
+            career.AdvanceDays(7);
+        }
+        Assert.True(career.TeethingFaults < faults);
+        Assert.True(career.Car.Reliability >= reliability + Prototype.FaultReliability * (faults - career.TeethingFaults));
     }
 
     [Fact]
@@ -100,7 +154,8 @@ public class CarDesignTests
         Assert.Equal(old, career.Car);
         career.StartNextSeason();
         career.AdvanceDays(7 * preview.Weeks);
-        Assert.Equal(preview.Car, career.Car);
+        AsEstimated(preview, career.Car);
+        Assert.True(career.TeethingFaults >= 1);
         Assert.Equal(1934, career.ModelYear);
     }
 }

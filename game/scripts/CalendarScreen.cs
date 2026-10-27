@@ -167,8 +167,12 @@ public partial class CalendarScreen : Control
                         Refresh();
                         DevShot.Capture(this, "designer.png", 1, () =>
                         {
-                            _view = View.Calendar;
-                            GoToRace();
+                            OpenDesigner(indy: true);
+                            DevShot.Capture(this, "designer-indy.png", 1, () =>
+                            {
+                                _view = View.Calendar;
+                                GoToRace();
+                            });
                         });
                     });
                 });
@@ -266,7 +270,14 @@ public partial class CalendarScreen : Control
         if (career.SeasonOver)
             _side.AddChild(SummaryCard(career));
         _side.AddChild(MoneyCard(career));
+        // The Indianapolis card goes above the drawing office while the 500 is still to come and the team has no car for it.
+        var indy = career.CurrentSeason.Events.FirstOrDefault(e => Indianapolis.Is(_data.Circuits[e.CircuitId]));
+        var indyFirst = indy is not null && indy.Date >= career.Today && career.RaceCarFor(indy) is null;
+        if (indyFirst)
+            _side.AddChild(IndyCard(career));
         _side.AddChild(DrawingOfficeCard(career));
+        if (indy is not null && !indyFirst)
+            _side.AddChild(IndyCard(career));
         _side.AddChild(RivalsCard(career));
         _side.AddChild(TeamCard(career));
         if (career.News.Count > 0)
@@ -305,6 +316,7 @@ public partial class CalendarScreen : Control
             EntryResult.NoDrivers => "You have no drivers left to enter.",
             EntryResult.CarNotEligible => NotEligible(Career, eventId) ?? "The car does not meet this year's rules.",
             EntryResult.NoSportsCar => $"{Career.Team.Name} has no sports car for Le Mans this year: the Grand Prix car cannot run there.",
+            EntryResult.NoIndyCar => $"The 500 runs to its own rules ({Indianapolis.Rule(Career.Today.Year)}). Buy a special or design one in the Indianapolis card.",
             EntryResult.NeedTwoDrivers => "A 24-hour race needs two drivers to share each car. Sign another driver.",
             _ => result.ToString(),
         };
@@ -414,6 +426,12 @@ public partial class CalendarScreen : Control
         box.AddChild(top);
         var car = career.Car;
         box.AddChild(new Label { Text = $"{car.Name} · {car.Horsepower} hp · {car.WeightKg} kg · handling {car.Handling} · reliability {car.Reliability:P0}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        if (career.TeethingFaults > 0)
+            box.AddChild(new Label
+            {
+                Text = $"{career.TeethingFaults} teething trouble{(career.TeethingFaults == 1 ? "" : "s")} still to find: test days and races show them up.",
+                Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
         if (career.Team.SportsCarFor(career.Today.Year) is { } sports)
             box.AddChild(new Label { Text = $"For Le Mans: {sports.Name} · {sports.Horsepower} hp · {sports.WeightKg} kg", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         foreach (var id in career.Roster)
@@ -449,7 +467,7 @@ public partial class CalendarScreen : Control
             var line = new HBoxContainer();
             line.AddThemeConstantOverride("separation", 8);
             var what = project.Upgrade == Upgrade.NewCar ? (project.Built ?? career.Team.CarFor(project.ModelYear)).Name : kind.Effect;
-            line.AddChild(new Label { Text = $"{kind.Name} ({what})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
+            line.AddChild(new Label { Text = $"{(project.Indy ? "Indianapolis car" : kind.Name)} ({what})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
             line.AddChild(new Label
             {
                 Text = i == 0 ? $"{project.Weeks - project.WeeksDone} wk left" : "queued",
@@ -473,7 +491,7 @@ public partial class CalendarScreen : Control
             Text = "Design your own car  ›", Disabled = career.NewCarUnderway,
             TooltipText = career.NewCarUnderway ? "A new car is already being built." : "Choose the engine and chassis of a new car.",
         };
-        design.Pressed += () => { _view = View.Designer; Refresh(); };
+        design.Pressed += () => OpenDesigner(indy: false);
         box.AddChild(design);
         foreach (var kind in DrawingOffice.Kinds)
         {
@@ -521,6 +539,72 @@ public partial class CalendarScreen : Control
             line.AddChild(button);
             box.AddChild(line);
         }
+        return card;
+    }
+
+    /// <summary>The team's car for the Indianapolis 500, and how to get one.</summary>
+    private Control IndyCard(Career career)
+    {
+        var card = Card();
+        var box = Stack(card, 6);
+        var year = career.Today.Year;
+        box.AddChild(new Label { Text = "INDIANAPOLIS CAR", ThemeTypeVariation = "Overline" });
+        box.AddChild(new Label
+        {
+            Text = $"The 500's {Indianapolis.Name(year).ToLowerInvariant()}: {Indianapolis.Rule(year)}."
+                   + (year >= Indianapolis.SingleSeaterYear ? " A 3-litre Grand Prix car may run." : " The Grand Prix car cannot run."),
+            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        var indyEvent = career.CurrentSeason.Events.First(e => Indianapolis.Is(_data.Circuits[e.CircuitId]));
+        var racing = career.RaceCarFor(indyEvent);
+        box.AddChild(new Label
+        {
+            Text = racing is { } car
+                ? $"Races: {car.Name} · {car.Horsepower} hp · {car.WeightKg} kg · reliability {car.Reliability:P0}"
+                : career.IndyCar is { } old ? $"The {old.Name} no longer meets the rules." : "No car for the 500 yet.",
+            Modulate = racing is null ? new Color(1, 0.65f, 0.55f) : Colors.White, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        if (career.IndyOrder is { } order)
+            box.AddChild(new Label { Text = $"The {order.Car.Name} is on its way: it arrives {order.Arrives.ToString("d MMMM", English)}.", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+
+        var forSale = career.IndyCarForSale;
+        var line = new HBoxContainer();
+        line.AddThemeConstantOverride("separation", 8);
+        var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        text.AddThemeConstantOverride("separation", -2);
+        text.AddChild(new Label { Text = $"Buy the {forSale.Name}" });
+        text.AddChild(new Label
+        {
+            Text = $"{forSale.Horsepower} hp, {forSale.WeightKg} kg, {forSale.EngineLitres:0.0#} L · {Indianapolis.BuyWeeks} weeks by liner",
+            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        line.AddChild(text);
+        var buy = new Button
+        {
+            Text = $"£{Indianapolis.BuyCost:N0}", CustomMinimumSize = new Vector2(84, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            Disabled = career.IndyCarUnderway || Indianapolis.BuyCost > career.Cash,
+            TooltipText = career.IndyCarUnderway ? "An Indianapolis car is already on its way."
+                : $"A ready-made American car to the 500's rules, the {forSale.Name}. Paid now; it does not use the drawing office.",
+        };
+        buy.Pressed += () =>
+        {
+            Notice(career.BuyIndyCar() switch
+            {
+                ProjectResult.NotEnoughMoney => "Not enough money for the special.",
+                ProjectResult.NewCarUnderway => "An Indianapolis car is already on its way.",
+                _ => "",
+            });
+            Refresh();
+        };
+        line.AddChild(buy);
+        box.AddChild(line);
+        var design = new Button
+        {
+            Text = "Design an Indianapolis car  ›", Disabled = career.IndyCarUnderway,
+            TooltipText = career.IndyCarUnderway ? "An Indianapolis car is already on its way." : "Your own car for the 500, built in the drawing office beside the Grand Prix work.",
+        };
+        design.Pressed += () => OpenDesigner(indy: true);
+        box.AddChild(design);
         return card;
     }
 
@@ -750,6 +834,13 @@ public partial class CalendarScreen : Control
                     facts.AddChild(Chip(sports.Name, null, $"{sports.Horsepower} hp, {sports.WeightKg} kg, {sports.EngineLitres:0.0#} L"));
                 else if (ev.Date >= career.Today)
                     facts.AddChild(Chip("No sports car", UiTheme.Danger, $"{career.Team.Name} built no sports car for this year's race."));
+            }
+            else if (Indianapolis.Is(circuit) && ev.Date >= career.Today && !entered)
+            {
+                if (career.RaceCarFor(ev) is { } indyCar)
+                    facts.AddChild(Chip(indyCar.Name, null, $"{indyCar.Horsepower} hp, {indyCar.WeightKg} kg, {indyCar.EngineLitres:0.0#} L"));
+                else
+                    facts.AddChild(Chip("No Indianapolis car", UiTheme.Danger, $"The 500's {Indianapolis.Name(ev.Date.Year).ToLowerInvariant()}: {Indianapolis.Rule(ev.Date.Year)}."));
             }
             else if (ev.Date >= career.Today && !entered && Formula.Breach(career.Car, circuit, ev.Date.Year) is { } breach)
                 facts.AddChild(Chip("Car not eligible", UiTheme.Danger, breach));

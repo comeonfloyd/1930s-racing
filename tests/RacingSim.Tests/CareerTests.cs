@@ -33,6 +33,7 @@ public class CareerTests
     {
         // 1931: Italian Grand Prix on 24 May, Indianapolis 500 on 30 May. The Atlantic crossing alone takes a week.
         var career = new Career(TestData.Load(), "alfa-rossa", 1931);
+        IndyTests.BuySpecial(career);
 
         Assert.Equal(EntryResult.Entered, career.Enter("1931-indianapolis"));
         Assert.Equal(EntryResult.CannotArriveInTime, career.Enter("1931-italy"));
@@ -42,6 +43,7 @@ public class CareerTests
     public void CanReturnFromIndianapolisForTheEifelrennen()
     {
         var career = new Career(TestData.Load(), "alfa-rossa", 1930);
+        IndyTests.BuySpecial(career);
 
         Assert.Equal(EntryResult.Entered, career.Enter("1930-indianapolis"));
         Assert.Equal(EntryResult.Entered, career.Enter("1930-eifel"));

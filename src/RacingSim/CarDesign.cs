@@ -156,8 +156,11 @@ public static class CarDesigner
         (int)Math.Round(PowerPerLitre(year) * Boost(d.Supercharging) * LayoutPower(d.Layout) * 3 * Math.Pow(d.Litres / 3, 0.75)
                         * (d.Body == Body.Streamlined ? 1.05 : 1));
 
-    /// <summary>The car a design makes when built in a year.</summary>
-    public static Car Build(CarDesign d, string teamName, int year)
+    /// <summary>
+    /// The car a design makes when built in a year. An Indianapolis car is a "special" and, until
+    /// the AAA dropped riding mechanics in 1938, a two-seater with the extra weight of the second seat.
+    /// </summary>
+    public static Car Build(CarDesign d, string teamName, int year, bool indy = false)
     {
         // Bigger cylinders cannot rev as high, so power grows more slowly than size (measured from 3 litres).
         var hp = PowerPerLitre(year) * Boost(d.Supercharging) * LayoutPower(d.Layout) * 3 * Math.Pow(d.Litres / 3, 0.75);
@@ -175,9 +178,10 @@ public static class CarDesigner
         var chassisKg = d.Frame switch { Frame.Ladder => 560, Frame.BoxedLadder => 520, _ => 470 }
                         + d.Suspension switch { Suspension.BeamAxles => 0, Suspension.IndependentFront => 10, _ => 20 }
                         + (d.Brakes == Brakes.Hydraulic ? 5 : 0)
-                        + (d.Body == Body.Streamlined ? 20 : 0);
+                        + (d.Body == Body.Streamlined ? 20 : 0)
+                        + (indy && year < Indianapolis.SingleSeaterYear ? Indianapolis.TwoSeaterKg : 0);
         var weight = (int)Math.Round(engineKg + chassisKg);
-        if (year >= Formula.FirstLitreYear)
+        if (year >= Formula.FirstLitreYear && !indy)
             weight = Math.Max(weight, MinWeightFrom1938);
 
         // A stiffer frame and independent wheels hold the road. Power beyond what the tyres of
@@ -203,7 +207,7 @@ public static class CarDesigner
                           - 0.02 * Math.Max(0, engineHp - limit) / 40;  // and power beyond the tyres breaks things
 
         var cylinders = Cylinders(d.Layout);
-        return new Car($"{teamName} {cylinders}C-{year % 100:00}", (int)Math.Round(hp), weight, handling,
+        return new Car($"{teamName} {cylinders}C-{year % 100:00}{(indy ? " Special" : "")}", (int)Math.Round(hp), weight, handling,
             Math.Round(reliability, 2), d.Litres);
     }
 
@@ -235,7 +239,13 @@ public static class CarDesigner
 }
 
 /// <summary>What a design would cost the team and give it, before it is ordered.</summary>
-public sealed record DesignPreview(Car Car, int Cost, int Weeks, int Year, IReadOnlyList<string> TooEarly, string? Breach);
+/// <summary>
+/// What a design would cost the team and give it, before it is ordered. <see cref="Car"/> is the
+/// drawing office's estimate: the real car can come out up to <see cref="Spread"/> either side,
+/// with about <see cref="Faults"/> teething troubles.
+/// </summary>
+public sealed record DesignPreview(Car Car, int Cost, int Weeks, int Year, IReadOnlyList<string> TooEarly, string? Breach, bool Indy = false,
+    double Spread = 0, int Faults = 0);
 
 public sealed partial class Career
 {
@@ -245,38 +255,52 @@ public sealed partial class Career
     /// <summary>A car of the team's own design finished before its season, waiting for 1 January.</summary>
     public Car? WaitingCar { get; private set; }
 
-    public bool NewCarUnderway => _projects.Any(p => p.Upgrade == Upgrade.NewCar) || WaitingModelYear is not null;
+    /// <summary>The teething troubles the waiting car will bring.</summary>
+    private int _waitingFaults;
+
+    /// <summary>A new Grand Prix car is being built, or waits for next season (an Indianapolis car does not count).</summary>
+    public bool NewCarUnderway => GrandPrixCarInQueue || WaitingModelYear is not null;
+
+    private bool GrandPrixCarInQueue => _projects.Any(p => p.Upgrade == Upgrade.NewCar && !p.Indy);
 
     /// <summary>
     /// What a design costs, how long it takes after the work already queued, and the car it makes
     /// in the year it is finished: a car finished after the new year is built with next year's
     /// engineering and waits for that season.
     /// </summary>
-    public DesignPreview Preview(CarDesign design)
+    public DesignPreview Preview(CarDesign design, bool indy = false)
     {
         var weeks = Works.ProjectWeeks(CarDesigner.Weeks(design), Level(Facility.DrawingOffice));
         var queued = _projects.Sum(p => p.Weeks - p.WeeksDone);
         var ready = Today.AddDays(7 * (queued + weeks));
         var year = HasSeason(ready.Year) ? ready.Year : Today.Year;
-        var car = CarDesigner.Build(design, Team.Name, year);
+        var car = CarDesigner.Build(design, Team.Name, year, indy);
         var cost = (int)(Math.Round(CarDesigner.Cost(design) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
-        return new DesignPreview(car, cost, weeks, year, CarDesigner.TooEarly(design, year), Formula.Breach(car, year));
+        var breach = indy ? Indianapolis.Breach(design, car.Name, year) : Formula.Breach(car, year);
+        return new DesignPreview(car, cost, weeks, year, CarDesigner.TooEarly(design, year), breach, indy,
+            DesignSpread, indy ? 0 : ExpectedFaults(design, year));
     }
 
     private bool HasSeason(int year) => _data.Seasons.ContainsKey(year);
 
-    /// <summary>Pays for the team's own design and puts it in the drawing-office queue.</summary>
-    public ProjectResult StartDesign(CarDesign design)
+    /// <summary>
+    /// Pays for the team's own design and puts it in the drawing-office queue. An Indianapolis car
+    /// is built alongside the Grand Prix car and must meet the 500's rules of its year.
+    /// </summary>
+    public ProjectResult StartDesign(CarDesign design, bool indy = false)
     {
-        if (NewCarUnderway)
+        if (indy ? IndyCarUnderway : NewCarUnderway)
             return ProjectResult.NewCarUnderway;
-        var preview = Preview(design);
+        var preview = Preview(design, indy);
         if (preview.TooEarly.Count > 0)
             return ProjectResult.PartsNotInvented;
+        if (indy && preview.Breach is not null)
+            return ProjectResult.BreaksRules;
         if (preview.Cost > Cash)
             return ProjectResult.NotEnoughMoney;
         Pay(MoneyKind.Development, $"Own design: {preview.Car.Name}", -preview.Cost);
-        _projects.Add(new Project(Upgrade.NewCar, preview.Cost, preview.Weeks) { ModelYear = preview.Year, Built = preview.Car, Design = design });
+        var (built, faults) = BuildPrototype(preview, design);
+        _projects.Add(new Project(Upgrade.NewCar, preview.Cost, preview.Weeks) { ModelYear = preview.Year, Built = built, Design = design, Indy = indy, Faults = faults });
         return ProjectResult.Queued;
     }
 }
