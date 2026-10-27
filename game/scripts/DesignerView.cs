@@ -244,7 +244,7 @@ public partial class CalendarScreen
         var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
         var stack = new VBoxContainer();
         stack.AddThemeConstantOverride("separation", 4);
-        stack.AddChild(new Label { Text = $"{design.Name}  against the {now.Name}", ThemeTypeVariation = "Heading" });
+        stack.AddChild(new Label { Text = $"{design.Name} against the {now.Name}", ThemeTypeVariation = "Heading" });
         var grid = new GridContainer { Columns = 6 };
         grid.AddThemeConstantOverride("h_separation", 18);
         stack.AddChild(grid);
