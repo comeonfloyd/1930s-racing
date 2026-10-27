@@ -209,16 +209,18 @@ public partial class TrackView : Node2D
     /// <summary>A grey wash and slanting streaks, more of them the harder it rains.</summary>
     private void DrawRain()
     {
-        DrawRect(Area, RainShade with { A = 0.3f * Rain });
+        // The whole window, not just the drawing's area, so no dry edge shows when zoomed in.
+        var frame = GetViewportRect();
+        DrawRect(frame, RainShade with { A = 0.3f * Rain });
         var t = Time.GetTicksMsec() / 1000.0;
-        var count = (int)(220 * Rain);
+        var count = (int)(320 * Rain);
         var fall = new Vector2(-6, 18);
         for (var i = 0; i < count; i++)
         {
             // Fixed scattered columns; each streak falls and wraps round the view.
             var x = Fract(Mathf.Sin(i * 12.9898f) * 43758.5453f);
             var y = Fract(Fract(Mathf.Sin(i * 78.233f) * 12345.678f) + t * (0.9f + 0.4f * x));
-            var at = Area.Position + new Vector2(x, (float)y) * Area.Size;
+            var at = frame.Position + new Vector2(x, (float)y) * frame.Size;
             DrawLine(at, at + fall, RainStreak with { A = 0.35f * Rain }, 1);
         }
     }

@@ -548,7 +548,11 @@ public partial class RaceScreen : Control
             AddChild(ResultCard());
         }
 
-        var news = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).TakeLast(_tower.Count > 14 ? 1 : 3).Reverse().ToList();
+        var told = _race.Messages.Where(m => m.Time <= _time).OrderBy(m => m.Time).ToList();
+        var news = told.Where(m => m.DriverId != "").TakeLast(_tower.Count > 14 ? 1 : 3).Reverse().ToList();
+        // The latest word on the weather stays at the top, so it is not pushed out by retirements.
+        if (told.LastOrDefault(m => m.DriverId == "") is { } weather)
+            news.Insert(0, weather);
         while (_news.GetChildCount() < Math.Max(1, news.Count))
             _news.AddChild(new Label { ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(SideWidth - 40, 0) });
         for (var i = 0; i < _news.GetChildCount(); i++)
