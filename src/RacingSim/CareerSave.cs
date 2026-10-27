@@ -38,7 +38,9 @@ public sealed record CareerSave(
     Car? WaitingCar = null,
     Car? IndyCar = null,
     CarDesign? IndyDesign = null,
-    IndyOrder? IndyOrder = null);
+    IndyOrder? IndyOrder = null,
+    int TeethingFaults = 0,
+    int WaitingFaults = 0);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -78,7 +80,9 @@ public sealed partial class Career
         WaitingCar,
         IndyCar,
         IndyDesign,
-        IndyOrder);
+        IndyOrder,
+        TeethingFaults,
+        _waitingFaults);
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -142,6 +146,8 @@ public sealed partial class Career
         career.IndyCar = save.IndyCar;
         career.IndyDesign = save.IndyDesign;
         career.IndyOrder = save.IndyOrder;
+        career.TeethingFaults = save.TeethingFaults;
+        career._waitingFaults = save.WaitingFaults;
         return career;
     }
 }

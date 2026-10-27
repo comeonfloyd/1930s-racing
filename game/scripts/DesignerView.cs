@@ -68,7 +68,14 @@ public partial class CalendarScreen
         Choice(grid, "Body", Enum.GetValues<Body>(), d.Body, CarDesigner.Name, CarDesigner.FirstYear, year, v => SetDraft(Draft with { Body = v }));
         _body.AddChild(card);
 
-        _body.AddChild(Comparison(indy ? career.IndyCar ?? career.IndyCarForSale : career.Car, preview.Car));
+        _body.AddChild(Comparison(indy ? career.IndyCar ?? career.IndyCarForSale : career.Car, preview));
+        _body.AddChild(new Label
+        {
+            Text = $"The drawing office's estimate: with {career.StaffIn(StaffRole.Engineer)?.Name ?? "no chief engineer"} the real car can come out "
+                   + $"{preview.Spread * 100:0}% either way, more often worse than better."
+                   + (preview.Faults > 0 ? $" Expect about {preview.Faults}–{preview.Faults + 1} teething troubles, each costing {Prototype.FaultReliability * 100:0}% reliability until a test day or a race shows it up." : ""),
+            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
         var engineHp = CarDesigner.EngineHorsepower(d, preview.Year);
         if (engineHp > preview.Car.Horsepower)
             _body.AddChild(new Label
@@ -212,9 +219,14 @@ public partial class CalendarScreen
         grid.AddChild(row);
     }
 
-    /// <summary>The car you have against the one on the drawing board, figure by figure.</summary>
-    private static Control Comparison(Car now, Car design)
+    /// <summary>The car you have against the one on the drawing board, figure by figure, as the estimate's range.</summary>
+    private static Control Comparison(Car now, DesignPreview preview)
     {
+        var design = preview.Car;
+        string Between((int Low, int High) r, string unit) => r.Low == r.High ? $"{r.Low}{unit}" : $"{r.Low}–{r.High}{unit}";
+        var power = Between(Prototype.Range(design.Horsepower, preview.Spread), " hp");
+        var weight = Between(Prototype.Range(design.WeightKg, preview.Spread, 0.5, higherIsBetter: false), " kg");
+        var reliability = design.Reliability - preview.Faults * Prototype.FaultReliability;
         var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
         var grid = new GridContainer { Columns = 3 };
         grid.AddThemeConstantOverride("h_separation", 24);
@@ -227,10 +239,10 @@ public partial class CalendarScreen
             grid.AddChild(new Label { Text = a, ThemeTypeVariation = "Muted" });
             grid.AddChild(new Label { Text = b, Modulate = better > 0 ? UiTheme.Good : better < 0 ? new Color(1, 0.65f, 0.55f) : Colors.White });
         }
-        Row("Power", $"{now.Horsepower} hp", $"{design.Horsepower} hp", design.Horsepower.CompareTo(now.Horsepower));
-        Row("Weight", $"{now.WeightKg} kg", $"{design.WeightKg} kg", now.WeightKg.CompareTo(design.WeightKg));
-        Row("Handling", now.Handling.ToString(), design.Handling.ToString(), design.Handling.CompareTo(now.Handling));
-        Row("Reliability", $"{now.Reliability:P0}", $"{design.Reliability:P0}", design.Reliability.CompareTo(now.Reliability));
+        Row("Power", $"{now.Horsepower} hp", power, design.Horsepower.CompareTo(now.Horsepower));
+        Row("Weight", $"{now.WeightKg} kg", weight, now.WeightKg.CompareTo(design.WeightKg));
+        Row("Handling", now.Handling.ToString(), $"about {design.Handling}", design.Handling.CompareTo(now.Handling));
+        Row("Reliability", $"{now.Reliability:P0}", preview.Faults > 0 ? $"about {reliability:P0} at first" : $"about {design.Reliability:P0}", reliability.CompareTo(now.Reliability));
         Row("Engine", $"{now.EngineLitres:0.0#} L", $"{design.EngineLitres:0.0#} L", 0);
         card.AddChild(grid);
         return card;

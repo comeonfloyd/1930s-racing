@@ -76,7 +76,7 @@ public class IndyTests
         Assert.False(career.NewCarUnderway);
 
         career.AdvanceDays(7 * preview.Weeks);
-        Assert.Equal(preview.Car, career.IndyCar);
+        CarDesignTests.AsEstimated(preview, career.IndyCar);
         Assert.NotEqual(preview.Car, career.Car);
     }
 

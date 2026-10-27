@@ -336,10 +336,11 @@ public sealed partial class Career
             {
                 WaitingModelYear = project.ModelYear;
                 WaitingCar = project.Built;
+                _waitingFaults = project.Faults;
                 _news.Add(new NewsItem(date, $"The new {(project.Built ?? Team.CarFor(project.ModelYear)).Name} is built and will race from the {project.ModelYear} season."));
                 return;
             }
-            NewCarArrives(project.ModelYear, date, project.Built);
+            NewCarArrives(project.ModelYear, date, project.Built, project.Faults);
             return;
         }
         _upgradesDone[project.Upgrade] = _upgradesDone.GetValueOrDefault(project.Upgrade) + 1;
@@ -348,15 +349,18 @@ public sealed partial class Career
     }
 
     /// <summary>A new car starts its development afresh, so tuning costs go back to their base.</summary>
-    private void NewCarArrives(int modelYear, DateOnly date, Car? ownDesign = null)
+    private void NewCarArrives(int modelYear, DateOnly date, Car? ownDesign = null, int faults = 0)
     {
         Car = ownDesign ?? Team.CarFor(modelYear);
         DesignBase = ownDesign;
         ModelYear = modelYear;
         WaitingModelYear = null;
         WaitingCar = null;
+        _waitingFaults = 0;
+        TeethingFaults = ownDesign is null ? 0 : faults;
         _upgradesDone.Clear();
-        _news.Add(new NewsItem(date, $"The new {Car.Name} is ready: {Car.Horsepower} hp, {Car.WeightKg} kg, {Car.EngineLitres:0.0#} litres, handling {Car.Handling}, reliability {Car.Reliability:P0}."));
+        _news.Add(new NewsItem(date, $"The new {Car.Name} is ready: {Car.Horsepower} hp, {Car.WeightKg} kg, {Car.EngineLitres:0.0#} litres, handling {Car.Handling}, reliability {Car.Reliability:P0}."
+                                     + (TeethingFaults > 0 ? $" Like any new design it has teething troubles: about {TeethingFaults} to find in testing and racing." : "")));
     }
 
     /// <summary>The team's drivers still alive.</summary>
@@ -466,7 +470,7 @@ public sealed partial class Career
                 }
             }
             if (WaitingModelYear <= _carsYear)
-                NewCarArrives(WaitingModelYear.Value, day, WaitingCar);
+                NewCarArrives(WaitingModelYear.Value, day, WaitingCar, _waitingFaults);
             if (Formula.Breach(Car, _carsYear) is { } breach)
                 _news.Add(new NewsItem(day, $"{breach} It cannot race in Europe this year."));
             else if (Formula.Breach(Car, _carsYear + 1) is { } next)
@@ -534,6 +538,7 @@ public sealed partial class Career
                 earned += Pay(MoneyKind.Prize, $"{car.Entry.Driver.Name}, {Place(i + 1)} at {ev.Name}", prize);
         }
         var record = Record(result, entered: true, earned);
+        LearnFromRace(record);
         Today = ev.Date.AddDays(1);
         return record;
     }

@@ -295,6 +295,7 @@ public sealed partial class Career
         var driver = _data.Drivers[drivers[rng.Next(drivers.Count)]];
         var gain = Math.Max(0, (DrawingOffice.MaxReliability - Car.Reliability) * Works.TestGainShare);
         Car = Car with { Reliability = Math.Round(Car.Reliability + gain, 4) };
+        FindFault(rng, Prototype.TestFindChance, Today, $"{driver.Name}'s test day");
         if (rng.NextDouble() < Works.TestCrashChance)
         {
             var weeks = 2 + rng.Next(4);

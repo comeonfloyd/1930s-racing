@@ -24,6 +24,9 @@ public sealed record Project(Upgrade Upgrade, int Cost, int Weeks)
     public CarDesign? Design { get; init; }
     public Car? Built { get; init; }
 
+    /// <summary>The teething troubles the car of an own design will come out with.</summary>
+    public int Faults { get; init; }
+
     /// <summary>The project is the team's Indianapolis car, built beside the Grand Prix car.</summary>
     public bool Indy { get; init; }
     public double Progress => Weeks == 0 ? 1 : WeeksDone / (double)Weeks;

@@ -421,6 +421,12 @@ public partial class CalendarScreen : Control
         box.AddChild(top);
         var car = career.Car;
         box.AddChild(new Label { Text = $"{car.Name} · {car.Horsepower} hp · {car.WeightKg} kg · handling {car.Handling} · reliability {car.Reliability:P0}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        if (career.TeethingFaults > 0)
+            box.AddChild(new Label
+            {
+                Text = $"{career.TeethingFaults} teething trouble{(career.TeethingFaults == 1 ? "" : "s")} still to find: test days and races show them up.",
+                Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
         if (career.Team.SportsCarFor(career.Today.Year) is { } sports)
             box.AddChild(new Label { Text = $"For Le Mans: {sports.Name} · {sports.Horsepower} hp · {sports.WeightKg} kg", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         foreach (var id in career.Roster)

@@ -239,7 +239,13 @@ public static class CarDesigner
 }
 
 /// <summary>What a design would cost the team and give it, before it is ordered.</summary>
-public sealed record DesignPreview(Car Car, int Cost, int Weeks, int Year, IReadOnlyList<string> TooEarly, string? Breach, bool Indy = false);
+/// <summary>
+/// What a design would cost the team and give it, before it is ordered. <see cref="Car"/> is the
+/// drawing office's estimate: the real car can come out up to <see cref="Spread"/> either side,
+/// with about <see cref="Faults"/> teething troubles.
+/// </summary>
+public sealed record DesignPreview(Car Car, int Cost, int Weeks, int Year, IReadOnlyList<string> TooEarly, string? Breach, bool Indy = false,
+    double Spread = 0, int Faults = 0);
 
 public sealed partial class Career
 {
@@ -248,6 +254,9 @@ public sealed partial class Career
 
     /// <summary>A car of the team's own design finished before its season, waiting for 1 January.</summary>
     public Car? WaitingCar { get; private set; }
+
+    /// <summary>The teething troubles the waiting car will bring.</summary>
+    private int _waitingFaults;
 
     /// <summary>A new Grand Prix car is being built, or waits for next season (an Indianapolis car does not count).</summary>
     public bool NewCarUnderway => GrandPrixCarInQueue || WaitingModelYear is not null;
@@ -268,7 +277,8 @@ public sealed partial class Career
         var car = CarDesigner.Build(design, Team.Name, year, indy);
         var cost = (int)(Math.Round(CarDesigner.Cost(design) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
         var breach = indy ? Indianapolis.Breach(design, car.Name, year) : Formula.Breach(car, year);
-        return new DesignPreview(car, cost, weeks, year, CarDesigner.TooEarly(design, year), breach, indy);
+        return new DesignPreview(car, cost, weeks, year, CarDesigner.TooEarly(design, year), breach, indy,
+            DesignSpread, indy ? 0 : ExpectedFaults(design, year));
     }
 
     private bool HasSeason(int year) => _data.Seasons.ContainsKey(year);
@@ -289,7 +299,8 @@ public sealed partial class Career
         if (preview.Cost > Cash)
             return ProjectResult.NotEnoughMoney;
         Pay(MoneyKind.Development, $"Own design: {preview.Car.Name}", -preview.Cost);
-        _projects.Add(new Project(Upgrade.NewCar, preview.Cost, preview.Weeks) { ModelYear = preview.Year, Built = preview.Car, Design = design, Indy = indy });
+        var (built, faults) = BuildPrototype(preview, design);
+        _projects.Add(new Project(Upgrade.NewCar, preview.Cost, preview.Weeks) { ModelYear = preview.Year, Built = built, Design = design, Indy = indy, Faults = faults });
         return ProjectResult.Queued;
     }
 }
