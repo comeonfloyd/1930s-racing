@@ -28,7 +28,8 @@ public sealed record CareerSave(
     IReadOnlyList<string>? Roster = null,
     int? ModelYear = null,
     int? CarsYear = null,
-    int? WaitingModelYear = null);
+    int? WaitingModelYear = null,
+    IReadOnlyDictionary<string, DateOnly>? InjuredUntil = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -58,7 +59,8 @@ public sealed partial class Career
         _roster.ToList(),
         ModelYear,
         _carsYear,
-        WaitingModelYear);
+        WaitingModelYear,
+        new Dictionary<string, DateOnly>(_injuredUntil));
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -104,6 +106,8 @@ public sealed partial class Career
         career.ModelYear = save.ModelYear ?? career.Team.CarYearFor(save.Today.Year);
         career._carsYear = save.CarsYear ?? save.Today.Year;
         career.WaitingModelYear = save.WaitingModelYear;
+        foreach (var (id, until) in save.InjuredUntil ?? new Dictionary<string, DateOnly>())
+            career._injuredUntil[id] = until;
         return career;
     }
 }

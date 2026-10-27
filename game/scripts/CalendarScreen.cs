@@ -395,11 +395,14 @@ public partial class CalendarScreen : Control
         {
             var driver = _data.Drivers[id];
             var dead = career.DeadDrivers.Contains(id);
+            var injured = career.InjuredUntil(id);
             box.AddChild(new Label
             {
-                Text = dead ? $"✝ {driver.Name}" : $"{driver.Name}  ·  speed {driver.Skills.Speed}",
-                Modulate = dead ? new Color(1, 1, 1, 0.45f) : Colors.White,
-                TooltipText = dead ? "Killed racing" : "",
+                Text = dead ? $"✝ {driver.Name}"
+                    : injured is { } until ? $"{driver.Name}  ·  injured until {until.ToString("d MMM", English)}"
+                    : $"{driver.Name}  ·  speed {driver.Skills.Speed}",
+                Modulate = dead ? new Color(1, 1, 1, 0.45f) : injured is not null ? new Color(1, 0.75f, 0.6f) : Colors.White,
+                TooltipText = dead ? "Killed racing" : injured is not null ? "Hurt in a crash: the car runs without them until then" : "",
                 MouseFilter = MouseFilterEnum.Pass,
             });
         }
@@ -701,6 +704,9 @@ public partial class CalendarScreen : Control
             facts.AddChild(Chip($"Prestige {ev.Prestige}"));
             if (ev.Date >= career.Today && !entered && Formula.Breach(career.Car, circuit, ev.Date.Year) is { } breach)
                 facts.AddChild(Chip("Car not eligible", UiTheme.Danger, breach));
+            if (career.ForecastFor(ev) is { } forecast)
+                facts.AddChild(Chip($"Forecast: {forecast.ToLowerInvariant()}", null,
+                    $"It rains here on about {circuit.RainChance:P0} of race days. The forecast is right about three times in four."));
             if (ev.Date >= career.Today)
             {
                 var travel = career.TravelTo(ev);

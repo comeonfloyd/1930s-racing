@@ -57,6 +57,7 @@ public sealed partial class Career
     private readonly List<Transaction> _ledger = new();
     private readonly List<RaceRecord> _results = new();
     private readonly HashSet<string> _deadDrivers = new();
+    private readonly Dictionary<string, DateOnly> _injuredUntil = new();
     private DateOnly _paidUntil;
     private readonly List<Project> _projects = new();
     private readonly Dictionary<Upgrade, int> _upgradesDone = new();
@@ -92,6 +93,13 @@ public sealed partial class Career
     public IReadOnlyList<RaceRecord> Results => _results;
     public IReadOnlySet<string> DeadDrivers => _deadDrivers;
 
+    /// <summary>The day an injured driver can race again, or null for a fit one.</summary>
+    public DateOnly? InjuredUntil(string driverId) =>
+        _injuredUntil.TryGetValue(driverId, out var until) && until > Today ? until : null;
+
+    /// <summary>False for a driver still recovering from a crash on that day.</summary>
+    public bool FitOn(string driverId, DateOnly date) => !_injuredUntil.TryGetValue(driverId, out var until) || until <= date;
+
     /// <summary>The team's car as developed so far.</summary>
     public Car Car { get; private set; }
 
@@ -109,6 +117,9 @@ public sealed partial class Career
     public IReadOnlyList<string> RosterOf(Team team, int year) => team.Id == Team.Id
         ? _roster.Where(id => !_deadDrivers.Contains(id)).ToList()
         : team.RosterFor(year).Where(id => !_deadDrivers.Contains(id) && !_roster.Contains(id) && Racing(_data.Drivers[id], year)).ToList();
+
+    /// <summary>A team's drivers fit to race on a day: its roster less anyone injured.</summary>
+    public IReadOnlyList<string> StartersOf(Team team, DateOnly date) => RosterOf(team, date.Year).Where(id => FitOn(id, date)).ToList();
 
     /// <summary>Drawing-office work: the first project is being worked on, the rest wait.</summary>
     public IReadOnlyList<Project> Projects => _projects;
@@ -160,9 +171,9 @@ public sealed partial class Career
             if (Formula.Breach(car, circuit, year) is not null)
                 continue;
             var entrant = team with { Car = car };
-            var rng = new Random(RaceSeed(ev));
+            var rng = new Random(Seeds.Mix(RaceSeed(ev), 1));
             foreach (var driver in FreeAgentsIn(year)
-                         .Where(d => (Region(d) == circuit.Region))
+                         .Where(d => Region(d) == circuit.Region && FitOn(d.Id, ev.Date))
                          .OrderBy(_ => rng.Next())
                          .Take(MaxPrivateers))
                 yield return new RaceEntry(driver, entrant);
@@ -264,7 +275,7 @@ public sealed partial class Career
     /// </summary>
     private void DevelopRivals(DateOnly week)
     {
-        var rng = new Random(unchecked(Seed * 7919 + week.DayNumber));
+        var rng = new Random(Seeds.Mix(Seed, week.DayNumber));
         var playerWins = _results.Count(r => r.Entered && r.Event.Date.Year == week.Year
                                             && r.Result.Classification.FirstOrDefault() is { Finished: true } first && first.Entry.Team.Id == Team.Id);
         foreach (var team in RivalsIn(week.Year))
@@ -358,7 +369,7 @@ public sealed partial class Career
         return teams.SelectMany(t =>
             {
                 var team = t with { Car = CarOf(t.Id) };
-                return RosterOf(t, year).Select(id => new RaceEntry(_data.Drivers[id], team));
+                return StartersOf(t, ev.Date).Select(id => new RaceEntry(_data.Drivers[id], team));
             })
             .Concat(PrivateersFor(ev, circuit))
             .ToList();
@@ -508,6 +519,16 @@ public sealed partial class Career
         new(ev, _data.Circuits[ev.CircuitId], GridFor(ev), RaceSeed(ev),
             Settings, manualTeams: [Team.Id]);
 
+    /// <summary>The weather forecast for a race in the coming week, or null for one further off.</summary>
+    public string? ForecastFor(RaceEvent ev)
+    {
+        var days = ev.Date.DayNumber - Today.DayNumber;
+        if (days < 0 || days > 7)
+            return null;
+        var circuit = _data.Circuits[ev.CircuitId];
+        return RaceWeather.Forecast(circuit, RaceSeed(ev), LiveRace.ExpectedSeconds(ev, circuit));
+    }
+
     /// <summary>A seed per race that stays the same between runs (string.GetHashCode does not).</summary>
     private int RaceSeed(RaceEvent ev) => ev.Id.Aggregate(Seed, (hash, ch) => unchecked(hash * 31 + ch));
 
@@ -515,6 +536,13 @@ public sealed partial class Career
     {
         foreach (var car in result.Classification.Where(c => c.Retirement?.Cause == RetirementCause.FatalCrash))
             _deadDrivers.Add(car.Entry.Driver.Id);
+        foreach (var car in result.Classification.Where(c => c.Retirement?.InjuryWeeks > 0))
+        {
+            var until = result.Event.Date.AddDays(7 * car.Retirement!.InjuryWeeks);
+            _injuredUntil[car.Entry.Driver.Id] = until;
+            if (_roster.Contains(car.Entry.Driver.Id))
+                _news.Add(new NewsItem(result.Event.Date, $"{car.Entry.Driver.Name} was hurt in a crash at the {result.Event.Name} and cannot race until {until.ToString("d MMMM", System.Globalization.CultureInfo.InvariantCulture)}."));
+        }
         var record = new RaceRecord(result.Event, result, entered, earned);
         _results.Add(record);
         return record;

@@ -43,6 +43,13 @@ public sealed class LiveRace
 
     public RaceEvent Event { get; }
     public Circuit Circuit { get; }
+    public RaceWeather Weather { get; }
+
+    /// <summary>Rain starts and stops told so far, as race times.</summary>
+    private readonly HashSet<double> _weatherTold = new();
+
+    /// <summary>About how long a race runs, for timing showers: laps at 130 km/h.</summary>
+    public static double ExpectedSeconds(RaceEvent ev, Circuit circuit) => ev.Laps * circuit.LapKm / 130 * 3600;
     public double Time { get; private set; }
     public IReadOnlyList<RaceMessage> Messages => _messages;
 
@@ -54,8 +61,9 @@ public sealed class LiveRace
         Circuit = circuit;
         _settings = settings ?? new RaceSettings();
         _manualTeams = new HashSet<string>(manualTeams ?? []);
-        var dayForm = new Random(seed);
-        _cars = grid.Select((entry, i) => new CarState(entry, new Random(unchecked(seed * 486187739 + i)),
+        Weather = RaceWeather.Roll(circuit, seed, ExpectedSeconds(ev, circuit));
+        var dayForm = new Random(Seeds.Mix(seed, -1));
+        _cars = grid.Select((entry, i) => new CarState(entry, new Random(Seeds.Mix(seed, i)),
             // Each car's form on the day: up to about 2% either way, so the fastest car does not always win.
             1 + Gaussian(dayForm) * 0.01)).ToArray();
         foreach (var car in _cars)
@@ -99,7 +107,23 @@ public sealed class LiveRace
         foreach (var car in _cars)
             if (car.Retirement is not null && car.StopTime <= Time)
                 car.Done = true;
+        TellWeather();
     }
+
+    /// <summary>Adds a race message when rain starts or stops, on the leader's lap at that moment.</summary>
+    private void TellWeather()
+    {
+        foreach (var shower in Weather.Showers)
+        {
+            if (shower.Start <= Time && _weatherTold.Add(shower.Start))
+                _messages.Add(new RaceMessage(shower.Start, LeaderLapAt(shower.Start), "",
+                    shower.Start == 0 ? "The race starts in the rain." : "Rain begins to fall: the road is wet."));
+            if (shower.End <= Time && _weatherTold.Add(shower.End))
+                _messages.Add(new RaceMessage(shower.End, LeaderLapAt(shower.End), "", "The rain stops and the road dries."));
+        }
+    }
+
+    private int LeaderLapAt(double time) => Math.Min(Event.Laps, _cars.Max(c => CumulativeSum(c.LapTimes).Count(t => t <= time)) + 1);
 
     public void RunToEnd() => AdvanceTo(double.MaxValue / 4);
 
@@ -186,6 +210,12 @@ public sealed class LiveRace
         }
 
         var (speed, wear, strain, risk) = PaceEffect(car.Pace);
+        var wet = Weather.IsWetAt(start);
+        if (wet)
+        {
+            risk *= RaceWeather.WetCrashFactor(car.Entry.Driver);
+            wear *= RaceWeather.WetTyreWear;
+        }
         if (rng.NextDouble() < FailureChancePerLap(car.Entry, Circuit) * strain)
         {
             Retire(car, start, lap, RetirementCause.MechanicalFailure, 0.5, "retires with a mechanical failure");
@@ -195,8 +225,10 @@ public sealed class LiveRace
         if (rng.NextDouble() < CrashChancePerLap(car.Entry.Driver, Circuit) * risk * grip)
         {
             var fatal = _settings.FatalCrashes && rng.NextDouble() < Circuit.Danger * 0.15;
+            // A driver who survives may still be hurt: more often on a dangerous circuit.
+            var injuryWeeks = !fatal && rng.NextDouble() < 0.3 + Circuit.Danger * 0.3 ? 2 + rng.Next(9) : 0;
             Retire(car, start, lap, fatal ? RetirementCause.FatalCrash : RetirementCause.Crash, 0.5,
-                fatal ? "crashes fatally" : "crashes out");
+                fatal ? "crashes fatally" : injuryWeeks > 0 ? "crashes out and is injured" : "crashes out", injuryWeeks);
             return;
         }
 
@@ -208,6 +240,8 @@ public sealed class LiveRace
         time *= 1 + 0.05 * car.Tyres * car.Tyres;     // worn rear tyres lose grip
         if (car.TyreBurst)
             time *= 1.4;                              // limping back on a burst tyre
+        if (wet)
+            time *= RaceWeather.WetLapFactor(car.Entry.Driver);
 
         car.Fuel -= fuelForLap;
         car.Tyres += TyreWearPerLap(car) * wear;
@@ -250,10 +284,10 @@ public sealed class LiveRace
         return fuelShort || tyresGone;
     }
 
-    private void Retire(CarState car, double start, int lap, RetirementCause cause, double fraction, string text)
+    private void Retire(CarState car, double start, int lap, RetirementCause cause, double fraction, string text, int injuryWeeks = 0)
     {
         var ideal = Circuit.LapKm / RaceSim.AverageSpeedKmh(car.Entry, Circuit) * 3600;
-        car.Retirement = new Retirement(lap, cause);
+        car.Retirement = new Retirement(lap, cause, injuryWeeks);
         car.StopFraction = fraction;
         car.StopTime = start + car.PitTime + ideal * fraction;
         Say(car, car.StopTime, lap, text);

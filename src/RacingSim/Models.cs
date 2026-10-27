@@ -24,7 +24,8 @@ public enum CircuitType
 
 /// <summary>
 /// A real venue on the world map. <see cref="StraightShare"/> (0 to 1) is how much of a lap
-/// rewards engine power over handling; <see cref="Danger"/> (0 to 1) scales crash risk.
+/// rewards engine power over handling; <see cref="Danger"/> (0 to 1) scales crash risk;
+/// <see cref="RainChance"/> (0 to 1) is how often it rains on race day.
 /// </summary>
 public sealed record Circuit(
     string Id,
@@ -38,7 +39,8 @@ public sealed record Circuit(
     int FirstYear,
     int LastYear,
     double StraightShare = 0.5,
-    double Danger = 0.3);
+    double Danger = 0.3,
+    double RainChance = 0.25);
 
 /// <summary>A city a team is based in; also used as a travel start point.</summary>
 public sealed record City(string Id, string Name, string Country, Region Region, double Latitude, double Longitude);

@@ -11,7 +11,8 @@ public enum RetirementCause
 /// <summary>One car on the grid: who drives it and for which team.</summary>
 public sealed record RaceEntry(Driver Driver, Team Team);
 
-public sealed record Retirement(int Lap, RetirementCause Cause);
+/// <param name="InjuryWeeks">For a crash the driver survives: weeks out injured, or 0 if unhurt.</param>
+public sealed record Retirement(int Lap, RetirementCause Cause, int InjuryWeeks = 0);
 
 /// <summary>A car's race: every completed lap time in seconds, and how it ended.</summary>
 public sealed record CarResult(RaceEntry Entry, IReadOnlyList<double> LapTimes, Retirement? Retirement)

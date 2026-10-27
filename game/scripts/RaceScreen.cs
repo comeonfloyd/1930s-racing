@@ -483,7 +483,10 @@ public partial class RaceScreen : Control
         var laps = _race.Event.Laps;
         var leaderLap = Math.Min(laps, (int)Math.Floor(cars[0].Distance) + 1);
         _lap.Text = Over ? "Finished" : $"Lap {leaderLap}/{laps}";
-        _clock.Text = Clock(_time) + (_paused ? " · paused" : "");
+        var wet = _race.Weather.IsWetAt(_time);
+        _clock.Text = Clock(_time) + (wet ? " · rain" : "") + (_paused ? " · paused" : "");
+        // Rain eases in and out over a few seconds of play rather than switching at once.
+        _track.Rain = Mathf.MoveToward(_track.Rain, wet ? 1 : 0, 0.02f);
 
         var team = RaceRequest.PlayerTeamId;
         var averageLap = cars[0].Distance > 0.1 ? _time / cars[0].Distance : 60;

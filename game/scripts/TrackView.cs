@@ -44,6 +44,9 @@ public partial class TrackView : Node2D
 
     public Rect2 Area { get; set; }
 
+    /// <summary>How hard it is raining, 0 (dry) to 1: darkens the view and draws falling rain.</summary>
+    public float Rain { get; set; }
+
     /// <summary>The car the camera follows, or null for a free camera.</summary>
     public string? FollowDriverId { get; set; }
 
@@ -196,7 +199,31 @@ public partial class TrackView : Node2D
         }
 
         DrawCars(scale, roadWidth);
+        if (Rain > 0.01f)
+            DrawRain();
     }
+
+    private static readonly Color RainShade = new(0.12f, 0.16f, 0.24f);
+    private static readonly Color RainStreak = new(0.8f, 0.86f, 0.95f);
+
+    /// <summary>A grey wash and slanting streaks, more of them the harder it rains.</summary>
+    private void DrawRain()
+    {
+        DrawRect(Area, RainShade with { A = 0.3f * Rain });
+        var t = Time.GetTicksMsec() / 1000.0;
+        var count = (int)(220 * Rain);
+        var fall = new Vector2(-6, 18);
+        for (var i = 0; i < count; i++)
+        {
+            // Fixed scattered columns; each streak falls and wraps round the view.
+            var x = Fract(Mathf.Sin(i * 12.9898f) * 43758.5453f);
+            var y = Fract(Fract(Mathf.Sin(i * 78.233f) * 12345.678f) + t * (0.9f + 0.4f * x));
+            var at = Area.Position + new Vector2(x, (float)y) * Area.Size;
+            DrawLine(at, at + fall, RainStreak with { A = 0.35f * Rain }, 1);
+        }
+    }
+
+    private static float Fract(double v) => (float)(v - Math.Floor(v));
 
     /// <summary>Moves the text labels to where the last drawing put things.</summary>
     public override void _Process(double delta)
