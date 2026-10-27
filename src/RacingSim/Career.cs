@@ -28,6 +28,10 @@ public enum ProjectResult
     NotEnoughMoney,
     AtLimit,
     NoNewModel,
+    /// <summary>A design uses parts not yet invented in the year it would be built.</summary>
+    PartsNotInvented,
+    /// <summary>A new car is already being built, or waits for next season.</summary>
+    NewCarUnderway,
 }
 
 /// <summary>A dated line of team news, such as a finished drawing-office project.</summary>
@@ -239,7 +243,7 @@ public sealed partial class Career
         if (upgrade == Upgrade.NewCar)
             return StartNewCar();
         var planned = _projects.Where(p => p.Upgrade == upgrade).Aggregate(Car, (car, p) => DrawingOffice.Apply(car, p.Upgrade));
-        if (!DrawingOffice.CanImprove(planned, upgrade, Team.CarFor(ModelYear)))
+        if (!DrawingOffice.CanImprove(planned, upgrade, DesignBase ?? Team.CarFor(ModelYear)))
             return ProjectResult.AtLimit;
         var cost = ProjectCost(upgrade);
         if (cost > Cash)
@@ -322,10 +326,11 @@ public sealed partial class Career
             if (project.ModelYear > date.Year)
             {
                 WaitingModelYear = project.ModelYear;
-                _news.Add(new NewsItem(date, $"The new {Team.CarFor(project.ModelYear).Name} is built and will race from the {project.ModelYear} season."));
+                WaitingCar = project.Built;
+                _news.Add(new NewsItem(date, $"The new {(project.Built ?? Team.CarFor(project.ModelYear)).Name} is built and will race from the {project.ModelYear} season."));
                 return;
             }
-            NewCarArrives(project.ModelYear, date);
+            NewCarArrives(project.ModelYear, date, project.Built);
             return;
         }
         _upgradesDone[project.Upgrade] = _upgradesDone.GetValueOrDefault(project.Upgrade) + 1;
@@ -334,11 +339,13 @@ public sealed partial class Career
     }
 
     /// <summary>A new car starts its development afresh, so tuning costs go back to their base.</summary>
-    private void NewCarArrives(int modelYear, DateOnly date)
+    private void NewCarArrives(int modelYear, DateOnly date, Car? ownDesign = null)
     {
-        Car = Team.CarFor(modelYear);
+        Car = ownDesign ?? Team.CarFor(modelYear);
+        DesignBase = ownDesign;
         ModelYear = modelYear;
         WaitingModelYear = null;
+        WaitingCar = null;
         _upgradesDone.Clear();
         _news.Add(new NewsItem(date, $"The new {Car.Name} is ready: {Car.Horsepower} hp, {Car.WeightKg} kg, {Car.EngineLitres:0.0#} litres, handling {Car.Handling}, reliability {Car.Reliability:P0}."));
     }
@@ -450,7 +457,7 @@ public sealed partial class Career
                 }
             }
             if (WaitingModelYear <= _carsYear)
-                NewCarArrives(WaitingModelYear.Value, day);
+                NewCarArrives(WaitingModelYear.Value, day, WaitingCar);
             if (Formula.Breach(Car, _carsYear) is { } breach)
                 _news.Add(new NewsItem(day, $"{breach} It cannot race in Europe this year."));
             else if (Formula.Breach(Car, _carsYear + 1) is { } next)

@@ -33,7 +33,9 @@ public sealed record CareerSave(
     IReadOnlyDictionary<Facility, int>? Facilities = null,
     IReadOnlyDictionary<StaffRole, string>? Staff = null,
     FacilityJob? Building = null,
-    DateOnly? LastTest = null);
+    DateOnly? LastTest = null,
+    Car? DesignBase = null,
+    Car? WaitingCar = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -68,7 +70,9 @@ public sealed partial class Career
         new Dictionary<Facility, int>(_facilities),
         new Dictionary<StaffRole, string>(_staff),
         Building,
-        _lastTest);
+        _lastTest,
+        DesignBase,
+        WaitingCar);
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -127,6 +131,8 @@ public sealed partial class Career
         }
         career.Building = save.Building;
         career._lastTest = save.LastTest;
+        career.DesignBase = save.DesignBase;
+        career.WaitingCar = save.WaitingCar;
         return career;
     }
 }

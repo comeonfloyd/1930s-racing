@@ -31,7 +31,7 @@ public partial class CalendarScreen : Control
     private Button _driversTab = null!;
     private Button _worksTab = null!;
 
-    private enum View { Calendar, Map, Drivers, Works }
+    private enum View { Calendar, Map, Drivers, Works, Designer }
 
     // Kept across scene changes, so coming back from a race shows the same view.
     private static View _view;
@@ -163,8 +163,13 @@ public partial class CalendarScreen : Control
                     Refresh();
                     DevShot.Capture(this, "works.png", 1, () =>
                     {
-                        _view = View.Calendar;
-                        GoToRace();
+                        _view = View.Designer;
+                        Refresh();
+                        DevShot.Capture(this, "designer.png", 1, () =>
+                        {
+                            _view = View.Calendar;
+                            GoToRace();
+                        });
                     });
                 });
             });
@@ -251,6 +256,8 @@ public partial class CalendarScreen : Control
             DriverMarket(career);
         else if (_view == View.Works)
             WorksView(career);
+        else if (_view == View.Designer)
+            DesignerView(career);
         else
             foreach (var ev in career.CurrentSeason.Events)
                 _body.AddChild(EventCard(career, ev));
@@ -441,7 +448,7 @@ public partial class CalendarScreen : Control
             var kind = DrawingOffice.Kind(project.Upgrade);
             var line = new HBoxContainer();
             line.AddThemeConstantOverride("separation", 8);
-            var what = project.Upgrade == Upgrade.NewCar ? career.Team.CarFor(project.ModelYear).Name : kind.Effect;
+            var what = project.Upgrade == Upgrade.NewCar ? (project.Built ?? career.Team.CarFor(project.ModelYear)).Name : kind.Effect;
             line.AddChild(new Label { Text = $"{kind.Name} ({what})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
             line.AddChild(new Label
             {
@@ -456,11 +463,18 @@ public partial class CalendarScreen : Control
         if (career.WaitingModelYear is { } waiting)
             box.AddChild(new Label
             {
-                Text = $"The {career.Team.CarFor(waiting).Name} is built and races from 1 January {waiting}.",
+                Text = $"The {(career.WaitingCar ?? career.Team.CarFor(waiting)).Name} is built and races from 1 January {waiting}.",
                 ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
             });
 
         box.AddChild(new HSeparator());
+        var design = new Button
+        {
+            Text = "Design your own car  ›", Disabled = career.NewCarUnderway,
+            TooltipText = career.NewCarUnderway ? "A new car is already being built." : "Choose the engine and chassis of a new car.",
+        };
+        design.Pressed += () => { _view = View.Designer; Refresh(); };
+        box.AddChild(design);
         foreach (var kind in DrawingOffice.Kinds)
         {
             var next = career.NextModel;
