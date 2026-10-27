@@ -233,6 +233,7 @@ public partial class CalendarScreen : Control
             foreach (var team in _data.Teams.Values.Where(t => t.Playable))
                 teams.AddChild(TeamCard(team));
             _body.AddChild(teams);
+            _side.AddChild(SettingsCard());
             _side.AddChild(HowToPlay());
             return;
         }
@@ -348,11 +349,11 @@ public partial class CalendarScreen : Control
         box.AddChild(new Label { Text = $"{startCar.Name} · {startCar.Horsepower} hp · {startCar.WeightKg} kg", ThemeTypeVariation = "Muted" });
         var drivers = string.Join(", ", team.RosterFor(Session.StartYear).Select(id => _data.Drivers[id].Name));
         box.AddChild(new Label { Text = drivers, AutowrapMode = TextServer.AutowrapMode.WordSmart });
-        box.AddChild(new Label { Text = $"Budget £{team.StartingCash:N0} · prestige {team.Prestige}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label { Text = $"Budget £{Math.Round(team.StartingCash * Session.Settings.StartingMoney / 100) * 100:N0} · prestige {team.Prestige}", ThemeTypeVariation = "Muted" });
         var run = new Button { Text = "Run this team", ThemeTypeVariation = "Accent" };
         run.Pressed += () =>
         {
-            Career = new Career(_data, team.Id, Session.StartYear, seed: (int)(Time.GetUnixTimeFromSystem() % 100000));
+            Career = new Career(_data, team.Id, Session.StartYear, seed: (int)(Time.GetUnixTimeFromSystem() % 100000), Session.Settings);
             Refresh();
         };
         box.AddChild(run);
@@ -381,6 +382,51 @@ public partial class CalendarScreen : Control
         };
         row.AddChild(go);
         card.AddChild(row);
+        return card;
+    }
+
+    /// <summary>The settings for a new career; the historical game is the default.</summary>
+    private Control SettingsCard()
+    {
+        var card = Card();
+        var box = Stack(card, 6);
+        box.AddChild(new Label { Text = "NEW CAREER SETTINGS", ThemeTypeVariation = "Overline" });
+        var s = Session.Settings;
+        void Pick(string label, string tip, (string Name, double Value)[] options, double current, Func<double, RaceSettings> with)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            row.AddChild(new Label { Text = label, SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = tip, MouseFilter = MouseFilterEnum.Pass, VerticalAlignment = VerticalAlignment.Center });
+            var option = new OptionButton { CustomMinimumSize = new Vector2(150, 0), TooltipText = tip };
+            for (var i = 0; i < options.Length; i++)
+            {
+                option.AddItem(options[i].Name, i);
+                if (Math.Abs(options[i].Value - current) < 1e-6)
+                    option.Selected = i;
+            }
+            option.ItemSelected += i =>
+            {
+                Session.Settings = with(options[(int)i].Value);
+                Refresh();
+            };
+            row.AddChild(option);
+            box.AddChild(row);
+        }
+        Pick("Starting money", "The team's budget at the start.",
+            [("Tight", 0.6), ("Historical", 1), ("Generous", 1.5)], s.StartingMoney, v => Session.Settings with { StartingMoney = v });
+        Pick("Rival works", "How much power the other works' cars have.",
+            [("Weaker", 0.92), ("Historical", 1), ("Stronger", 1.08)], s.RivalStrength, v => Session.Settings with { RivalStrength = v });
+        Pick("Breakdowns", "How often every car breaks down in a race.",
+            [("Fewer", 0.7), ("Historical", 1), ("More", 1.3)], s.FailureRate, v => Session.Settings with { FailureRate = v });
+        Pick("German works", "From 1934 the Reich paid Mercedes and Auto Union to win, and from 1937 they won nearly everything. Without that money their cars have a fifth less power.",
+            [("State-funded", 1), ("Without state money", 0)], s.StateFundedGermans ? 1 : 0, v => Session.Settings with { StateFundedGermans = v > 0.5 });
+        var fatal = new CheckButton
+        {
+            Text = "Fatal crashes", ButtonPressed = s.FatalCrashes,
+            TooltipText = "Drivers could be killed racing in the 1930s, and here too. Off, they are hurt instead.",
+        };
+        fatal.Toggled += on => Session.Settings = Session.Settings with { FatalCrashes = on };
+        box.AddChild(fatal);
         return card;
     }
 

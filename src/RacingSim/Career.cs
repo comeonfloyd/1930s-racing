@@ -117,7 +117,10 @@ public sealed partial class Career
     public Car Car { get; private set; }
 
     /// <summary>Every other team's car as its works have developed it so far.</summary>
-    public Car CarOf(string teamId) => teamId == Team.Id ? Car : _rivalCars.GetValueOrDefault(teamId) ?? _data.Teams[teamId].CarFor(_carsYear);
+    public Car CarOf(string teamId) => teamId == Team.Id ? Car : Settings.Rival(DevelopedCarOf(teamId), _data.Teams[teamId], _carsYear);
+
+    /// <summary>A rival's car as its works has developed it, before the settings' handicap.</summary>
+    private Car DevelopedCarOf(string teamId) => _rivalCars.GetValueOrDefault(teamId) ?? _data.Teams[teamId].CarFor(_carsYear);
 
     /// <summary>The other works racing in a year: those founded by then that send drivers.</summary>
     public IEnumerable<Team> RivalsIn(int year) =>
@@ -148,7 +151,7 @@ public sealed partial class Career
             throw new ArgumentException($"Team {teamId} is not playable", nameof(teamId));
         Today = new DateOnly(startYear, 1, 1);
         _paidUntil = Today;
-        Cash = Team.StartingCash;
+        Cash = (int)(Math.Round(Team.StartingCash * Settings.StartingMoney / 100) * 100);
         Car = Team.CarFor(startYear);
         ModelYear = Team.CarYearFor(startYear);
         _roster = Team.RosterFor(startYear).ToList();
@@ -305,7 +308,7 @@ public sealed partial class Career
             var chance = DrawingOffice.RivalWeeklyChance(team.StartingCash, playerWins);
             if (rng.NextDouble() >= chance)
                 continue;
-            var car = CarOf(team.Id);
+            var car = DevelopedCarOf(team.Id);
             var options = DrawingOffice.Tuning.Select(k => k.Id).Where(u => DrawingOffice.CanImprove(car, u, team.CarFor(_carsYear))).ToList();
             if (options.Count == 0)
                 continue;

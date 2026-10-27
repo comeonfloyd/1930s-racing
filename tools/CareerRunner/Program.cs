@@ -14,6 +14,8 @@ var works = args.Contains("--works");
 // --design: build the team's own designs instead of the works' models.
 var design = args.Contains("--design");
 // --races=YEAR: print each race of that year in the first career, with the field's cars.
+// --fair-germans: the German works race without state money (a career setting).
+var settings = new RaceSettings(StateFundedGermans: !args.Contains("--fair-germans"));
 var racesYear = args.FirstOrDefault(a => a.StartsWith("--races="))?.Split('=')[1] is { } ry ? int.Parse(ry) : 0;
 args = args.Where(a => !a.StartsWith("--")).ToArray();
 var teamId = args.ElementAtOrDefault(0) ?? "alfa-rossa";
@@ -27,7 +29,7 @@ var broke = 0;
 var lostDrivers = 0;
 for (var seed = 0; seed < careers; seed++)
 {
-    var career = new Career(data, teamId, years[0], seed);
+    var career = new Career(data, teamId, years[0], seed, settings);
     while (true)
     {
         while (true)

@@ -289,7 +289,7 @@ public sealed class LiveRace
             risk *= EnduranceRisk;
             wear *= EnduranceWear;
         }
-        if (rng.NextDouble() < FailureChancePerLap(entry, Circuit) * strain && !PastTheClock(car, start))
+        if (rng.NextDouble() < FailureChancePerLap(entry, Circuit) * strain * _settings.FailureRate && !PastTheClock(car, start))
         {
             Retire(car, start, lap, RetirementCause.MechanicalFailure, 0.5, "retires with a mechanical failure");
             return;

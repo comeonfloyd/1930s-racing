@@ -41,7 +41,34 @@ public sealed record RaceResult(RaceEvent Event, Circuit Circuit, IReadOnlyList<
     public IReadOnlyList<IReadOnlyList<string>> Positions { get; init; } = [];
 }
 
-public sealed record RaceSettings(bool FatalCrashes = true);
+/// <summary>
+/// The player's settings for a career, chosen before it starts; 1 and true are the historical
+/// game. <see cref="StartingMoney"/> scales the team's budget, <see cref="RivalStrength"/> the
+/// power of the other works' cars, <see cref="FailureRate"/> every car's chance of breaking down.
+/// Without <see cref="StateFundedGermans"/> the German works race from 1934 without the Reich's
+/// money, so their cars are less far ahead.
+/// </summary>
+public sealed record RaceSettings(
+    bool FatalCrashes = true,
+    double StartingMoney = 1,
+    double RivalStrength = 1,
+    double FailureRate = 1,
+    bool StateFundedGermans = true)
+{
+    public const int FirstStateFundedYear = 1934;
+
+    /// <summary>The power the German works give up without state money.</summary>
+    public const double UnfundedGermanPower = 0.8;
+
+    /// <summary>A rival works' car as the settings make it.</summary>
+    public Car Rival(Car car, Team team, int year)
+    {
+        var factor = RivalStrength;
+        if (!StateFundedGermans && team.Nationality == "Germany" && year >= FirstStateFundedYear)
+            factor *= UnfundedGermanPower;
+        return Math.Abs(factor - 1) < 1e-9 ? car : car with { Horsepower = (int)Math.Round(car.Horsepower * factor) };
+    }
+}
 
 /// <summary>
 /// Runs a whole race at once with every car on the AI strategy (see <see cref="LiveRace"/> for

@@ -41,7 +41,8 @@ public sealed record CareerSave(
     IndyOrder? IndyOrder = null,
     int TeethingFaults = 0,
     int WaitingFaults = 0,
-    IReadOnlyList<Part>? Researched = null);
+    IReadOnlyList<Part>? Researched = null,
+    RaceSettings? Settings = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -84,7 +85,8 @@ public sealed partial class Career
         IndyOrder,
         TeethingFaults,
         _waitingFaults,
-        _researched.ToList());
+        _researched.ToList(),
+        Settings);
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -96,7 +98,7 @@ public sealed partial class Career
         if (save.Version > SaveVersion)
             throw new InvalidDataException($"The save is from a newer version of the game ({save.Version}).");
         var events = data.Seasons.Values.SelectMany(s => s.Events).ToDictionary(e => e.Id);
-        var career = new Career(data, save.TeamId, save.Today.Year, save.Seed, new RaceSettings(save.FatalCrashes))
+        var career = new Career(data, save.TeamId, save.Today.Year, save.Seed, save.Settings ?? new RaceSettings(save.FatalCrashes))
         {
             Today = save.Today,
             _paidUntil = save.PaidUntil,
