@@ -8,6 +8,7 @@
     { "id": "1937-avus", "name": "Avusrennen", "circuitId": "avus", "date": "1937-05-30", "laps": 15, "startMoney": 300, "prizeFund": 1500, "prestige": 7 },
     { "id": "1937-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1937-05-31", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
     { "id": "1937-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1937-06-13", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
+    { "id": "1937-lemans", "name": "24 Hours of Le Mans", "circuitId": "lemans", "date": "1937-06-19", "laps": 300, "hours": 24, "startMoney": 200, "prizeFund": 3000, "prestige": 9 },
     { "id": "1937-belgium", "name": "Belgian Grand Prix", "circuitId": "spa", "date": "1937-07-11", "laps": 40, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
     { "id": "1937-germany", "name": "German Grand Prix", "circuitId": "nurburgring", "date": "1937-07-25", "laps": 22, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
     { "id": "1937-monaco", "name": "Monaco Grand Prix", "circuitId": "monaco", "date": "1937-08-08", "laps": 100, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },

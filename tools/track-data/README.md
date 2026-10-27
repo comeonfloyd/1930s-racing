@@ -2,7 +2,7 @@
 
 `game/data/tracks/*.json` are generated from real map data. Don't hand-edit them; change `build.py` and rerun:
 
-    python3 tools/track-data/build.py            # all twelve circuits
+    python3 tools/track-data/build.py            # every circuit
     python3 tools/track-data/build.py spa        # just one
 
 - `osm/` holds raw Overpass API responses (`out geom`) for each circuit. © OpenStreetMap contributors, available under the [ODbL](https://opendatacommons.org/licenses/odbl/). The game shows that credit under the track drawing.
@@ -26,6 +26,7 @@ What each lap follows:
 | Bremgarten | Drawn through points in the Bremgartenwald; the forest tracks in OpenStreetMap do not join up |
 | Tripoli | Drawn round the Mellaha lake, where Mitiga airport is now |
 | Brooklands | Drawn along the outer circuit's known course; almost none of it is mapped |
+| Le Mans | The 1932 Sarthe lap on today's roads; the straight from Maison Blanche to the pits bridges the Ford chicane |
 
 The `osm/` files for the newer circuits are trimmed to road ways with only their `highway` and `name` tags. Overpass now refuses requests without a User-Agent header, so send one when fetching.
 

@@ -6,5 +6,6 @@
   { "id": "stuttgart", "name": "Stuttgart", "country": "Germany", "region": "Europe", "latitude": 48.776, "longitude": 9.183 },
   { "id": "indianapolis-city", "name": "Indianapolis", "country": "USA", "region": "Usa", "latitude": 39.768, "longitude": -86.158 },
   { "id": "paris", "name": "Paris", "country": "France", "region": "Europe", "latitude": 48.857, "longitude": 2.352 },
-  { "id": "zwickau", "name": "Zwickau", "country": "Germany", "region": "Europe", "latitude": 50.718, "longitude": 12.496 }
+  { "id": "zwickau", "name": "Zwickau", "country": "Germany", "region": "Europe", "latitude": 50.718, "longitude": 12.496 },
+  { "id": "london", "name": "London", "country": "United Kingdom", "region": "Europe", "latitude": 51.507, "longitude": -0.128 }
 ]

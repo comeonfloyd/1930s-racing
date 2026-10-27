@@ -9,10 +9,23 @@ public enum RetirementCause
 }
 
 /// <summary>One car on the grid: who drives it and for which team.</summary>
-public sealed record RaceEntry(Driver Driver, Team Team);
+/// <summary>
+/// A car on the grid: its team and driver, and for an endurance race the driver who shares it.
+/// The first driver names the car in the results and the race.
+/// </summary>
+public sealed record RaceEntry(Driver Driver, Team Team, Driver? CoDriver = null)
+{
+    public IReadOnlyList<Driver> Drivers => CoDriver is null ? [Driver] : [Driver, CoDriver];
+
+    /// <summary>"Sommer / Chinetti" for a shared car, the full name otherwise.</summary>
+    public string Names => CoDriver is null ? Driver.Name : $"{LastName(Driver)} / {LastName(CoDriver)}";
+
+    private static string LastName(Driver d) => d.Name.Split(' ')[^1];
+}
 
 /// <param name="InjuryWeeks">For a crash the driver survives: weeks out injured, or 0 if unhurt.</param>
-public sealed record Retirement(int Lap, RetirementCause Cause, int InjuryWeeks = 0);
+/// <param name="DriverId">Who was at the wheel, when two drivers share the car; null means the car's first driver.</param>
+public sealed record Retirement(int Lap, RetirementCause Cause, int InjuryWeeks = 0, string? DriverId = null);
 
 /// <summary>A car's race: every completed lap time in seconds, and how it ended.</summary>
 public sealed record CarResult(RaceEntry Entry, IReadOnlyList<double> LapTimes, Retirement? Retirement)

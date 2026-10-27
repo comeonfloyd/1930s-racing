@@ -33,7 +33,7 @@ public sealed record CareerSave(
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
-public sealed record SavedCar(string DriverId, string TeamId, int Laps, double TotalTime, Retirement? Retirement);
+public sealed record SavedCar(string DriverId, string TeamId, int Laps, double TotalTime, Retirement? Retirement, string? CoDriverId = null);
 
 public sealed partial class Career
 {
@@ -50,7 +50,7 @@ public sealed partial class Career
         _entries.Select(e => e.Id).ToList(),
         _ledger.ToList(),
         _results.Select(r => new SavedRace(r.Event.Id, r.Entered, r.Earned,
-            r.Result.Classification.Select(c => new SavedCar(c.Entry.Driver.Id, c.Entry.Team.Id, c.LapsCompleted, c.TotalTime, c.Retirement)).ToList())).ToList(),
+            r.Result.Classification.Select(c => new SavedCar(c.Entry.Driver.Id, c.Entry.Team.Id, c.LapsCompleted, c.TotalTime, c.Retirement, c.Entry.CoDriver?.Id)).ToList())).ToList(),
         _deadDrivers.ToList(),
         _projects.ToList(),
         new Dictionary<Upgrade, int>(_upgradesDone),
@@ -86,7 +86,7 @@ public sealed partial class Career
         {
             var ev = events[race.EventId];
             var classification = race.Classification.Select(c => new CarResult(
-                new RaceEntry(data.Drivers[c.DriverId], data.Teams[c.TeamId]),
+                new RaceEntry(data.Drivers[c.DriverId], data.Teams[c.TeamId], c.CoDriverId is null ? null : data.Drivers[c.CoDriverId]),
                 Enumerable.Repeat(c.Laps == 0 ? 0 : c.TotalTime / c.Laps, c.Laps).ToList(),
                 c.Retirement)).ToList();
             career._results.Add(new RaceRecord(ev, new RaceResult(ev, data.Circuits[ev.CircuitId], classification), race.Entered, race.Earned));
