@@ -11,6 +11,8 @@ public enum EntryResult
     CarNotEligible,
     /// <summary>An endurance race needs the maker's sports car, and two drivers to share it.</summary>
     NoSportsCar,
+    /// <summary>The Indianapolis 500 needs a car built to its rules.</summary>
+    NoIndyCar,
     NeedTwoDrivers,
 }
 
@@ -32,6 +34,8 @@ public enum ProjectResult
     PartsNotInvented,
     /// <summary>A new car is already being built, or waits for next season.</summary>
     NewCarUnderway,
+    /// <summary>The design breaks the rules it is built for (the Indianapolis 500's).</summary>
+    BreaksRules,
 }
 
 /// <summary>A dated line of team news, such as a finished drawing-office project.</summary>
@@ -263,7 +267,7 @@ public sealed partial class Career
     {
         get
         {
-            if (_projects.Any(p => p.Upgrade == Upgrade.NewCar) || WaitingModelYear is not null)
+            if (NewCarUnderway)
                 return null;
             var year = Team.CarYearFor(Today.Year + 1);
             return year > ModelYear ? (year, Team.CarFor(year)) : null;
@@ -321,6 +325,11 @@ public sealed partial class Career
         }
         _projects.RemoveAt(0);
         var kind = DrawingOffice.Kind(project.Upgrade);
+        if (project.Indy && project.Built is { } special)
+        {
+            IndyCarArrives(special, project.Design!, date, $"The {special.Name} is built for Indianapolis");
+            return;
+        }
         if (project.Upgrade == Upgrade.NewCar)
         {
             if (project.ModelYear > date.Year)
@@ -388,7 +397,7 @@ public sealed partial class Career
             teams.Insert(0, Team);
         return teams.SelectMany(t =>
             {
-                var team = t with { Car = t.Id == Team.Id ? Works.Prepared(Car, Level(Facility.Workshop)) : CarOf(t.Id) };
+                var team = t with { Car = t.Id == Team.Id ? Works.Prepared(RaceCarFor(ev)!, Level(Facility.Workshop)) : CarOf(t.Id) };
                 return StartersOf(t, ev.Date).Select(id => new RaceEntry(_data.Drivers[id], team));
             })
             .Concat(PrivateersFor(ev, circuit))
@@ -490,6 +499,7 @@ public sealed partial class Career
         }
         PayWagesUntil(date);
         CatchUpYear(date.Year);
+        DeliverIndyOrder(date);
         Today = date;
     }
 
@@ -666,6 +676,8 @@ public sealed partial class Career
             return EntryResult.NoSportsCar;
         if (ev.IsEndurance && Drivers.Count < 2)
             return EntryResult.NeedTwoDrivers;
+        if (Indianapolis.Is(_data.Circuits[ev.CircuitId]) && RaceCarFor(ev) is null)
+            return EntryResult.NoIndyCar;
         if (!ev.IsEndurance && Formula.Breach(Car, _data.Circuits[ev.CircuitId], ev.Date.Year) is not null)
             return EntryResult.CarNotEligible;
 

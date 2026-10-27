@@ -66,6 +66,7 @@ public class EraTests
         var career = CareerIn(1934);
         Assert.Equal(820, career.Car.WeightKg);
         Assert.Equal(EntryResult.CarNotEligible, career.Enter("1934-italy"));
+        IndyTests.BuySpecial(career);
         Assert.Equal(EntryResult.Entered, career.Enter("1934-indianapolis"));
     }
 
