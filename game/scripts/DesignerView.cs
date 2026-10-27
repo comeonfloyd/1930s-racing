@@ -75,7 +75,8 @@ public partial class CalendarScreen
         var queued = career.Projects.Count > 0 ? " after the work already ordered" : "";
         order.AddChild(new Label
         {
-            Text = $"£{preview.Cost:N0} · {preview.Weeks} weeks{queued}{when}",
+            Text = $"£{preview.Cost:N0} · {preview.Weeks} weeks{queued}{when}\n"
+                   + $"Estimate ±{preview.Spread * 100:0}%" + (preview.Faults > 0 ? $" · {preview.Faults}–{preview.Faults + 1} teething troubles" : ""),
             SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
         var why = (indy ? career.IndyCarUnderway : career.NewCarUnderway) ? "A new car is already being built."
