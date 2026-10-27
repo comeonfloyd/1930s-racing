@@ -191,7 +191,8 @@ public static class CarDesigner
                        + (int)d.Suspension
                        + (d.Brakes == Brakes.Hydraulic ? 1 : 0)
                        - (int)Math.Floor(Math.Max(0, engineHp - limit) / 60)
-                       - (d.Layout == EngineLayout.V16 ? 1 : 0);
+                       - (d.Layout == EngineLayout.V16 ? 1 : 0)
+                       - FrameFlex(d.Frame, engineHp / (d.Body == Body.Streamlined ? 1.05 : 1));
         handling = Math.Clamp(handling, 8, DrawingOffice.MaxHandling);
 
         // A new design is fragile, more so with parts new to the sport and highly stressed engines.
@@ -208,8 +209,26 @@ public static class CarDesigner
 
         var cylinders = Cylinders(d.Layout);
         return new Car($"{teamName} {cylinders}C-{year % 100:00}{(indy ? " Special" : "")}", (int)Math.Round(hp), weight, handling,
-            Math.Round(reliability, 2), d.Litres);
+            Math.Round(reliability, 2), d.Litres, Thirst(d));
     }
+
+    /// <summary>
+    /// Fuel use against a typical car of the day (a supercharged 3-litre): bigger engines drink
+    /// more, a supercharger more again, and a two-stage one burns alcohol by the gallon.
+    /// </summary>
+    public static double Thirst(CarDesign d) =>
+        Math.Round(Math.Pow(d.Litres / 3, 0.6) * d.Supercharging switch { Supercharging.None => 0.85, Supercharging.Single => 1, _ => 1.25 }, 2);
+
+    /// <summary>A plain frame twists under a big engine: power it was not built for costs handling.</summary>
+    private static int FrameFlex(Frame frame, double engineHp) => frame switch
+    {
+        Frame.Ladder => (int)Math.Floor(Math.Max(0, engineHp - 220) / 50),
+        Frame.BoxedLadder => (int)Math.Floor(Math.Max(0, engineHp - 330) / 60),
+        _ => 0,
+    };
+
+    /// <summary>The handling a frame loses to the engine's power, for the designer to warn about.</summary>
+    public static int FrameFlex(CarDesign d, int year) => FrameFlex(d.Frame, EngineHorsepower(d, year) / (d.Body == Body.Streamlined ? 1.05 : 1));
 
     /// <summary>What designing and building it costs, before the chief engineer's skill.</summary>
     public static int Cost(CarDesign d)

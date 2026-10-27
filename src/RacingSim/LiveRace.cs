@@ -447,11 +447,14 @@ public sealed class LiveRace
         _messages.Add(new RaceMessage(time, lap, car.Entry.Driver.Id, $"{car.AtWheel.Name} {text}"));
 
     private double FuelPerLap(CarState car) =>
-        Circuit.LapKm / TankKm * (car.Pace == PaceOrder.Push ? 1.1 : car.Pace == PaceOrder.Nurse ? 0.9 : 1);
+        Circuit.LapKm / TankKm * car.Entry.Team.Car.Thirst * (car.Pace == PaceOrder.Push ? 1.1 : car.Pace == PaceOrder.Nurse ? 0.9 : 1);
 
     /// <summary>Rear tyres last about 250 km at racing pace in a 150 hp car; twisty circuits wear them faster.</summary>
     private double TyreWearPerLap(CarState car) =>
-        Circuit.LapKm * (0.8 + car.Entry.Team.Car.Horsepower / 400.0) / 300 * (1.15 - 0.3 * Circuit.StraightShare);
+        Circuit.LapKm * TyreWear(car.Entry.Team.Car) / 300 * (1.15 - 0.3 * Circuit.StraightShare);
+
+    /// <summary>How hard a car is on its tyres: more power and more weight wear them faster.</summary>
+    public static double TyreWear(Car car) => (0.8 + car.Horsepower / 400.0) * (0.85 + car.WeightKg / 5000.0);
 
     /// <summary>(speed, tyre wear, engine strain, crash risk) multipliers for a pace order.</summary>
     private static (double Speed, double Wear, double Strain, double Risk) PaceEffect(PaceOrder pace) => pace switch

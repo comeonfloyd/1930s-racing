@@ -120,6 +120,12 @@ public partial class CalendarScreen
                    + (preview.Faults > 0 ? $" Expect about {preview.Faults}–{preview.Faults + 1} teething troubles, each costing {Prototype.FaultReliability * 100:0}% reliability until a test day or a race shows it up." : ""),
             ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
+        if (CarDesigner.FrameFlex(d, preview.Year) is > 0 and var flex)
+            _body.AddChild(new Label
+            {
+                Text = $"The {CarDesigner.Name(d.Frame).ToLowerInvariant()} twists under an engine this strong: {flex} handling lost. A stiffer frame would hold it.",
+                Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
         var engineHp = CarDesigner.EngineHorsepower(d, preview.Year);
         if (engineHp > preview.Car.Horsepower)
             _body.AddChild(new Label
@@ -246,6 +252,12 @@ public partial class CalendarScreen
         Row("Handling", now.Handling.ToString(), $"about {design.Handling}", design.Handling.CompareTo(now.Handling));
         Row("Reliability", $"{now.Reliability:P0}", preview.Faults > 0 ? $"about {reliability:P0} at first" : $"about {design.Reliability:P0}", reliability.CompareTo(now.Reliability));
         Row("Engine", $"{now.EngineLitres:0.0#} L", $"{design.EngineLitres:0.0#} L", 0);
+        Row("Fuel use", $"{now.Thirst:P0}", $"{design.Thirst:P0}", now.Thirst.CompareTo(design.Thirst));
+        // Tyre wear against a typical 200 hp, 750 kg car of the day.
+        var typical = LiveRace.TyreWear(new Car("", 200, 750, 0, 0));
+        var wearNow = LiveRace.TyreWear(now) / typical;
+        var wearDesign = LiveRace.TyreWear(design) / typical;
+        Row("Tyre wear", $"{wearNow:P0}", $"{wearDesign:P0}", Math.Round(wearNow, 2).CompareTo(Math.Round(wearDesign, 2)));
         card.AddChild(grid);
         return card;
     }

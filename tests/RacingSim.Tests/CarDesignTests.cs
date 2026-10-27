@@ -158,4 +158,40 @@ public class CarDesignTests
         Assert.True(career.TeethingFaults >= 1);
         Assert.Equal(1934, career.ModelYear);
     }
+
+    [Fact]
+    public void BigAndSuperchargedEnginesDrinkMoreFuel()
+    {
+        var plain = CarDesigner.Default(1934);
+        Assert.Equal(1.0, CarDesigner.Thirst(plain with { Litres = 3.0 }), 2);
+        Assert.True(CarDesigner.Thirst(plain with { Litres = 5.0 }) > 1.3);
+        Assert.True(CarDesigner.Thirst(plain with { Supercharging = Supercharging.None }) < CarDesigner.Thirst(plain));
+        Assert.True(CarDesigner.Thirst(CarDesigner.Default(1938) with { Supercharging = Supercharging.TwoStage })
+                    > CarDesigner.Thirst(CarDesigner.Default(1938)));
+        Assert.Equal(CarDesigner.Thirst(plain), CarDesigner.Build(plain, "X", 1934).Thirst);
+    }
+
+    [Fact]
+    public void APlainFrameTwistsUnderABigEngine()
+    {
+        var big = CarDesigner.Default(1936) with { Litres = 5.0, Frame = Frame.Ladder };
+        Assert.True(CarDesigner.FrameFlex(big, 1936) > 0);
+        Assert.Equal(0, CarDesigner.FrameFlex(big with { Frame = Frame.Tubular }, 1936));
+        Assert.True(CarDesigner.Build(big, "X", 1936).Handling < CarDesigner.Build(big with { Frame = Frame.Tubular }, "X", 1936).Handling);
+    }
+
+    [Fact]
+    public void AThirstyCarMakesMoreStops()
+    {
+        var data = TestData.Load();
+        var ev = data.Seasons[1930].Events.Single(e => e.Id == "1930-monza");
+        int Stops(double thirst)
+        {
+            var grid = RaceSim.FullGrid(data).Select(e => e with { Team = e.Team with { Car = e.Team.Car with { Thirst = thirst, Reliability = 0.999 } } }).ToList();
+            var race = new LiveRace(ev, data.Circuits[ev.CircuitId], grid, 4, new RaceSettings(false));
+            race.RunToEnd();
+            return race.Cars().Sum(c => c.PitStops);
+        }
+        Assert.True(Stops(1.5) > Stops(1.0));
+    }
 }
