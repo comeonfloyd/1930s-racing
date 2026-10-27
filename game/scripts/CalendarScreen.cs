@@ -270,8 +270,13 @@ public partial class CalendarScreen : Control
         if (career.SeasonOver)
             _side.AddChild(SummaryCard(career));
         _side.AddChild(MoneyCard(career));
+        // The Indianapolis card goes above the drawing office while the 500 is still to come and the team has no car for it.
+        var indy = career.CurrentSeason.Events.FirstOrDefault(e => Indianapolis.Is(_data.Circuits[e.CircuitId]));
+        var indyFirst = indy is not null && indy.Date >= career.Today && career.RaceCarFor(indy) is null;
+        if (indyFirst)
+            _side.AddChild(IndyCard(career));
         _side.AddChild(DrawingOfficeCard(career));
-        if (career.CurrentSeason.Events.Any(e => Indianapolis.Is(_data.Circuits[e.CircuitId])))
+        if (indy is not null && !indyFirst)
             _side.AddChild(IndyCard(career));
         _side.AddChild(RivalsCard(career));
         _side.AddChild(TeamCard(career));
@@ -567,7 +572,7 @@ public partial class CalendarScreen : Control
         line.AddThemeConstantOverride("separation", 8);
         var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         text.AddThemeConstantOverride("separation", -2);
-        text.AddChild(new Label { Text = $"Buy a {Indianapolis.Builder} special" });
+        text.AddChild(new Label { Text = $"Buy the {forSale.Name}" });
         text.AddChild(new Label
         {
             Text = $"{forSale.Horsepower} hp, {forSale.WeightKg} kg, {forSale.EngineLitres:0.0#} L · {Indianapolis.BuyWeeks} weeks by liner",

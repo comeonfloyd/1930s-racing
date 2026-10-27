@@ -68,23 +68,7 @@ public partial class CalendarScreen
         Choice(grid, "Body", Enum.GetValues<Body>(), d.Body, CarDesigner.Name, CarDesigner.FirstYear, year, v => SetDraft(Draft with { Body = v }));
         _body.AddChild(card);
 
-        _body.AddChild(Comparison(indy ? career.IndyCar ?? career.IndyCarForSale : career.Car, preview));
-        _body.AddChild(new Label
-        {
-            Text = $"The drawing office's estimate: with {career.StaffIn(StaffRole.Engineer)?.Name ?? "no chief engineer"} the real car can come out "
-                   + $"{preview.Spread * 100:0}% either way, more often worse than better."
-                   + (preview.Faults > 0 ? $" Expect about {preview.Faults}–{preview.Faults + 1} teething troubles, each costing {Prototype.FaultReliability * 100:0}% reliability until a test day or a race shows it up." : ""),
-            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
-        });
-        var engineHp = CarDesigner.EngineHorsepower(d, preview.Year);
-        if (engineHp > preview.Car.Horsepower)
-            _body.AddChild(new Label
-            {
-                Text = $"The engine makes {engineHp} hp, but the tyres of {preview.Year} put down only about {CarDesigner.TyreLimit(preview.Year):0} hp: "
-                       + $"the rest goes in wheelspin, so it counts as {preview.Car.Horsepower} hp, and the strain costs handling and reliability.",
-                Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            });
-
+        // The price and the Order button come before the figures, so they stay in view.
         var order = new HBoxContainer();
         order.AddThemeConstantOverride("separation", 12);
         var when = preview.Year > career.Today.Year ? $", racing from 1 January {preview.Year}" : "";
@@ -127,6 +111,23 @@ public partial class CalendarScreen
         };
         order.AddChild(go);
         _body.AddChild(order);
+        _body.AddChild(Comparison(indy ? career.IndyCar ?? career.IndyCarForSale : career.Car, preview));
+        _body.AddChild(new Label
+        {
+            Text = $"The drawing office's estimate: with {career.StaffIn(StaffRole.Engineer)?.Name ?? "no chief engineer"} the real car can come out "
+                   + $"{preview.Spread * 100:0}% either way, more often worse than better."
+                   + (preview.Faults > 0 ? $" Expect about {preview.Faults}–{preview.Faults + 1} teething troubles, each costing {Prototype.FaultReliability * 100:0}% reliability until a test day or a race shows it up." : ""),
+            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        var engineHp = CarDesigner.EngineHorsepower(d, preview.Year);
+        if (engineHp > preview.Car.Horsepower)
+            _body.AddChild(new Label
+            {
+                Text = $"The engine makes {engineHp} hp, but the tyres of {preview.Year} put down only about {CarDesigner.TyreLimit(preview.Year):0} hp: "
+                       + $"the rest goes in wheelspin, so it counts as {preview.Car.Horsepower} hp, and the strain costs handling and reliability.",
+                Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
+
         if (preview.Breach is { } breach)
             _body.AddChild(new Label { Text = $"{breach} It could not race {(indy ? "at Indianapolis" : "in Europe")}.", Modulate = new Color(1, 0.65f, 0.55f), AutowrapMode = TextServer.AutowrapMode.WordSmart });
         else if ((indy ? Indianapolis.Breach(d, preview.Car.Name, preview.Year + 1) : Formula.Breach(preview.Car, preview.Year + 1)) is { } next && career.HasNextSeason)
