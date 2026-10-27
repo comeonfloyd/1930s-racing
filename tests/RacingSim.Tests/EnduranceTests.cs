@@ -85,6 +85,19 @@ public class EnduranceTests
     }
 
     [Fact]
+    public void ADriverLeftOutByThePitWallStillComesInForFuel()
+    {
+        foreach (var seed in Enumerable.Range(0, 10))
+        {
+            var (ev, circuit, grid) = LeMans(1933);
+            var race = new LiveRace(ev, circuit, grid, seed, manualTeams: ["alfa-rossa"]);
+            race.RunToEnd();
+            Assert.DoesNotContain(race.Result().Classification,
+                c => c.Entry.Team.Id == "alfa-rossa" && c.Retirement?.Cause == RetirementCause.OutOfFuel);
+        }
+    }
+
+    [Fact]
     public void TheRaceStartsInDaylightAndRunsThroughTheNight()
     {
         var (ev, circuit, grid) = LeMans(1931);

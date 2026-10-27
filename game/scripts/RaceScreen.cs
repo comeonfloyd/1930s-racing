@@ -175,6 +175,8 @@ public partial class RaceScreen : Control
             var stripe = new ColorRect { CustomMinimumSize = new Vector2(4, 18), SizeFlagsVertical = SizeFlags.ShrinkCenter };
             var name = new Label { SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
             var gap = new Label { ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(72, 0) };
+            if (_race.Event.IsEndurance)
+                name.AddThemeFontSizeOverride("font_size", 12);  // two surnames a row
             if (compact)
             {
                 foreach (var label in new[] { position, name, gap })
@@ -642,7 +644,8 @@ public partial class RaceScreen : Control
         center.SetAnchorsPreset(LayoutPreset.FullRect);
         shade.AddChild(center);
         var card = Card();
-        card.CustomMinimumSize = new Vector2(520, 0);
+        // Wider for a 24-hour race, so two drivers' names fit on a line.
+        card.CustomMinimumSize = new Vector2(_race.Event.IsEndurance ? 640 : 520, 0);
         center.AddChild(card);
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 6);

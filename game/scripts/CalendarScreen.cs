@@ -223,7 +223,7 @@ public partial class CalendarScreen : Control
         _action.Visible = true;
         _action.Disabled = false;
         if (career.NextRace is { } next)
-            _action.Text = $"Go to {next.Name}  ›";
+            _action.Text = next.IsEndurance ? "Go to Le Mans  ›" : $"Go to {next.Name}  ›";
         else if (!career.SeasonOver)
             _action.Text = "Play out the season  ›";
         else if (career.HasNextSeason)
@@ -715,8 +715,8 @@ public partial class CalendarScreen : Control
             facts.AddChild(Chip($"Prestige {ev.Prestige}"));
             if (ev.IsEndurance)
             {
-                facts.AddChild(Chip("24 hours · two drivers a car", null,
-                    "Sports cars only, outside the Grand Prix rules. Drivers change at the stops; no refuelling within 24 laps of the last fill."));
+                facts.AddChild(Chip("24 hours", null,
+                    "Sports cars only, outside the Grand Prix rules. Two drivers a car, who change at the stops; no refuelling within 24 laps of the last fill."));
                 if (career.SportsCarFor(ev) is { } sports)
                     facts.AddChild(Chip(sports.Name, null, $"{sports.Horsepower} hp, {sports.WeightKg} kg, {sports.EngineLitres:0.0#} L"));
                 else if (ev.Date >= career.Today)

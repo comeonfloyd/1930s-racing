@@ -239,10 +239,12 @@ public sealed class LiveRace
         car.LapStart = start;
         car.PitTime = 0;
 
-        // Into the pits at the line, if called, or if the AI pit wall wants it.
+        // Into the pits at the line, if called, or if the AI pit wall wants it. At Le Mans a
+        // driver left out by the player's pit wall still comes in himself before the tank runs dry.
         var lapsLeft = LapsLeft(car, start);
         var manual = _manualTeams.Contains(car.Entry.Team.Id);
-        if (lap > 1 && (car.PitCalled || car.TyreBurst || (!manual && WantsStop(car, lapsLeft, start))))
+        var stops = manual ? Event.IsEndurance && FuelShort(car, lapsLeft) : WantsStop(car, lapsLeft, start);
+        if (lap > 1 && (car.PitCalled || car.TyreBurst || stops))
             PitStop(car, lapsLeft, start, lap);
 
         var fuelForLap = FuelPerLap(car);
@@ -340,7 +342,8 @@ public sealed class LiveRace
     {
         if (TimeLimit is not { } limit)
             return Event.Laps - car.LapTimes.Count;
-        var lapTime = car.LapTimes.Count > 0 ? car.LapTimes[^1] : Circuit.LapKm / RaceSim.AverageSpeedKmh(car.Entry, Circuit) * 3600;
+        // The quickest recent lap, so a lap slowed by a pit stop does not make the end seem nearer.
+        var lapTime = car.LapTimes.Count > 0 ? car.LapTimes.TakeLast(5).Min() : Circuit.LapKm / RaceSim.AverageSpeedKmh(car.Entry, Circuit) * 3600;
         return Math.Max(0, (int)Math.Ceiling((limit - time) / lapTime));
     }
 
@@ -351,7 +354,8 @@ public sealed class LiveRace
     {
         var rng = car.Rng;
         // Fuel for the rest of the race, or a full tank, when the rules allow it.
-        var needed = Math.Min(1, lapsLeft * FuelPerLap(car) * 1.05);
+        // At Le Mans the tank is filled: the next chance to refuel may be 24 laps away.
+        var needed = Event.IsEndurance ? 1 : Math.Min(1, lapsLeft * FuelPerLap(car) * 1.05);
         var fuelAdded = FuelAllowed(car) ? Math.Max(0, needed - car.Fuel) : 0;
         double seconds;
         string work;
@@ -395,11 +399,14 @@ public sealed class LiveRace
     /// or the tyres are nearly gone; in an endurance race, also to rest a driver after about
     /// three hours at the wheel.
     /// </summary>
+    private bool FuelShort(CarState car, int lapsLeft) =>
+        lapsLeft > 0 && car.Fuel < FuelPerLap(car) * 1.5 && car.Fuel < lapsLeft * FuelPerLap(car) && FuelAllowed(car);
+
     private bool WantsStop(CarState car, int lapsLeft, double time)
     {
         if (lapsLeft <= 0)
             return false;
-        var fuelShort = car.Fuel < FuelPerLap(car) * 1.5 && car.Fuel < lapsLeft * FuelPerLap(car) && FuelAllowed(car);
+        var fuelShort = FuelShort(car, lapsLeft);
         var tyresGone = car.Tyres > 0.85 && lapsLeft * TyreWearPerLap(car) > 1 - car.Tyres;
         var weary = car.Entry.CoDriver is not null && (time - car.StintStart) / 3600 > 3 && lapsLeft > 3;
         return fuelShort || tyresGone || weary;

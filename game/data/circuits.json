@@ -14,5 +14,5 @@
   { "id": "bremgarten", "name": "Bremgarten", "country": "Switzerland", "region": "Europe", "type": "RoadCourse", "lapKm": 7.28, "latitude": 46.966, "longitude": 7.418, "firstYear": 1934, "lastYear": 1939, "straightShare": 0.4, "danger": 0.55, "rainChance": 0.35 },
   { "id": "tripoli", "name": "Mellaha, Tripoli", "country": "Libya", "region": "Europe", "type": "RoadCourse", "lapKm": 13.14, "latitude": 32.893, "longitude": 13.295, "firstYear": 1930, "lastYear": 1939, "straightShare": 0.85, "danger": 0.4, "rainChance": 0.03 },
   { "id": "brooklands", "name": "Brooklands", "country": "United Kingdom", "region": "Europe", "type": "BankedOval", "lapKm": 4.43, "latitude": 51.350, "longitude": -0.470, "firstYear": 1930, "lastYear": 1939, "straightShare": 0.8, "danger": 0.45, "rainChance": 0.35 },
-  { "id": "lemans", "name": "Circuit de la Sarthe", "country": "France", "region": "Europe", "type": "RoadCourse", "lapKm": 13.49, "latitude": 47.956, "longitude": 0.207, "firstYear": 1930, "lastYear": 1939, "straightShare": 0.7, "danger": 0.45, "rainChance": 0.3 }
+  { "id": "lemans", "name": "Circuit de la Sarthe", "country": "France", "region": "Europe", "type": "RoadCourse", "lapKm": 13.49, "latitude": 47.956, "longitude": 0.207, "firstYear": 1930, "lastYear": 1939, "straightShare": 0.85, "danger": 0.45, "rainChance": 0.3 }
 ]
