@@ -17,12 +17,15 @@ public static class RaceRequest
 
 /// <summary>
 /// Race day: the circuit fills the screen, with cards over it for the timing tower, the race
-/// clock, playback speed (real time up to 240x), the camera, and the player's pit wall with
-/// fuel and tyre gauges, pace orders and a box call for each of the team's cars.
+/// clock, playback speed (real time up to 240x, or 1200x for a 24-hour race), the camera, and
+/// the player's pit wall with fuel and tyre gauges, pace orders and a box call for each of the
+/// team's cars. In a 24-hour race the clock shows the time of day, night falls on the track,
+/// and the pit wall shows who is driving and whether the drivers change at the next stop.
 /// </summary>
 public partial class RaceScreen : Control
 {
-    private static readonly int[] Speeds = { 1, 10, 60, 240 };
+    private static readonly int[] GrandPrixSpeeds = { 1, 10, 60, 240 };
+    private static readonly int[] EnduranceSpeeds = { 1, 60, 240, 1200 };
     private static readonly PaceOrder[] Paces = { PaceOrder.Nurse, PaceOrder.Hold, PaceOrder.Race, PaceOrder.Push };
     private const float SideWidth = 290;
 
@@ -52,11 +55,12 @@ public partial class RaceScreen : Control
     private bool _paused;
     private bool _resultShown;
     private readonly List<Button> _speedButtons = new();
+    private int[] Speeds => _race.Event.IsEndurance ? EnduranceSpeeds : GrandPrixSpeeds;
 
     private sealed record TowerRow(PanelContainer Panel, Label Position, ColorRect Stripe, Label Name, Label Gap);
 
     private sealed record PitCard(string DriverId, Label Position, ProgressBar Fuel, Label FuelText,
-        ProgressBar Tyres, Label TyreText, Button[] Pace, Button Box, Label Warning);
+        ProgressBar Tyres, Label TyreText, Button[] Pace, Button Box, Label Warning, Label? AtWheel, CheckButton? Swap);
 
     public override void _Ready()
     {
@@ -67,6 +71,8 @@ public partial class RaceScreen : Control
             return;
         }
         _race = race;
+        if (race.Event.IsEndurance)
+            _speed = 240;
         Theme = UiTheme.Get();
 
         var backdrop = new ColorRect { Color = UiTheme.Background, MouseFilter = MouseFilterEnum.Ignore };
@@ -95,6 +101,14 @@ public partial class RaceScreen : Control
         if (DevShot.Active)
         {
             SetSpeed(240);
+            // DevShot --night: start the shots at midnight in a 24-hour race.
+            if (_race.Event.IsEndurance && OS.GetCmdlineUserArgs().Contains("--night"))
+            {
+                _time = 8 * 3600;
+                _race.AdvanceTo(_time);
+                _track.Night = Darkness(_time);
+                Refresh();
+            }
             DevShot.Capture(this, "race.png", 5, () =>
             {
                 var mine = _followChoices.IndexOf(_race.Cars().First(c => c.Entry.Team.Id == RaceRequest.PlayerTeamId).Entry.Driver.Id);
@@ -203,12 +217,28 @@ public partial class RaceScreen : Control
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 8);
         top.AddChild(new ColorRect { Color = TrackView.TeamColor(entry.Team.Id), CustomMinimumSize = new Vector2(4, 22), SizeFlagsVertical = SizeFlags.ShrinkCenter });
-        top.AddChild(new Label { Text = entry.Driver.Name, ThemeTypeVariation = "Heading", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
+        top.AddChild(new Label { Text = entry.Names, TooltipText = FullNames(entry), ThemeTypeVariation = "Heading", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
         var badge = new PanelContainer { ThemeTypeVariation = "Badge", SizeFlagsVertical = SizeFlags.ShrinkCenter };
         var position = new Label { ThemeTypeVariation = "Heading" };
         badge.AddChild(position);
         top.AddChild(badge);
         box.AddChild(top);
+
+        // A shared car: who is driving now, and whether the other takes over at the next stop.
+        Label? atWheel = null;
+        CheckButton? swap = null;
+        if (entry.CoDriver is not null)
+        {
+            atWheel = new Label { ThemeTypeVariation = "Muted", ClipText = true };
+            box.AddChild(atWheel);
+            swap = new CheckButton
+            {
+                Text = "Change drivers at the next stop", ButtonPressed = true,
+                TooltipText = "Off: the same driver goes back out. A long stint tires him: slower laps and more mistakes after a few hours.",
+            };
+            swap.Toggled += on => _race.SetSwapAtStop(id, on);
+            box.AddChild(swap);
+        }
 
         var (fuelRow, fuel, fuelText) = Gauge("Fuel");
         var (tyreRow, tyres, tyreText) = Gauge("Tyres");
@@ -232,7 +262,13 @@ public partial class RaceScreen : Control
         OneAtATime(paceButtons);
         box.AddChild(paceRow);
 
-        var boxCall = new Button { ThemeTypeVariation = "Danger", CustomMinimumSize = new Vector2(0, 30), TooltipText = "Stop for fuel and rear tyres next time past the pits" };
+        var boxCall = new Button
+        {
+            ThemeTypeVariation = "Danger", CustomMinimumSize = new Vector2(0, 30),
+            TooltipText = _race.Event.IsEndurance
+                ? $"Stop next time past the pits: tyres, and fuel when {LiveRace.MinLapsBetweenRefuels} laps have passed since the last fill"
+                : "Stop for fuel and rear tyres next time past the pits",
+        };
         boxCall.Pressed += () =>
         {
             var car = _race.Cars().First(c => c.Entry.Driver.Id == id);
@@ -244,7 +280,7 @@ public partial class RaceScreen : Control
         box.AddChild(warning);
 
         card.AddChild(box);
-        _pitWall.Add(new PitCard(id, position, fuel, fuelText, tyres, tyreText, paceButtons, boxCall, warning));
+        _pitWall.Add(new PitCard(id, position, fuel, fuelText, tyres, tyreText, paceButtons, boxCall, warning, atWheel, swap));
         return card;
     }
 
@@ -289,7 +325,7 @@ public partial class RaceScreen : Control
         foreach (var car in _race.Cars().OrderBy(c => c.Entry.Team.Id == team ? 0 : 1))
         {
             _followChoices.Add(car.Entry.Driver.Id);
-            _follow.AddItem($"Follow {car.Entry.Driver.Name}");
+            _follow.AddItem($"Follow {car.Entry.Names}");
         }
         _follow.ItemSelected += i =>
         {
@@ -325,7 +361,7 @@ public partial class RaceScreen : Control
             {
                 Text = s == 1 ? "Real time" : $"{s}×", ToggleMode = true, ThemeTypeVariation = "Segment",
                 ButtonPressed = s == _speed, CustomMinimumSize = new Vector2(s == 1 ? 96 : 56, 0),
-                TooltipText = s == 1 ? "Watch at true race speed" : $"{s} times real speed",
+                TooltipText = s == 1 ? "Watch at true race speed" : $"{s} times real speed" + (s == 1200 ? ": an hour of racing in three seconds" : ""),
             };
             b.Pressed += () =>
             {
@@ -482,9 +518,22 @@ public partial class RaceScreen : Control
 
         var laps = _race.Event.Laps;
         var leaderLap = Math.Min(laps, (int)Math.Floor(cars[0].Distance) + 1);
-        _lap.Text = Over ? "Finished" : $"Lap {leaderLap}/{laps}";
         var wet = _race.Weather.IsWetAt(_time);
-        _clock.Text = Clock(_time) + (wet ? " · rain" : "") + (_paused ? " · paused" : "");
+        if (_race.Event.IsEndurance)
+        {
+            // No set number of laps: the hours left, and the time of day at the circuit.
+            var left = Math.Max(0, _race.Event.Hours * 3600 - _time);
+            _lap.Text = Over ? "Finished" : $"{Math.Ceiling(left / 3600):0}h left";
+            var hour = LiveRace.HourOfDay(_time);
+            _clock.Text = $"Lap {(int)Math.Floor(cars[0].Distance) + 1} · {(int)hour:00}:{(int)(hour % 1 * 60):00}"
+                + (_race.IsNightAt(_time) ? " · night" : "") + (wet ? " · rain" : "") + (_paused ? " · paused" : "");
+            _track.Night = Mathf.MoveToward(_track.Night, Darkness(_time), 0.02f);
+        }
+        else
+        {
+            _lap.Text = Over ? "Finished" : $"Lap {leaderLap}/{laps}";
+            _clock.Text = Clock(_time) + (wet ? " · rain" : "") + (_paused ? " · paused" : "");
+        }
         // Rain eases in and out over a few seconds of play rather than switching at once.
         _track.Rain = Mathf.MoveToward(_track.Rain, wet ? 1 : 0, 0.02f);
 
@@ -496,8 +545,8 @@ public partial class RaceScreen : Control
             var row = _tower[i];
             row.Position.Text = (i + 1).ToString();
             row.Stripe.Color = TrackView.TeamColor(c.Entry.Team.Id);
-            row.Name.Text = Short(c.Entry.Driver.Name);
-            row.Panel.TooltipText = c.Entry.Driver.Name;
+            row.Name.Text = c.Entry.CoDriver is null ? Short(c.Entry.Driver.Name) : c.Entry.Names;
+            row.Panel.TooltipText = FullNames(c.Entry);
             row.Gap.Text = c.Retirement?.Cause switch
             {
                 RetirementCause.MechanicalFailure => "Out · engine",
@@ -518,7 +567,7 @@ public partial class RaceScreen : Control
         {
             var position = cars.ToList().FindIndex(c => c.Entry.Driver.Id == card.DriverId);
             var car = cars[position];
-            var fuelLaps = car.Fuel * LiveRace.TankRangeKm / _race.Circuit.LapKm;
+            var fuelLaps = car.Fuel * (_race.Event.IsEndurance ? LiveRace.EnduranceTankRangeKm : LiveRace.TankRangeKm) / _race.Circuit.LapKm;
             card.Position.Text = $"P{position + 1}";
             card.Fuel.Value = car.Fuel;
             // After the flag the tank is all but empty by design: no need to show it.
@@ -533,10 +582,22 @@ public partial class RaceScreen : Control
             foreach (var b in card.Pace)
                 b.Disabled = !car.Running;
 
+            if (card.AtWheel is not null && car.AtWheel is { } driver)
+                card.AtWheel.Text = car.Running
+                    ? $"At the wheel: {driver.Name}, {car.StintHours:0.0} h{(car.StintHours > 3 ? " · tiring" : "")}"
+                    : $"Last at the wheel: {driver.Name}";
+            if (card.Swap is not null)
+            {
+                card.Swap.SetPressedNoSignal(car.SwapAtStop);
+                card.Swap.Disabled = !car.Running;
+            }
+
             card.Warning.Text = !car.Running ? (car.Finished ? "Finished." : "Out of the race.")
-                : car.InPits ? "In the pits: fuel and tyres."
+                : car.InPits ? (_race.Event.IsEndurance ? "In the pits: the driver works on the car alone." : "In the pits: fuel and tyres.")
+                : fuelLaps < 2 && !car.FuelAllowed ? "Low fuel, and too soon to refuel: nurse it round."
                 : fuelLaps < 2 ? "Low fuel: box now or the car runs dry."
                 : car.TyreWear > 0.8 ? "Rear tyres nearly gone."
+                : _race.Event.IsEndurance && !car.FuelAllowed ? $"No fuel at a stop yet: {LiveRace.MinLapsBetweenRefuels} laps between fills."
                 : "";
             card.Warning.Modulate = fuelLaps < 2 || car.TyreWear > 0.8 ? new Color(1, 0.6f, 0.5f) : Colors.White;
             card.Warning.Visible = card.Warning.Text.Length > 0;
@@ -590,7 +651,13 @@ public partial class RaceScreen : Control
         box.AddChild(new Label { Text = "RESULT", ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = _race.Event.Name, ThemeTypeVariation = "Title" });
         var winner = result.Classification[0];
-        box.AddChild(new Label { Text = $"{winner.Entry.Driver.Name} wins for {winner.Entry.Team.Name} in {Clock(winner.TotalTime)}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label
+        {
+            Text = _race.Event.IsEndurance
+                ? $"{winner.Entry.Names} win for {winner.Entry.Team.Name}: {winner.LapsCompleted} laps, {winner.LapsCompleted * _race.Circuit.LapKm:N0} km in {_race.Event.Hours} hours"
+                : $"{winner.Entry.Driver.Name} wins for {winner.Entry.Team.Name} in {Clock(winner.TotalTime)}",
+            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
         box.AddChild(new HSeparator());
         var header = new HBoxContainer();
         header.AddChild(new Label { Text = "", SizeFlagsHorizontal = SizeFlags.ExpandFill });
@@ -622,7 +689,7 @@ public partial class RaceScreen : Control
             var mine = c.Entry.Team.Id == team;
             line.AddChild(new Label { Text = c.Finished ? (i + 1).ToString() : "–", CustomMinimumSize = new Vector2(24, 0), HorizontalAlignment = HorizontalAlignment.Right });
             line.AddChild(new ColorRect { Color = TrackView.TeamColor(c.Entry.Team.Id), CustomMinimumSize = new Vector2(4, 18), SizeFlagsVertical = SizeFlags.ShrinkCenter });
-            line.AddChild(new Label { Text = c.Entry.Driver.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill, Modulate = mine ? UiTheme.Accent : Colors.White });
+            line.AddChild(new Label { Text = c.Entry.Names, TooltipText = FullNames(c.Entry), SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true, Modulate = mine ? UiTheme.Accent : Colors.White });
             line.AddChild(new Label { Text = c.Entry.Team.Name, ThemeTypeVariation = "Muted", CustomMinimumSize = new Vector2(120, 0) });
             var status = c.Retirement?.Cause switch
             {
@@ -630,6 +697,7 @@ public partial class RaceScreen : Control
                 RetirementCause.Crash => $"crashed, lap {c.Retirement.Lap}",
                 RetirementCause.FatalCrash => "killed",
                 RetirementCause.OutOfFuel => $"no fuel, lap {c.Retirement.Lap}",
+                _ when i == 0 && _race.Event.IsEndurance => $"{c.LapsCompleted} laps",
                 _ when i == 0 => Clock(c.TotalTime),
                 _ when c.LapsCompleted < winner.LapsCompleted => $"+{winner.LapsCompleted - c.LapsCompleted} lap{(winner.LapsCompleted - c.LapsCompleted > 1 ? "s" : "")}",
                 _ => $"+{c.TotalTime - winner.TotalTime:0.0}s",
@@ -667,6 +735,23 @@ public partial class RaceScreen : Control
     {
         var laps = leader.Distance - car.Distance;
         return laps >= 1 ? $"+{Math.Floor(laps)} lap{(laps >= 2 ? "s" : "")}" : $"+{laps * averageLap:0.0}s";
+    }
+
+    /// <summary>Both drivers' full names, for a tooltip.</summary>
+    private static string FullNames(RaceEntry entry) => string.Join(" and ", entry.Drivers.Select(d => d.Name));
+
+    /// <summary>
+    /// How dark the circuit is: dusk deepens over the hour around half past nine, and dawn
+    /// comes over the hour around half past four, the hours the race counts as night.
+    /// </summary>
+    private float Darkness(double time)
+    {
+        if (!_race.Event.IsEndurance)
+            return 0;
+        var hour = LiveRace.HourOfDay(time);
+        var dusk = Mathf.Clamp((float)(hour - (LiveRace.DuskHour - 0.5)), 0, 1);
+        var dawn = Mathf.Clamp((float)(LiveRace.DawnHour + 0.5 - hour), 0, 1);
+        return hour >= 12 ? dusk : dawn;
     }
 
     /// <summary>"Giuseppe Campari" becomes "G. Campari", so the tower stays narrow.</summary>

@@ -47,6 +47,9 @@ public partial class TrackView : Node2D
     /// <summary>How hard it is raining, 0 (dry) to 1: darkens the view and draws falling rain.</summary>
     public float Rain { get; set; }
 
+    /// <summary>How dark it is, 0 (day) to 1 (night): shades the view, and cars light their headlamps.</summary>
+    public float Night { get; set; }
+
     /// <summary>The car the camera follows, or null for a free camera.</summary>
     public string? FollowDriverId { get; set; }
 
@@ -140,6 +143,15 @@ public partial class TrackView : Node2D
         "millard" => new Color(0.2f, 0.55f, 0.35f),
         "duesenhoff" => new Color(0.55f, 0.3f, 0.6f),
         "privateers" or "us-privateers" => new Color(0.45f, 0.38f, 0.3f),
+        // Le Mans sports-car entrants.
+        "bentlay" => new Color(0.1f, 0.3f, 0.18f),
+        "lagonde" => new Color(0.32f, 0.46f, 0.3f),
+        "ryley" => new Color(0.36f, 0.46f, 0.62f),
+        "aston-marten" => new Color(0.56f, 0.72f, 0.62f),
+        "alfa-private" => new Color(0.58f, 0.16f, 0.16f),
+        "talbert" or "talbert-lago" => new Color(0.2f, 0.3f, 0.56f),
+        "delahoye" => new Color(0.26f, 0.42f, 0.86f),
+        "delange" => new Color(0.46f, 0.56f, 0.88f),
         _ => new Color(0.6f, 0.6f, 0.6f),
     };
 
@@ -198,11 +210,15 @@ public partial class TrackView : Node2D
             roadWidth = scale * 0.032f;
         }
 
+        if (Night > 0.01f)
+            DrawRect(GetViewportRect(), NightShade with { A = 0.62f * Night });
         DrawCars(scale, roadWidth);
         if (Rain > 0.01f)
             DrawRain();
     }
 
+    private static readonly Color NightShade = new(0.02f, 0.03f, 0.09f);
+    private static readonly Color Headlamp = new(1f, 0.93f, 0.65f);
     private static readonly Color RainShade = new(0.12f, 0.16f, 0.24f);
     private static readonly Color RainStreak = new(0.8f, 0.86f, 0.95f);
 
@@ -289,9 +305,20 @@ public partial class TrackView : Node2D
             var color = TeamColor(car.Entry.Team.Id);
             if (car.Retirement is not null)
                 color = color.Darkened(0.55f);
+            color = color.Darkened(0.4f * Night);
 
-            // Dust thrown up behind a running car.
-            if (car.Running && !car.InPits)
+            // At night, a pale beam of headlamp light on the road ahead.
+            if (Night > 0.01f && car.Running && !car.InPits)
+            {
+                var near = p + forward * length * 0.45f;
+                var far = p + forward * length * 3.2f;
+                DrawColoredPolygon(new[] { near + left * length * 0.14f, far + left * length * 0.75f, far - left * length * 0.75f, near - left * length * 0.14f },
+                    Headlamp with { A = 0.22f * Night });
+                DrawCircle(near, length * 0.12f, Headlamp with { A = 0.7f * Night });
+            }
+
+            // Dust thrown up behind a running car, unseen in the dark.
+            if (car.Running && !car.InPits && Night < 0.5f)
             {
                 for (var k = 1; k <= 3; k++)
                     DrawCircle(p - forward * length * (0.5f + 0.35f * k), length * (0.12f + 0.06f * k), new Color(0.82f, 0.76f, 0.62f, 0.22f / k));
