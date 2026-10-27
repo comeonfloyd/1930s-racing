@@ -13,7 +13,7 @@ public partial class CalendarScreen
 {
     private void WorksView(Career career)
     {
-        _body.AddChild(new Label { Text = "STAFF", ThemeTypeVariation = "Overline" });
+        _body.AddChild(new Label { Text = "STAFF", ThemeTypeVariation = "Section" });
         foreach (var role in Enum.GetValues<StaffRole>())
         {
             var member = career.StaffIn(role);
@@ -21,17 +21,17 @@ public partial class CalendarScreen
             _body.AddChild(StaffCard(career, role, member, label, mine: true));
         }
 
-        _body.AddChild(new Label { Text = "FACILITIES", ThemeTypeVariation = "Overline" });
+        _body.AddChild(new Label { Text = "FACILITIES", ThemeTypeVariation = "Section" });
         foreach (var facility in Enum.GetValues<Facility>())
             _body.AddChild(FacilityCard(career, facility));
 
-        _body.AddChild(new Label { Text = "TESTING", ThemeTypeVariation = "Overline" });
+        _body.AddChild(new Label { Text = "TESTING", ThemeTypeVariation = "Section" });
         _body.AddChild(TestingCard(career));
 
-        _body.AddChild(new Label { Text = "FOR HIRE", ThemeTypeVariation = "Overline" });
+        _body.AddChild(new Label { Text = "FOR HIRE", ThemeTypeVariation = "Section" });
         var free = career.StaffForHire;
         if (free.Count == 0)
-            _body.AddChild(new Label { Text = "Nobody is looking for work this year.", ThemeTypeVariation = "Muted" });
+            _body.AddChild(new Label { Text = "Nobody is looking for work this year.", ThemeTypeVariation = "Note" });
         foreach (var member in free)
         {
             var fee = Works.HiringFee(member);
@@ -165,11 +165,12 @@ public partial class CalendarScreen
         return card;
     }
 
-    private static Control StaffCard(Career career, StaffRole role, StaffMember? member, Control action, bool mine)
+    private Control StaffCard(Career career, StaffRole role, StaffMember? member, Control action, bool mine)
     {
         var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 14);
+        row.AddChild(StaffPhoto(member?.Id, new Vector2(64, 80)));
         row.AddChild(Badge(member?.Skill.ToString() ?? "–", "SKILL", mine && member is not null));
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         titles.AddThemeConstantOverride("separation", 2);
@@ -205,7 +206,7 @@ public partial class CalendarScreen
         var badge = new PanelContainer { ThemeTypeVariation = "Badge", CustomMinimumSize = new Vector2(64, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter };
         var stack = new VBoxContainer();
         stack.AddThemeConstantOverride("separation", -4);
-        stack.AddChild(new Label { Text = value, ThemeTypeVariation = "Big", HorizontalAlignment = HorizontalAlignment.Center, Modulate = accent ? UiTheme.Accent : Colors.White });
+        stack.AddChild(new Label { Text = value, ThemeTypeVariation = "Big", HorizontalAlignment = HorizontalAlignment.Center }.Tint(accent ? UiTheme.Red : null));
         stack.AddChild(new Label { Text = caption, ThemeTypeVariation = "Overline", HorizontalAlignment = HorizontalAlignment.Center });
         badge.AddChild(stack);
         return badge;
