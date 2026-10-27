@@ -8,6 +8,7 @@
     { "id": "1931-avus", "name": "Avusrennen", "circuitId": "avus", "date": "1931-05-10", "laps": 15, "startMoney": 300, "prizeFund": 1500, "prestige": 7 },
     { "id": "1931-italy", "name": "Italian Grand Prix", "circuitId": "monza", "date": "1931-05-24", "laps": 155, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
     { "id": "1931-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1931-05-30", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
+    { "id": "1931-lemans", "name": "24 Hours of Le Mans", "circuitId": "lemans", "date": "1931-06-13", "laps": 300, "hours": 24, "startMoney": 200, "prizeFund": 3000, "prestige": 9 },
     { "id": "1931-france", "name": "French Grand Prix", "circuitId": "montlhery", "date": "1931-06-21", "laps": 88, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
     { "id": "1931-marne", "name": "Marne Grand Prix", "circuitId": "reims", "date": "1931-07-05", "laps": 51, "startMoney": 200, "prizeFund": 1000, "prestige": 6, "absentTeams": ["mercator-benz", "auto-unitas"] },
     { "id": "1931-belgium", "name": "Belgian Grand Prix", "circuitId": "spa", "date": "1931-07-12", "laps": 88, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },

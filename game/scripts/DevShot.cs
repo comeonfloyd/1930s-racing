@@ -13,6 +13,7 @@ namespace RacingManager;
 ///   --year=1934                  start the career in this year (with --team)
 ///   --stay=1                     keep running after the last picture
 ///   --no-textures                draw the race without the painted art (for debugging)
+///   --night                      in a 24-hour race, start the race shots at midnight
 /// It saves calendar.png, map.png, drivers.png, race.png, race-zoom.png, race-result.png and season.png, then quits.
 /// </summary>
 public static class DevShot

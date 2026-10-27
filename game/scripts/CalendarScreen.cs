@@ -223,7 +223,7 @@ public partial class CalendarScreen : Control
         _action.Visible = true;
         _action.Disabled = false;
         if (career.NextRace is { } next)
-            _action.Text = $"Go to {next.Name}  ›";
+            _action.Text = next.IsEndurance ? "Go to Le Mans  ›" : $"Go to {next.Name}  ›";
         else if (!career.SeasonOver)
             _action.Text = "Play out the season  ›";
         else if (career.HasNextSeason)
@@ -285,6 +285,8 @@ public partial class CalendarScreen : Control
             EntryResult.EventPassed => "That race has already been run.",
             EntryResult.NoDrivers => "You have no drivers left to enter.",
             EntryResult.CarNotEligible => NotEligible(Career, eventId) ?? "The car does not meet this year's rules.",
+            EntryResult.NoSportsCar => $"{Career.Team.Name} has no sports car for Le Mans this year: the Grand Prix car cannot run there.",
+            EntryResult.NeedTwoDrivers => "A 24-hour race needs two drivers to share each car. Sign another driver.",
             _ => result.ToString(),
         };
         _notice.Visible = _notice.Text.Length > 0;
@@ -363,6 +365,7 @@ public partial class CalendarScreen : Control
                      "The rules change: from 1934 a car may weigh at most 750 kg, from 1938 its engine may be at most 3 litres. The drawing office can build the works' next car; one built for next season waits until 1 January, and the maker pays half when the rules rule out your car.",
                      "Sign drivers looking for a drive, or release one to save wages.",
                      "On race day you run the pit wall: pace orders and pit stops.",
+                     "Le Mans is a 24-hour race outside the Grand Prix rules, for the maker's sports car. Two drivers share each car and change at the stops; there is no refuelling within 24 laps of the last fill, and the race runs through the night. The most distance in 24 hours wins.",
                  })
             box.AddChild(new Label { Text = line, ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         return card;
@@ -391,15 +394,20 @@ public partial class CalendarScreen : Control
         box.AddChild(top);
         var car = career.Car;
         box.AddChild(new Label { Text = $"{car.Name} · {car.Horsepower} hp · {car.WeightKg} kg · handling {car.Handling} · reliability {car.Reliability:P0}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        if (career.Team.SportsCarFor(career.Today.Year) is { } sports)
+            box.AddChild(new Label { Text = $"For Le Mans: {sports.Name} · {sports.Horsepower} hp · {sports.WeightKg} kg", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         foreach (var id in career.Roster)
         {
             var driver = _data.Drivers[id];
             var dead = career.DeadDrivers.Contains(id);
+            var injured = career.InjuredUntil(id);
             box.AddChild(new Label
             {
-                Text = dead ? $"✝ {driver.Name}" : $"{driver.Name}  ·  speed {driver.Skills.Speed}",
-                Modulate = dead ? new Color(1, 1, 1, 0.45f) : Colors.White,
-                TooltipText = dead ? "Killed racing" : "",
+                Text = dead ? $"✝ {driver.Name}"
+                    : injured is { } until ? $"{driver.Name}  ·  injured until {until.ToString("d MMM", English)}"
+                    : $"{driver.Name}  ·  speed {driver.Skills.Speed}",
+                Modulate = dead ? new Color(1, 1, 1, 0.45f) : injured is not null ? new Color(1, 0.75f, 0.6f) : Colors.White,
+                TooltipText = dead ? "Killed racing" : injured is not null ? "Hurt in a crash: the car runs without them until then" : "",
                 MouseFilter = MouseFilterEnum.Pass,
             });
         }
@@ -678,19 +686,25 @@ public partial class CalendarScreen : Control
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         titles.AddThemeConstantOverride("separation", 2);
         titles.AddChild(new Label { Text = ev.Name, ThemeTypeVariation = "Heading" });
-        titles.AddChild(new Label { Text = $"{circuit.Name}, {circuit.Country} · {ev.Laps} laps · {ev.Laps * circuit.LapKm:0} km", ThemeTypeVariation = "Muted" });
+        titles.AddChild(new Label
+        {
+            Text = ev.IsEndurance
+                ? $"{circuit.Name}, {circuit.Country} · {ev.Hours} hours · {circuit.LapKm:0.#} km lap"
+                : $"{circuit.Name}, {circuit.Country} · {ev.Laps} laps · {ev.Laps * circuit.LapKm:0} km",
+            ThemeTypeVariation = "Muted",
+        });
         var facts = new HBoxContainer();
         facts.AddThemeConstantOverride("separation", 6);
         if (record is not null)
         {
             var w = record.Winner;
-            facts.AddChild(Chip($"Won by {w.Entry.Driver.Name} ({w.Entry.Team.Name})", w.Entry.Team.Id == career.Team.Id ? UiTheme.Accent : null));
+            facts.AddChild(Chip($"Won by {w.Entry.Names} ({w.Entry.Team.Name})", w.Entry.Team.Id == career.Team.Id ? UiTheme.Accent : null));
             if (record.Entered)
             {
                 var best = record.Result.Classification
                     .Select((c, i) => (c, i))
                     .FirstOrDefault(x => x.c.Entry.Team.Id == career.Team.Id && x.c.Finished);
-                facts.AddChild(Chip(best.c is null ? "No finishers" : $"Best: {best.c.Entry.Driver.Name} {Career.Place(best.i + 1)}"));
+                facts.AddChild(Chip(best.c is null ? "No finishers" : $"Best: {best.c.Entry.Names} {Career.Place(best.i + 1)}"));
                 facts.AddChild(Chip($"Earned £{record.Earned:N0}", UiTheme.Good));
             }
         }
@@ -699,8 +713,20 @@ public partial class CalendarScreen : Control
             facts.AddChild(Chip($"Start money £{ev.StartMoney:N0}/car"));
             facts.AddChild(Chip($"Prizes £{ev.PrizeFund:N0}"));
             facts.AddChild(Chip($"Prestige {ev.Prestige}"));
-            if (ev.Date >= career.Today && !entered && Formula.Breach(career.Car, circuit, ev.Date.Year) is { } breach)
+            if (ev.IsEndurance)
+            {
+                facts.AddChild(Chip("24 hours", null,
+                    "Sports cars only, outside the Grand Prix rules. Two drivers a car, who change at the stops; no refuelling within 24 laps of the last fill."));
+                if (career.SportsCarFor(ev) is { } sports)
+                    facts.AddChild(Chip(sports.Name, null, $"{sports.Horsepower} hp, {sports.WeightKg} kg, {sports.EngineLitres:0.0#} L"));
+                else if (ev.Date >= career.Today)
+                    facts.AddChild(Chip("No sports car", UiTheme.Danger, $"{career.Team.Name} built no sports car for this year's race."));
+            }
+            else if (ev.Date >= career.Today && !entered && Formula.Breach(career.Car, circuit, ev.Date.Year) is { } breach)
                 facts.AddChild(Chip("Car not eligible", UiTheme.Danger, breach));
+            if (career.ForecastFor(ev) is { } forecast)
+                facts.AddChild(Chip($"Forecast: {forecast.ToLowerInvariant()}", null,
+                    $"It rains here on about {circuit.RainChance:P0} of race days. The forecast is right about three times in four."));
             if (ev.Date >= career.Today)
             {
                 var travel = career.TravelTo(ev);

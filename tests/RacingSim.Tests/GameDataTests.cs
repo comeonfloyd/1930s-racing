@@ -3,12 +3,12 @@ namespace RacingSim.Tests;
 public class GameDataTests
 {
     [Fact]
-    public void LoadsTheTwelveMvpVenues()
+    public void LoadsTheTwelveMvpVenuesAndLeMans()
     {
         var data = TestData.Load();
 
         Assert.Equal(
-            new[] { "avus", "bremgarten", "brooklands", "indianapolis", "monaco", "montlhery", "monza", "nurburgring", "pescara", "reims", "spa", "tripoli" },
+            new[] { "avus", "bremgarten", "brooklands", "indianapolis", "lemans", "monaco", "montlhery", "monza", "nurburgring", "pescara", "reims", "spa", "tripoli" },
             data.Circuits.Keys.Order());
     }
 

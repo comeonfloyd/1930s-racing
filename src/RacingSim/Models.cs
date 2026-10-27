@@ -24,7 +24,8 @@ public enum CircuitType
 
 /// <summary>
 /// A real venue on the world map. <see cref="StraightShare"/> (0 to 1) is how much of a lap
-/// rewards engine power over handling; <see cref="Danger"/> (0 to 1) scales crash risk.
+/// rewards engine power over handling; <see cref="Danger"/> (0 to 1) scales crash risk;
+/// <see cref="RainChance"/> (0 to 1) is how often it rains on race day.
 /// </summary>
 public sealed record Circuit(
     string Id,
@@ -38,7 +39,8 @@ public sealed record Circuit(
     int FirstYear,
     int LastYear,
     double StraightShare = 0.5,
-    double Danger = 0.3);
+    double Danger = 0.3,
+    double RainChance = 0.25);
 
 /// <summary>A city a team is based in; also used as a travel start point.</summary>
 public sealed record City(string Id, string Name, string Country, Region Region, double Latitude, double Longitude);
@@ -56,9 +58,26 @@ public sealed record RaceEvent(
     int StartMoney,
     int PrizeFund,
     int Prestige,
-    IReadOnlyList<string>? AbsentTeams = null);
+    IReadOnlyList<string>? AbsentTeams = null,
+    int Hours = 0)
+{
+    /// <summary>
+    /// An endurance race such as Le Mans runs for <see cref="Hours"/> instead of a set number of
+    /// laps, with two drivers to a car; <see cref="Laps"/> is then only an upper bound.
+    /// </summary>
+    public bool IsEndurance => Hours > 0;
+}
 
 public sealed record Season(int Year, IReadOnlyList<RaceEvent> Events);
+
+/// <summary>
+/// One car in the Le Mans field of a year, as it really ran: the entrant (a team, often a
+/// sports-car maker that never races in Grands Prix), the car and its two drivers.
+/// </summary>
+public sealed record LeMansEntry(string TeamId, Car Car, IReadOnlyList<string> DriverIds);
+
+/// <summary>The lemans.json file: the sports-car entrants and each year's field.</summary>
+public sealed record LeMansData(IReadOnlyList<Team> Teams, IReadOnlyDictionary<string, IReadOnlyList<LeMansEntry>> Entries);
 
 /// <summary>Driver skills run 1 to 20, like the staff ratings in the design plan.</summary>
 public sealed record DriverSkills(int Speed, int Consistency, int MechanicalSympathy, int Wet, int Bravery);
@@ -70,7 +89,8 @@ public sealed record Driver(
     int BirthYear,
     int FirstYear,
     int LastYear,
-    DriverSkills Skills);
+    DriverSkills Skills,
+    bool SportsCarsOnly = false);
 
 /// <summary>
 /// A team's race car. Handling runs 1 to 20; reliability is the chance (0 to 1) of
@@ -99,8 +119,12 @@ public sealed record Team(
     int FirstYear = 1930,
     IReadOnlyDictionary<string, IReadOnlyList<string>>? Rosters = null,
     IReadOnlyDictionary<string, Car>? Cars = null,
-    bool Privateer = false)
+    bool Privateer = false,
+    IReadOnlyDictionary<string, Car>? SportsCars = null)
 {
+    /// <summary>The maker's sports car for endurance races in a year, or null when it has none.</summary>
+    public Car? SportsCarFor(int year) => Latest(SportsCars, year);
+
     /// <summary>The works drivers in a year; empty before the team's first year or when it stays away.</summary>
     public IReadOnlyList<string> RosterFor(int year) =>
         year < FirstYear ? [] : Latest(Rosters, year) ?? DriverIds;

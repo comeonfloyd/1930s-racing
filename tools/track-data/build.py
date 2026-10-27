@@ -300,8 +300,28 @@ def brooklands():
                  ["Byfleet banking", -0.4760, 51.3450], ["The Fork", -0.4625, 51.3510]])
 
 
+def lemans():
+    # The 1932 Sarthe lap on today's roads and track: Dunlop, the Esses, Tertre Rouge, the
+    # Hunaudières straight to Mulsanne, Indianapolis and Arnage, then Maison Blanche. The run
+    # from Maison Blanche to the pits was straight in the 1930s, so the later chicanes are
+    # bridged, and the road from Arnage joins Maison Blanche where the track now has its own link.
+    g = Graph(["lemans.json"], highways=ROADS | {"raceway"},
+              exclude=r"Chicane (Daytona|Michelin|Ford|Maison Blanche|du Raccordement)|Pit|Circuit (Bugatti|Alain|C)|Porsche|Corvette|Karting|Garage Bleu|Raccordement|Chemin aux|Moto|Safety|Long lap|Virage du Pont",
+              links=[[(0.2090683, 47.9322813), (0.2096724, 47.9390959)], [(0.2089944, 47.9464183), (0.2074582, 47.9483033)]])
+    wps = [[0.2076, 47.9505], "Courbe Dunlop", "Esses de la Forêt", "Tertre Rouge", [0.2300, 47.9530], [0.2380, 47.9300],
+           "Virage de Mulsanne", [0.2300, 47.9180], "Virage d'Indianapolis", "Virage d'Arnage", (0.2096724, 47.9390959),
+           (0.2089944, 47.9464183), (0.2074582, 47.9483033)]
+    return dict(
+        loop=g.route(wps), clockwise=True,
+        note="The Sarthe circuit as run from 1932, traced from OpenStreetMap: Tertre Rouge, the Hunaudières straight, Mulsanne, Arnage and Maison Blanche, without the later chicanes.",
+        corners=corners(g, [["Tertre Rouge", "Tertre Rouge"], ["Hunaudières", [0.2300, 47.9530]],
+                            ["Mulsanne", "Virage de Mulsanne"], ["Arnage", "Virage d'Arnage"],
+                            ["Maison Blanche", "Maison Blanche"]]))
+
+
 BUILDERS = dict(nurburgring=nurburgring, monza=monza, montlhery=montlhery, indianapolis=indianapolis, spa=spa, monaco=monaco,
-                reims=reims, pescara=pescara, avus=avus, bremgarten=bremgarten, tripoli=tripoli, brooklands=brooklands)
+                reims=reims, pescara=pescara, avus=avus, bremgarten=bremgarten, tripoli=tripoli, brooklands=brooklands,
+                lemans=lemans)
 
 if __name__ == "__main__":
     for cid in sys.argv[1:] or BUILDERS:

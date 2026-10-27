@@ -50,6 +50,8 @@ SCENES = {
                          (0.19, 0.16), (0.0, 0.2)],
                     lake=0.8),
     "brooklands": dict(forest=0.14, fields="park", surface="concrete", note="the airfield inside the banked oval"),
+    "lemans": dict(forest=0.45, fields="farm", surface="tarmac", villages=["Mulsanne", "Arnage"],
+                   note="Sarthe pine woods and farmland on public roads"),
 }
 
 FIELD_COLOURS = {

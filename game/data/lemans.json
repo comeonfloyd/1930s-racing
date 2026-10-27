@@ -1,0 +1,1044 @@
+// The Le Mans 24 Hours: sports-car entrants and each year's field, as they really ran
+// (approximately: the top finishers and leading cars of each year). Car figures are
+// placeholder game values. There was no race in 1936.
+{
+ "teams": [
+  {
+   "id": "bentlay",
+   "name": "Bentlay",
+   "nationality": "United Kingdom",
+   "baseCityId": "london",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "talbert",
+   "name": "Talbert",
+   "nationality": "United Kingdom",
+   "baseCityId": "london",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "lagonde",
+   "name": "Lagonde",
+   "nationality": "United Kingdom",
+   "baseCityId": "london",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "ryley",
+   "name": "Ryley",
+   "nationality": "United Kingdom",
+   "baseCityId": "london",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "aston-marten",
+   "name": "Aston Marten",
+   "nationality": "United Kingdom",
+   "baseCityId": "london",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "alfa-private",
+   "name": "Alfa Rossa (private)",
+   "nationality": "Italy",
+   "baseCityId": "milan",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "delahoye",
+   "name": "Delahoye",
+   "nationality": "France",
+   "baseCityId": "paris",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "talbert-lago",
+   "name": "Talbert-Lago",
+   "nationality": "France",
+   "baseCityId": "paris",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  },
+  {
+   "id": "delange",
+   "name": "Delange",
+   "nationality": "France",
+   "baseCityId": "paris",
+   "startingCash": 0,
+   "prestige": 0,
+   "playable": false,
+   "driverIds": [],
+   "car": {
+    "name": "-",
+    "horsepower": 0,
+    "weightKg": 1000,
+    "handling": 10,
+    "reliability": 0.5,
+    "engineLitres": 0
+   }
+  }
+ ],
+ "entries": {
+  "1930": [
+   {
+    "teamId": "bentlay",
+    "car": {
+     "name": "Bentlay Speed Six",
+     "horsepower": 180,
+     "weightKg": 1450,
+     "handling": 10,
+     "reliability": 0.85,
+     "engineLitres": 6.6
+    },
+    "driverIds": [
+     "woolf-barnato",
+     "glen-kidston"
+    ]
+   },
+   {
+    "teamId": "bentlay",
+    "car": {
+     "name": "Bentlay Speed Six",
+     "horsepower": 180,
+     "weightKg": 1450,
+     "handling": 10,
+     "reliability": 0.85,
+     "engineLitres": 6.6
+    },
+    "driverIds": [
+     "frank-clement",
+     "dick-watney"
+    ]
+   },
+   {
+    "teamId": "bentlay",
+    "car": {
+     "name": "Bentlay 4½ Litre Blower",
+     "horsepower": 240,
+     "weightKg": 1600,
+     "handling": 9,
+     "reliability": 0.55,
+     "engineLitres": 4.4
+    },
+    "driverIds": [
+     "tim-birkin",
+     "jean-chassagne"
+    ]
+   },
+   {
+    "teamId": "mercator-benz",
+    "car": {
+     "name": "Mercator-Benz SSK",
+     "horsepower": 225,
+     "weightKg": 1350,
+     "handling": 9,
+     "reliability": 0.72,
+     "engineLitres": 7.1
+    },
+    "driverIds": [
+     "rudolf-caracciola",
+     "christian-werner"
+    ]
+   },
+   {
+    "teamId": "talbert",
+    "car": {
+     "name": "Talbert 90",
+     "horsepower": 95,
+     "weightKg": 1100,
+     "handling": 12,
+     "reliability": 0.86,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "brian-lewis",
+     "hugh-eaton"
+    ]
+   },
+   {
+    "teamId": "talbert",
+    "car": {
+     "name": "Talbert 90",
+     "horsepower": 95,
+     "weightKg": 1100,
+     "handling": 12,
+     "reliability": 0.86,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "john-hindmarsh",
+     "tim-rose-richards"
+    ]
+   }
+  ],
+  "1931": [
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "earl-howe",
+     "tim-birkin"
+    ]
+   },
+   {
+    "teamId": "mercator-benz",
+    "car": {
+     "name": "Mercator-Benz SSK",
+     "horsepower": 225,
+     "weightKg": 1350,
+     "handling": 9,
+     "reliability": 0.72,
+     "engineLitres": 7.1
+    },
+    "driverIds": [
+     "boris-ivanowski",
+     "henri-stoffel"
+    ]
+   },
+   {
+    "teamId": "talbert",
+    "car": {
+     "name": "Talbert 105",
+     "horsepower": 120,
+     "weightKg": 1150,
+     "handling": 12,
+     "reliability": 0.85,
+     "engineLitres": 3.0
+    },
+    "driverIds": [
+     "tim-rose-richards",
+     "john-hindmarsh"
+    ]
+   },
+   {
+    "teamId": "bugetti",
+    "car": {
+     "name": "Bugetti Type 50",
+     "horsepower": 225,
+     "weightKg": 1450,
+     "handling": 12,
+     "reliability": 0.6,
+     "engineLitres": 4.9
+    },
+    "driverIds": [
+     "louis-chiron",
+     "achille-varzi"
+    ]
+   },
+   {
+    "teamId": "bugetti",
+    "car": {
+     "name": "Bugetti Type 50",
+     "horsepower": 225,
+     "weightKg": 1450,
+     "handling": 12,
+     "reliability": 0.6,
+     "engineLitres": 4.9
+    },
+    "driverIds": [
+     "albert-divo",
+     "guy-bouriat"
+    ]
+   },
+   {
+    "teamId": "talbert",
+    "car": {
+     "name": "Talbert 105",
+     "horsepower": 120,
+     "weightKg": 1150,
+     "handling": 12,
+     "reliability": 0.85,
+     "engineLitres": 3.0
+    },
+    "driverIds": [
+     "brian-lewis",
+     "frank-clement"
+    ]
+   }
+  ],
+  "1932": [
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "raymond-sommer",
+     "luigi-chinetti"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "franco-cortese",
+     "gb-guidotti"
+    ]
+   },
+   {
+    "teamId": "talbert",
+    "car": {
+     "name": "Talbert 105",
+     "horsepower": 120,
+     "weightKg": 1150,
+     "handling": 12,
+     "reliability": 0.85,
+     "engineLitres": 3.0
+    },
+    "driverIds": [
+     "brian-lewis",
+     "tim-rose-richards"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "earl-howe",
+     "tim-birkin"
+    ]
+   },
+   {
+    "teamId": "aston-marten",
+    "car": {
+     "name": "Aston Marten Ulster",
+     "horsepower": 85,
+     "weightKg": 900,
+     "handling": 14,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "john-hindmarsh",
+     "frank-clement"
+    ]
+   },
+   {
+    "teamId": "mercator-benz",
+    "car": {
+     "name": "Mercator-Benz SSK",
+     "horsepower": 225,
+     "weightKg": 1350,
+     "handling": 9,
+     "reliability": 0.72,
+     "engineLitres": 7.1
+    },
+    "driverIds": [
+     "boris-ivanowski",
+     "henri-stoffel"
+    ]
+   }
+  ],
+  "1933": [
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "raymond-sommer",
+     "tazio-nuvolari"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "luigi-chinetti",
+     "philippe-varent"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "brian-lewis",
+     "tim-rose-richards"
+    ]
+   },
+   {
+    "teamId": "ryley",
+    "car": {
+     "name": "Ryley MPH",
+     "horsepower": 85,
+     "weightKg": 850,
+     "handling": 15,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "freddie-dixon",
+     "cyril-paul"
+    ]
+   },
+   {
+    "teamId": "aston-marten",
+    "car": {
+     "name": "Aston Marten Ulster",
+     "horsepower": 85,
+     "weightKg": 900,
+     "handling": 14,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "john-hindmarsh",
+     "earl-howe"
+    ]
+   },
+   {
+    "teamId": "talbert",
+    "car": {
+     "name": "Talbert 105",
+     "horsepower": 120,
+     "weightKg": 1150,
+     "handling": 12,
+     "reliability": 0.85,
+     "engineLitres": 3.0
+    },
+    "driverIds": [
+     "henri-stoffel",
+     "philippe-etancelin"
+    ]
+   }
+  ],
+  "1934": [
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "luigi-chinetti",
+     "philippe-etancelin"
+    ]
+   },
+   {
+    "teamId": "ryley",
+    "car": {
+     "name": "Ryley MPH",
+     "horsepower": 85,
+     "weightKg": 850,
+     "handling": 15,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "jean-sebilleau",
+     "georges-delaroche"
+    ]
+   },
+   {
+    "teamId": "ryley",
+    "car": {
+     "name": "Ryley MPH",
+     "horsepower": 85,
+     "weightKg": 850,
+     "handling": 15,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "freddie-dixon",
+     "cyril-paul"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "raymond-sommer",
+     "earl-howe"
+    ]
+   },
+   {
+    "teamId": "aston-marten",
+    "car": {
+     "name": "Aston Marten Ulster",
+     "horsepower": 85,
+     "weightKg": 900,
+     "handling": 14,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "charles-martin",
+     "charles-brackenbury"
+    ]
+   },
+   {
+    "teamId": "lagonde",
+    "car": {
+     "name": "Lagonde M45R",
+     "horsepower": 140,
+     "weightKg": 1450,
+     "handling": 11,
+     "reliability": 0.86,
+     "engineLitres": 4.5
+    },
+    "driverIds": [
+     "john-hindmarsh",
+     "brian-lewis"
+    ]
+   }
+  ],
+  "1935": [
+   {
+    "teamId": "lagonde",
+    "car": {
+     "name": "Lagonde M45R",
+     "horsepower": 140,
+     "weightKg": 1450,
+     "handling": 11,
+     "reliability": 0.86,
+     "engineLitres": 4.5
+    },
+    "driverIds": [
+     "john-hindmarsh",
+     "luis-fontes"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "pierre-louis-dreyfus",
+     "henri-stoffel"
+    ]
+   },
+   {
+    "teamId": "aston-marten",
+    "car": {
+     "name": "Aston Marten Ulster",
+     "horsepower": 85,
+     "weightKg": 900,
+     "handling": 14,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "charles-martin",
+     "charles-brackenbury"
+    ]
+   },
+   {
+    "teamId": "ryley",
+    "car": {
+     "name": "Ryley MPH",
+     "horsepower": 85,
+     "weightKg": 850,
+     "handling": 15,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "freddie-dixon",
+     "cyril-paul"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2300 LM",
+     "horsepower": 155,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 2.3
+    },
+    "driverIds": [
+     "luigi-chinetti",
+     "raymond-sommer"
+    ]
+   },
+   {
+    "teamId": "talbert",
+    "car": {
+     "name": "Talbert 105",
+     "horsepower": 120,
+     "weightKg": 1150,
+     "handling": 12,
+     "reliability": 0.85,
+     "engineLitres": 3.0
+    },
+    "driverIds": [
+     "brian-lewis",
+     "tim-rose-richards"
+    ]
+   }
+  ],
+  "1937": [
+   {
+    "teamId": "bugetti",
+    "car": {
+     "name": "Bugetti Type 57G",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.85,
+     "engineLitres": 3.3
+    },
+    "driverIds": [
+     "jean-pierre-wimille",
+     "robert-benoist"
+    ]
+   },
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "joseph-paul",
+     "marcel-mongin"
+    ]
+   },
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "rene-dreyfus",
+     "henri-stoffel"
+    ]
+   },
+   {
+    "teamId": "talbert-lago",
+    "car": {
+     "name": "Talbert-Lago T150C",
+     "horsepower": 165,
+     "weightKg": 950,
+     "handling": 15,
+     "reliability": 0.7,
+     "engineLitres": 4.0
+    },
+    "driverIds": [
+     "luigi-chinetti",
+     "louis-chiron"
+    ]
+   },
+   {
+    "teamId": "aston-marten",
+    "car": {
+     "name": "Aston Marten Ulster",
+     "horsepower": 85,
+     "weightKg": 900,
+     "handling": 14,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "charles-martin",
+     "charles-brackenbury"
+    ]
+   },
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "eugene-chaboud",
+     "jean-tremoulet"
+    ]
+   },
+   {
+    "teamId": "ryley",
+    "car": {
+     "name": "Ryley MPH",
+     "horsepower": 85,
+     "weightKg": 850,
+     "handling": 15,
+     "reliability": 0.86,
+     "engineLitres": 1.5
+    },
+    "driverIds": [
+     "freddie-dixon",
+     "cyril-paul"
+    ]
+   }
+  ],
+  "1938": [
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "eugene-chaboud",
+     "jean-tremoulet"
+    ]
+   },
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "gaston-serraud",
+     "yves-giraud-cabantous"
+    ]
+   },
+   {
+    "teamId": "talbert-lago",
+    "car": {
+     "name": "Talbert-Lago T150C",
+     "horsepower": 165,
+     "weightKg": 950,
+     "handling": 15,
+     "reliability": 0.7,
+     "engineLitres": 4.0
+    },
+    "driverIds": [
+     "jean-prenant",
+     "andre-morel"
+    ]
+   },
+   {
+    "teamId": "alfa-private",
+    "car": {
+     "name": "Alfa Rossa 8C 2900B",
+     "horsepower": 220,
+     "weightKg": 1150,
+     "handling": 15,
+     "reliability": 0.72,
+     "engineLitres": 2.9
+    },
+    "driverIds": [
+     "raymond-sommer",
+     "clemente-biondetti"
+    ]
+   },
+   {
+    "teamId": "delange",
+    "car": {
+     "name": "Delange D6",
+     "horsepower": 140,
+     "weightKg": 1000,
+     "handling": 14,
+     "reliability": 0.86,
+     "engineLitres": 3.0
+    },
+    "driverIds": [
+     "louis-gerard",
+     "georges-monneret"
+    ]
+   },
+   {
+    "teamId": "talbert-lago",
+    "car": {
+     "name": "Talbert-Lago T150C",
+     "horsepower": 165,
+     "weightKg": 950,
+     "handling": 15,
+     "reliability": 0.7,
+     "engineLitres": 4.0
+    },
+    "driverIds": [
+     "luigi-chinetti",
+     "philippe-etancelin"
+    ]
+   },
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "rene-dreyfus",
+     "pierre-louis-dreyfus"
+    ]
+   }
+  ],
+  "1939": [
+   {
+    "teamId": "bugetti",
+    "car": {
+     "name": "Bugetti Type 57C",
+     "horsepower": 200,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.85,
+     "engineLitres": 3.3
+    },
+    "driverIds": [
+     "jean-pierre-wimille",
+     "pierre-veyron"
+    ]
+   },
+   {
+    "teamId": "delange",
+    "car": {
+     "name": "Delange D6",
+     "horsepower": 140,
+     "weightKg": 1000,
+     "handling": 14,
+     "reliability": 0.86,
+     "engineLitres": 3.0
+    },
+    "driverIds": [
+     "louis-gerard",
+     "georges-monneret"
+    ]
+   },
+   {
+    "teamId": "lagonde",
+    "car": {
+     "name": "Lagonde V12",
+     "horsepower": 200,
+     "weightKg": 1500,
+     "handling": 12,
+     "reliability": 0.84,
+     "engineLitres": 4.5
+    },
+    "driverIds": [
+     "arthur-dobson",
+     "charles-brackenbury"
+    ]
+   },
+   {
+    "teamId": "lagonde",
+    "car": {
+     "name": "Lagonde V12",
+     "horsepower": 200,
+     "weightKg": 1500,
+     "handling": 12,
+     "reliability": 0.84,
+     "engineLitres": 4.5
+    },
+    "driverIds": [
+     "lord-selsdon",
+     "lord-waleran"
+    ]
+   },
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "eugene-chaboud",
+     "jean-tremoulet"
+    ]
+   },
+   {
+    "teamId": "talbert-lago",
+    "car": {
+     "name": "Talbert-Lago T150C",
+     "horsepower": 165,
+     "weightKg": 950,
+     "handling": 15,
+     "reliability": 0.7,
+     "engineLitres": 4.0
+    },
+    "driverIds": [
+     "luigi-chinetti",
+     "philippe-etancelin"
+    ]
+   },
+   {
+    "teamId": "delahoye",
+    "car": {
+     "name": "Delahoye 135 CS",
+     "horsepower": 160,
+     "weightKg": 1000,
+     "handling": 15,
+     "reliability": 0.82,
+     "engineLitres": 3.6
+    },
+    "driverIds": [
+     "gaston-serraud",
+     "yves-giraud-cabantous"
+    ]
+   }
+  ]
+ }
+}
