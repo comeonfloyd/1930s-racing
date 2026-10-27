@@ -42,6 +42,8 @@ public partial class TrackView3D : Control, IRaceView
     private readonly List<(Label Label, Vector3 At)> _cornerLabels = new();
     private readonly List<Label> _carLabels = new();
     private Vector3[] _carLabelSpots = Array.Empty<Vector3>();
+    // Where each car is, which way it points and its colour, for the dots drawn when cars are too small to see.
+    private (Vector3 At, Vector3 Forward, Color Colour)[] _carMarks = Array.Empty<(Vector3, Vector3, Color)>();
     private Label? _creditLabel;
     private IReadOnlyList<LiveCar> _cars = Array.Empty<LiveCar>();
 
@@ -129,7 +131,11 @@ public partial class TrackView3D : Control, IRaceView
 
         // Rain streaks are drawn flat over the picture, as in the map view.
         _overlay = new Node2D();
-        _overlay.Draw += () => TrackView.DrawRain(_overlay, GetViewportRect(), Rain);
+        _overlay.Draw += () =>
+        {
+            DrawCarMarks();
+            TrackView.DrawRain(_overlay, GetViewportRect(), Rain);
+        };
         AddChild(_overlay);
         Light();
     }
@@ -188,7 +194,10 @@ public partial class TrackView3D : Control, IRaceView
         while (_carLabels.Count < cars.Count)
             _carLabels.Add(TextLabel((_carLabels.Count + 1).ToString(), 14, Colors.White));
         if (_carLabelSpots.Length != cars.Count)
+        {
             _carLabelSpots = new Vector3[cars.Count];
+            _carMarks = new (Vector3, Vector3, Color)[cars.Count];
+        }
     }
 
     /// <summary>Zooms by a factor, keeping the ground under the screen point where it is.</summary>
@@ -302,8 +311,8 @@ public partial class TrackView3D : Control, IRaceView
 
     private void PlaceCars(float dt)
     {
-        // Far out, cars are drawn bigger than life so they can be seen; close in, true size.
-        var scale = Mathf.Clamp(Distance / 45, 1, 7);
+        // Cars are always true to scale with the circuit; far out, a coloured dot marks each one.
+        const float scale = 1;
         var roadWidth = 0.016f * K;
         _beams.ForEach(b => b.Visible = false);
         var beam = 0;
@@ -356,9 +365,33 @@ public partial class TrackView3D : Control, IRaceView
                 puff.Scale = Vector3.One * (0.8f + 0.5f * k) * scale;
             }
             _carLabelSpots[i] = p + Vector3.Up * 1.4f * scale;
+            _carMarks[i] = (p, forward, shade.Darkened(0.3f * Night));
         }
         if (_models is not null)
             _models.LampGlow = Night;
+    }
+
+    /// <summary>
+    /// A dot in the team colour over each car that is too small on screen to make out, so the
+    /// race can be followed from the whole-track view without blowing the cars up.
+    /// </summary>
+    private void DrawCarMarks()
+    {
+        // Leader drawn last, on top.
+        for (var i = Math.Min(_cars.Count, _carMarks.Length) - 1; i >= 0; i--)
+        {
+            var (at, forward, colour) = _carMarks[i];
+            if (_camera.IsPositionBehind(at))
+                continue;
+            var spot = _camera.UnprojectPosition(at);
+            var length = spot.DistanceTo(_camera.UnprojectPosition(at + forward * CarModel.Length));
+            if (length >= 14)
+                continue;
+            // Fades out as the car grows big enough to be seen for itself.
+            var fade = Mathf.Clamp((14 - length) / 6, 0, 1);
+            _overlay.DrawCircle(spot, 5.5f, new Color(0, 0, 0, 0.75f * fade));
+            _overlay.DrawCircle(spot, 4f, colour with { A = fade });
+        }
     }
 
     private MeshInstance3D[] DustPuffs()
