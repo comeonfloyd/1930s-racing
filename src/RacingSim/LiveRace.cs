@@ -252,11 +252,11 @@ public sealed class LiveRace
         car.LapStart = start;
         car.PitTime = 0;
 
-        // Into the pits at the line, if called, or if the AI pit wall wants it. At Le Mans a
-        // driver left out by the player's pit wall still comes in himself before the tank runs dry.
+        // Into the pits at the line, if called, or if the AI pit wall wants it. A driver left out
+        // by the player's pit wall still comes in himself before the tank runs dry.
         var lapsLeft = LapsLeft(car, start);
         var manual = _manualTeams.Contains(car.Entry.Team.Id);
-        var stops = manual ? Event.IsEndurance && FuelShort(car, lapsLeft) : WantsStop(car, lapsLeft, start);
+        var stops = manual ? FuelShort(car, lapsLeft) : WantsStop(car, lapsLeft, start);
         if (lap > 1 && (car.PitCalled || car.TyreBurst || stops))
             PitStop(car, lapsLeft, start, lap);
 

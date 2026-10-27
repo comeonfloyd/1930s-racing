@@ -235,30 +235,38 @@ public partial class CalendarScreen
         var power = Between(Prototype.Range(design.Horsepower, preview.Spread), " hp");
         var weight = Between(Prototype.Range(design.WeightKg, preview.Spread, 0.5, higherIsBetter: false), " kg");
         var reliability = design.Reliability - preview.Faults * Prototype.FaultReliability;
+        // Tyre wear against a typical 200 hp, 750 kg car of the day.
+        var typical = LiveRace.TyreWear(new Car("", 200, 750, 0, 0));
+        var wearNow = LiveRace.TyreWear(now) / typical;
+        var wearDesign = LiveRace.TyreWear(design) / typical;
+
+        // Two figures to a row, so the card stays short enough to fit under the form.
         var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
-        var grid = new GridContainer { Columns = 3 };
-        grid.AddThemeConstantOverride("h_separation", 24);
-        grid.AddChild(new Label { Text = "", CustomMinimumSize = new Vector2(120, 0) });
-        grid.AddChild(new Label { Text = now.Name, ThemeTypeVariation = "Muted" });
-        grid.AddChild(new Label { Text = design.Name, ThemeTypeVariation = "Heading" });
-        void Row(string what, string a, string b, int better)
+        var stack = new VBoxContainer();
+        stack.AddThemeConstantOverride("separation", 4);
+        stack.AddChild(new Label { Text = $"{design.Name}  against the {now.Name}", ThemeTypeVariation = "Heading" });
+        var grid = new GridContainer { Columns = 6 };
+        grid.AddThemeConstantOverride("h_separation", 18);
+        stack.AddChild(grid);
+        for (var i = 0; i < 2; i++)
+        {
+            grid.AddChild(new Label { Text = "" });
+            grid.AddChild(new Label { Text = "NOW", ThemeTypeVariation = "Overline" });
+            grid.AddChild(new Label { Text = "NEW", ThemeTypeVariation = "Overline" });
+        }
+        void Cell(string what, string a, string b, int better)
         {
             grid.AddChild(new Label { Text = what, ThemeTypeVariation = "Muted" });
             grid.AddChild(new Label { Text = a, ThemeTypeVariation = "Muted" });
             grid.AddChild(new Label { Text = b, Modulate = better > 0 ? UiTheme.Good : better < 0 ? new Color(1, 0.65f, 0.55f) : Colors.White });
         }
-        Row("Power", $"{now.Horsepower} hp", power, design.Horsepower.CompareTo(now.Horsepower));
-        Row("Weight", $"{now.WeightKg} kg", weight, now.WeightKg.CompareTo(design.WeightKg));
-        Row("Handling", now.Handling.ToString(), $"about {design.Handling}", design.Handling.CompareTo(now.Handling));
-        Row("Reliability", $"{now.Reliability:P0}", preview.Faults > 0 ? $"about {reliability:P0} at first" : $"about {design.Reliability:P0}", reliability.CompareTo(now.Reliability));
-        Row("Engine", $"{now.EngineLitres:0.0#} L", $"{design.EngineLitres:0.0#} L", 0);
-        Row("Fuel use", $"{now.Thirst:P0}", $"{design.Thirst:P0}", now.Thirst.CompareTo(design.Thirst));
-        // Tyre wear against a typical 200 hp, 750 kg car of the day.
-        var typical = LiveRace.TyreWear(new Car("", 200, 750, 0, 0));
-        var wearNow = LiveRace.TyreWear(now) / typical;
-        var wearDesign = LiveRace.TyreWear(design) / typical;
-        Row("Tyre wear", $"{wearNow:P0}", $"{wearDesign:P0}", Math.Round(wearNow, 2).CompareTo(Math.Round(wearDesign, 2)));
-        card.AddChild(grid);
+        Cell("Power", $"{now.Horsepower} hp", power, design.Horsepower.CompareTo(now.Horsepower));
+        Cell("Weight", $"{now.WeightKg} kg", weight, now.WeightKg.CompareTo(design.WeightKg));
+        Cell("Handling", now.Handling.ToString(), $"about {design.Handling}", design.Handling.CompareTo(now.Handling));
+        Cell("Reliability", $"{now.Reliability:P0}", preview.Faults > 0 ? $"about {reliability:P0} at first" : $"about {design.Reliability:P0}", reliability.CompareTo(now.Reliability));
+        Cell("Fuel use", $"{now.Thirst:P0}", $"{design.Thirst:P0}", now.Thirst.CompareTo(design.Thirst));
+        Cell("Tyre wear", $"{wearNow:P0}", $"{wearDesign:P0}", Math.Round(wearNow, 2).CompareTo(Math.Round(wearDesign, 2)));
+        card.AddChild(stack);
         return card;
     }
 }
