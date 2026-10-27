@@ -143,6 +143,7 @@ public sealed partial class Career
         ModelYear = Team.CarYearFor(startYear);
         _roster = Team.RosterFor(startYear).ToList();
         _carsYear = startYear;
+        TakeOverStaff(startYear);
     }
 
     /// <summary>
@@ -218,9 +219,16 @@ public sealed partial class Career
         _upgradesDone.GetValueOrDefault(upgrade) + _projects.Count(p => p.Upgrade == upgrade);
 
     /// <summary>What the next project of this kind costs, counting ones already queued.</summary>
-    public int ProjectCost(Upgrade upgrade) =>
-        upgrade == Upgrade.NewCar && MakerPaysHalf ? (int)(DrawingOffice.Kind(upgrade).BaseCost * DrawingOffice.NewRulesCarShare)
+    public int ProjectCost(Upgrade upgrade)
+    {
+        var list = upgrade == Upgrade.NewCar && MakerPaysHalf ? DrawingOffice.Kind(upgrade).BaseCost * DrawingOffice.NewRulesCarShare
             : DrawingOffice.Cost(upgrade, TimesDone(upgrade));
+        // The chief engineer's skill makes the money go further.
+        return (int)(Math.Round(list * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
+    }
+
+    /// <summary>How many weeks a project takes in the team's drawing office.</summary>
+    public int ProjectWeeks(Upgrade upgrade) => Works.ProjectWeeks(DrawingOffice.Kind(upgrade).Weeks, Level(Facility.DrawingOffice));
 
     /// <summary>True when the next model is needed because the rules of its year rule out the car.</summary>
     public bool MakerPaysHalf => NextModel is { } model && Formula.Breach(Car, model.Year) is not null && Formula.Breach(model.Car, model.Year) is null;
@@ -238,7 +246,7 @@ public sealed partial class Career
             return ProjectResult.NotEnoughMoney;
         var kind = DrawingOffice.Kind(upgrade);
         Pay(MoneyKind.Development, kind.Name, -cost);
-        _projects.Add(new Project(upgrade, cost, kind.Weeks));
+        _projects.Add(new Project(upgrade, cost, ProjectWeeks(upgrade)));
         return ProjectResult.Queued;
     }
 
@@ -267,7 +275,7 @@ public sealed partial class Career
             return ProjectResult.NotEnoughMoney;
         var kind = DrawingOffice.Kind(Upgrade.NewCar);
         Pay(MoneyKind.Development, $"{kind.Name}: {model.Car.Name}", -cost);
-        _projects.Add(new Project(Upgrade.NewCar, cost, kind.Weeks) { ModelYear = model.Year });
+        _projects.Add(new Project(Upgrade.NewCar, cost, ProjectWeeks(Upgrade.NewCar)) { ModelYear = model.Year });
         return ProjectResult.Queued;
     }
 
@@ -339,7 +347,7 @@ public sealed partial class Career
     public IReadOnlyList<Driver> Drivers =>
         _roster.Where(id => !_deadDrivers.Contains(id)).Select(id => _data.Drivers[id]).ToList();
 
-    public int WeeklyCosts => Finance.WeeklyCosts(Drivers);
+    public int WeeklyCosts => Finance.WeeklyCosts(Drivers) + WorksCosts;
 
     public int WeeklyBacking => Finance.WeeklyBacking(Team.Prestige);
 
@@ -373,7 +381,7 @@ public sealed partial class Career
             teams.Insert(0, Team);
         return teams.SelectMany(t =>
             {
-                var team = t with { Car = CarOf(t.Id) };
+                var team = t with { Car = t.Id == Team.Id ? Works.Prepared(Car, Level(Facility.Workshop)) : CarOf(t.Id) };
                 return StartersOf(t, ev.Date).Select(id => new RaceEntry(_data.Drivers[id], team));
             })
             .Concat(PrivateersFor(ev, circuit))
@@ -394,7 +402,7 @@ public sealed partial class Career
         var taken = new HashSet<string>();
         if (_entries.Contains(ev) && SportsCarFor(ev) is { } sportsCar)
         {
-            var team = Team with { Car = sportsCar };
+            var team = Team with { Car = Works.Prepared(sportsCar, Level(Facility.Workshop)) };
             var fit = StartersOf(Team, ev.Date);
             for (var i = 0; i + 1 < fit.Count; i += 2)
             {
@@ -499,7 +507,7 @@ public sealed partial class Career
         var starters = result.Classification.Count(c => c.Entry.Team.Id == Team.Id);
         if (starters > 0)
         {
-            earned += Pay(MoneyKind.StartMoney, $"Start money, {ev.Name} ({starters} cars)", ev.StartMoney * starters);
+            earned += Pay(MoneyKind.StartMoney, $"Start money, {ev.Name} ({starters} cars)", StartMoney(ev) * starters);
         }
         for (var i = 0; i < result.Classification.Count; i++)
         {
@@ -512,6 +520,9 @@ public sealed partial class Career
         Today = ev.Date.AddDays(1);
         return record;
     }
+
+    /// <summary>Start money per car the organisers pay this team: the team manager bargains for more.</summary>
+    public int StartMoney(RaceEvent ev) => (int)Math.Round(ev.StartMoney * Works.StartMoneyFactor(SkillOf(StaffRole.Manager)) / 10) * 10;
 
     /// <summary>Winter break: moves on to the first day of next year.</summary>
     public void StartNextSeason()
@@ -527,6 +538,7 @@ public sealed partial class Career
             _roster.Remove(id);
             _news.Add(new NewsItem(Today, $"{_data.Drivers[id].Name} retires from racing."));
         }
+        StaffRetire();
     }
 
     public SeasonSummary Summary(int year)
@@ -561,7 +573,7 @@ public sealed partial class Career
 
     private LiveRace NewRace(RaceEvent ev) =>
         new(ev, _data.Circuits[ev.CircuitId], GridFor(ev), RaceSeed(ev),
-            Settings, manualTeams: [Team.Id]);
+            Settings, manualTeams: [Team.Id], pitCrews: PitCrews(ev.Date.Year));
 
     /// <summary>The weather forecast for a race in the coming week, or null for one further off.</summary>
     public string? ForecastFor(RaceEvent ev)
@@ -601,6 +613,7 @@ public sealed partial class Career
             Pay(MoneyKind.Wages, "Wages and works", -WeeklyCosts, _paidUntil);
             Pay(MoneyKind.Backing, "Works backing", WeeklyBacking, _paidUntil);
             WorkOnProjects(_paidUntil);
+            WorkOnBuilding(_paidUntil);
             DevelopRivals(_paidUntil);
         }
     }
@@ -619,9 +632,9 @@ public sealed partial class Career
     {
         var target = _data.Circuits[ev.CircuitId];
         var previous = _entries.LastOrDefault(e => e.Date < ev.Date);
-        return previous is null
+        return Works.Haul(previous is null
             ? Travel.Plan(_data.Cities[Team.BaseCityId], target)
-            : Travel.Plan(_data.Circuits[previous.CircuitId], target);
+            : Travel.Plan(_data.Circuits[previous.CircuitId], target), Level(Facility.Transport));
     }
 
     /// <summary>Earliest day the cars can leave for an event: today, or the day after the previous race.</summary>
@@ -657,7 +670,7 @@ public sealed partial class Career
         var next = _entries.FirstOrDefault(e => e.Date > ev.Date);
         if (next is not null)
         {
-            var onward = Travel.Plan(_data.Circuits[ev.CircuitId], _data.Circuits[next.CircuitId]);
+            var onward = Works.Haul(Travel.Plan(_data.Circuits[ev.CircuitId], _data.Circuits[next.CircuitId]), Level(Facility.Transport));
             if (ev.Date.AddDays(1 + onward.Days) > next.Date)
                 return EntryResult.CannotArriveInTime;
         }

@@ -58,6 +58,10 @@ public sealed class LiveRace
     private readonly RaceSettings _settings;
     private readonly HashSet<string> _manualTeams;
 
+    /// <summary>Each team's chief mechanic's skill; a team not listed has an average crew.</summary>
+    private readonly IReadOnlyDictionary<string, int> _pitCrews;
+    private const int AverageCrew = 10;
+
     public RaceEvent Event { get; }
     public Circuit Circuit { get; }
     public RaceWeather Weather { get; }
@@ -90,12 +94,13 @@ public sealed class LiveRace
 
     /// <param name="manualTeams">Teams whose pit calls the player makes. Every other car follows the AI strategy.</param>
     public LiveRace(RaceEvent ev, Circuit circuit, IReadOnlyList<RaceEntry> grid, int seed,
-        RaceSettings? settings = null, IEnumerable<string>? manualTeams = null)
+        RaceSettings? settings = null, IEnumerable<string>? manualTeams = null, IReadOnlyDictionary<string, int>? pitCrews = null)
     {
         Event = ev;
         Circuit = circuit;
         _settings = settings ?? new RaceSettings();
         _manualTeams = new HashSet<string>(manualTeams ?? []);
+        _pitCrews = pitCrews ?? new Dictionary<string, int>();
         Weather = RaceWeather.Roll(circuit, seed, ExpectedSeconds(ev, circuit));
         var dayForm = new Random(Seeds.Mix(seed, -1));
         _cars = grid.Select((entry, i) => new CarState(entry, new Random(Seeds.Mix(seed, i)),
@@ -370,7 +375,9 @@ public sealed class LiveRace
             seconds = 20 + 30 * fuelAdded + 15;  // stop and go, fuel churns, rear wheels
             work = "fuel and tyres";
         }
-        var fumble = rng.NextDouble() < 0.1;
+        var crew = _pitCrews.GetValueOrDefault(car.Entry.Team.Id, AverageCrew);
+        seconds *= Works.PitTimeFactor(crew);
+        var fumble = rng.NextDouble() < Works.FumbleChance(crew);
         if (fumble)
             seconds += 10 + rng.NextDouble() * 20;
         if (fuelAdded > 0)

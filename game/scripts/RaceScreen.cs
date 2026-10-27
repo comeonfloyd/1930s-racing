@@ -714,7 +714,7 @@ public partial class RaceScreen : Control
         box.AddChild(new HSeparator());
         var starters = result.Classification.Count(c => c.Entry.Team.Id == team);
         var prizes = result.Classification.Select((c, i) => c.Finished && c.Entry.Team.Id == team ? Finance.Prize(_race.Event, i + 1) : 0).Sum();
-        var start = _race.Event.StartMoney * starters;
+        var start = (Session.Career?.StartMoney(_race.Event) ?? _race.Event.StartMoney) * starters;
         var bottom = new HBoxContainer();
         bottom.AddChild(new Label
         {

@@ -14,6 +14,9 @@ public sealed class GameData
     /// <summary>The Le Mans field of each year the race was held.</summary>
     public IReadOnlyDictionary<int, IReadOnlyList<LeMansEntry>> LeMans { get; }
 
+    /// <summary>Engineers, mechanics and team managers.</summary>
+    public IReadOnlyDictionary<string, StaffMember> Staff { get; }
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -27,7 +30,8 @@ public sealed class GameData
         IEnumerable<Driver> drivers,
         IEnumerable<Team> teams,
         IEnumerable<Season> seasons,
-        LeMansData? leMans = null)
+        LeMansData? leMans = null,
+        IEnumerable<StaffMember>? staff = null)
     {
         Circuits = circuits.ToDictionary(c => c.Id);
         Cities = cities.ToDictionary(c => c.Id);
@@ -36,6 +40,7 @@ public sealed class GameData
         Seasons = seasons.ToDictionary(s => s.Year);
         LeMans = (leMans?.Entries ?? new Dictionary<string, IReadOnlyList<LeMansEntry>>())
             .ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
+        Staff = (staff ?? []).ToDictionary(s => s.Id);
         Validate();
     }
 
@@ -44,14 +49,15 @@ public sealed class GameData
     /// code works from Godot (res:// paths) and from tests (disk paths).
     /// </summary>
     public static GameData FromJson(string circuits, string cities, string drivers, string teams, IEnumerable<string> seasons,
-        string? leMans = null) =>
+        string? leMans = null, string? staff = null) =>
         new(
             Parse<List<Circuit>>(circuits),
             Parse<List<City>>(cities),
             Parse<List<Driver>>(drivers),
             Parse<List<Team>>(teams),
             seasons.Select(Parse<Season>),
-            leMans is null ? null : Parse<LeMansData>(leMans));
+            leMans is null ? null : Parse<LeMansData>(leMans),
+            staff is null ? null : Parse<List<StaffMember>>(staff));
 
     /// <summary>Loads every file from a data directory on disk.</summary>
     public static GameData FromDirectory(string dir) =>
@@ -61,7 +67,8 @@ public sealed class GameData
             File.ReadAllText(Path.Combine(dir, "drivers.json")),
             File.ReadAllText(Path.Combine(dir, "teams.json")),
             Directory.GetFiles(Path.Combine(dir, "seasons"), "*.json").Order().Select(File.ReadAllText),
-            File.Exists(Path.Combine(dir, "lemans.json")) ? File.ReadAllText(Path.Combine(dir, "lemans.json")) : null);
+            File.Exists(Path.Combine(dir, "lemans.json")) ? File.ReadAllText(Path.Combine(dir, "lemans.json")) : null,
+            File.Exists(Path.Combine(dir, "staff.json")) ? File.ReadAllText(Path.Combine(dir, "staff.json")) : null);
 
     private static T Parse<T>(string json) =>
         JsonSerializer.Deserialize<T>(json, Options) ?? throw new InvalidDataException($"Empty {typeof(T).Name} data");
@@ -99,6 +106,10 @@ public sealed class GameData
                 if (!Drivers.ContainsKey(driverId))
                     throw new InvalidDataException($"Le Mans {year} lists unknown driver {driverId}");
         }
+
+        foreach (var member in Staff.Values)
+            if (member.TeamId is { } teamId && !Teams.ContainsKey(teamId))
+                throw new InvalidDataException($"Staff member {member.Id} works for unknown team {teamId}");
 
         foreach (var season in Seasons.Values)
         foreach (var ev in season.Events)

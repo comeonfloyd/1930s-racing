@@ -29,7 +29,11 @@ public sealed record CareerSave(
     int? ModelYear = null,
     int? CarsYear = null,
     int? WaitingModelYear = null,
-    IReadOnlyDictionary<string, DateOnly>? InjuredUntil = null);
+    IReadOnlyDictionary<string, DateOnly>? InjuredUntil = null,
+    IReadOnlyDictionary<Facility, int>? Facilities = null,
+    IReadOnlyDictionary<StaffRole, string>? Staff = null,
+    FacilityJob? Building = null,
+    DateOnly? LastTest = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -60,7 +64,11 @@ public sealed partial class Career
         ModelYear,
         _carsYear,
         WaitingModelYear,
-        new Dictionary<string, DateOnly>(_injuredUntil));
+        new Dictionary<string, DateOnly>(_injuredUntil),
+        new Dictionary<Facility, int>(_facilities),
+        new Dictionary<StaffRole, string>(_staff),
+        Building,
+        _lastTest);
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -108,6 +116,17 @@ public sealed partial class Career
         career.WaitingModelYear = save.WaitingModelYear;
         foreach (var (id, until) in save.InjuredUntil ?? new Dictionary<string, DateOnly>())
             career._injuredUntil[id] = until;
+        // Saves from before the works was in the game keep the level 1 works and the real staff.
+        foreach (var (facility, level) in save.Facilities ?? new Dictionary<Facility, int>())
+            career._facilities[facility] = level;
+        if (save.Staff is { } staff)
+        {
+            career._staff.Clear();
+            foreach (var (role, id) in staff.Where(s => data.Staff.ContainsKey(s.Value)))
+                career._staff[role] = id;
+        }
+        career.Building = save.Building;
+        career._lastTest = save.LastTest;
         return career;
     }
 }

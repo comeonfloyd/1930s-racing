@@ -9,6 +9,8 @@ using RacingSim;
 var idle = args.Contains("--idle");
 // --money: also print the average money in and out by kind, per year.
 var money = args.Contains("--money");
+// --works: also build up the facilities and test before races when there is money to spare.
+var works = args.Contains("--works");
 // --races=YEAR: print each race of that year in the first career, with the field's cars.
 var racesYear = args.FirstOrDefault(a => a.StartsWith("--races="))?.Split('=')[1] is { } ry ? int.Parse(ry) : 0;
 args = args.Where(a => !a.StartsWith("--")).ToArray();
@@ -30,7 +32,7 @@ for (var seed = 0; seed < careers; seed++)
         {
             // Plan and enter again before each race: a new car may make more races open.
             if (!idle)
-                Plan(career);
+                Plan(career, works);
             foreach (var ev in career.CurrentSeason.Events)
                 career.Enter(ev.Id);
             if (career.NextRace is null)
@@ -86,13 +88,25 @@ if (money)
 }
 Console.WriteLine($"careers that went broke: {broke}; own drivers killed: {lostDrivers / (double)careers:0.0} per career");
 
-static void Plan(Career career)
+static void Plan(Career career, bool works)
 {
     // Keep at least two cars racing.
     while (career.Drivers.Count < 2 && career.FreeAgents.FirstOrDefault(d => Finance.SigningFee(d) < career.Cash / 4) is { } driver)
         career.Sign(driver.Id);
 
     var reserve = 2500;
+    if (works)
+    {
+        // The cheapest next level first, keeping money for the car; a test day when it is cheap enough.
+        var next = Enum.GetValues<Facility>()
+            .Where(f => career.Level(f) < Works.MaxLevel(f))
+            .OrderBy(f => Works.BuildCost(f, career.Level(f) + 1))
+            .FirstOrDefault(f => f != Facility.TestTrack || career.Level(Facility.Workshop) == 3);
+        if (career.Building is null && career.Level(next) < Works.MaxLevel(next) && Works.BuildCost(next, career.Level(next) + 1) + reserve + 2000 < career.Cash)
+            career.Build(next);
+        if (career.TestCost + reserve < career.Cash)
+            career.TestDay();
+    }
     // Build the next model when it is clearly quicker, or when the rules will soon rule the car out.
     var year = career.Today.Year;
     var wanted = career.NextModel is { } model
