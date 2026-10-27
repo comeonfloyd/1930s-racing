@@ -36,6 +36,8 @@ public enum ProjectResult
     NewCarUnderway,
     /// <summary>The design breaks the rules it is built for (the Indianapolis 500's).</summary>
     BreaksRules,
+    /// <summary>The design uses a part the drawing office has not studied yet.</summary>
+    NotResearched,
 }
 
 /// <summary>A dated line of team news, such as a finished drawing-office project.</summary>
@@ -115,7 +117,10 @@ public sealed partial class Career
     public Car Car { get; private set; }
 
     /// <summary>Every other team's car as its works have developed it so far.</summary>
-    public Car CarOf(string teamId) => teamId == Team.Id ? Car : _rivalCars.GetValueOrDefault(teamId) ?? _data.Teams[teamId].CarFor(_carsYear);
+    public Car CarOf(string teamId) => teamId == Team.Id ? Car : Settings.Rival(DevelopedCarOf(teamId), _data.Teams[teamId], _carsYear);
+
+    /// <summary>A rival's car as its works has developed it, before the settings' handicap.</summary>
+    private Car DevelopedCarOf(string teamId) => _rivalCars.GetValueOrDefault(teamId) ?? _data.Teams[teamId].CarFor(_carsYear);
 
     /// <summary>The other works racing in a year: those founded by then that send drivers.</summary>
     public IEnumerable<Team> RivalsIn(int year) =>
@@ -146,12 +151,13 @@ public sealed partial class Career
             throw new ArgumentException($"Team {teamId} is not playable", nameof(teamId));
         Today = new DateOnly(startYear, 1, 1);
         _paidUntil = Today;
-        Cash = Team.StartingCash;
+        Cash = (int)(Math.Round(Team.StartingCash * Settings.StartingMoney / 100) * 100);
         Car = Team.CarFor(startYear);
         ModelYear = Team.CarYearFor(startYear);
         _roster = Team.RosterFor(startYear).ToList();
         _carsYear = startYear;
         TakeOverStaff(startYear);
+        KnowPartsBefore(startYear);
     }
 
     /// <summary>
@@ -232,8 +238,11 @@ public sealed partial class Career
         var list = upgrade == Upgrade.NewCar && MakerPaysHalf ? DrawingOffice.Kind(upgrade).BaseCost * DrawingOffice.NewRulesCarShare
             : DrawingOffice.Cost(upgrade, TimesDone(upgrade));
         // The chief engineer's skill makes the money go further.
-        return (int)(Math.Round(list * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
+        return (int)(Math.Round(list * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) * Prices / 50) * 50);
     }
+
+    /// <summary>What world news does to works and drawing-office prices today.</summary>
+    private double Prices => WorldFactor(WorldEffect.Prices, Today);
 
     /// <summary>How many weeks a project takes in the team's drawing office.</summary>
     public int ProjectWeeks(Upgrade upgrade) => Works.ProjectWeeks(DrawingOffice.Kind(upgrade).Weeks, Level(Facility.DrawingOffice));
@@ -302,7 +311,7 @@ public sealed partial class Career
             var chance = DrawingOffice.RivalWeeklyChance(team.StartingCash, playerWins);
             if (rng.NextDouble() >= chance)
                 continue;
-            var car = CarOf(team.Id);
+            var car = DevelopedCarOf(team.Id);
             var options = DrawingOffice.Tuning.Select(k => k.Id).Where(u => DrawingOffice.CanImprove(car, u, team.CarFor(_carsYear))).ToList();
             if (options.Count == 0)
                 continue;
@@ -318,12 +327,16 @@ public sealed partial class Career
         if (_projects.Count == 0)
             return;
         var project = _projects[0] with { WeeksDone = _projects[0].WeeksDone + 1 };
-        if (project.WeeksDone < project.Weeks)
+        _projects[0] = project;
+        if (project.WeeksDone < project.Weeks || Overruns(project, date))
+            return;
+        _projects.RemoveAt(0);
+        if (project.Upgrade == Upgrade.Research && project.Part is { } part)
         {
-            _projects[0] = project;
+            _researched.Add(part);
+            _news.Add(new NewsItem(date, $"Research finished: own designs may now use the {Research.Name(part)}."));
             return;
         }
-        _projects.RemoveAt(0);
         var kind = DrawingOffice.Kind(project.Upgrade);
         if (project.Indy && project.Built is { } special)
         {
@@ -369,7 +382,10 @@ public sealed partial class Career
 
     public int WeeklyCosts => Finance.WeeklyCosts(Drivers) + WorksCosts;
 
-    public int WeeklyBacking => Finance.WeeklyBacking(Team.Prestige);
+    public int WeeklyBacking => BackingOn(Today);
+
+    /// <summary>The works' backing in a week, after any world news.</summary>
+    private int BackingOn(DateOnly date) => (int)Math.Round(Finance.WeeklyBacking(Team.Prestige) * WorldFactor(WorldEffect.Backing, date));
 
     /// <summary>The next entered race still to be run, if any.</summary>
     public RaceEvent? NextRace => _entries.FirstOrDefault(e => e.Date >= Today && !HasRun(e));
@@ -504,6 +520,7 @@ public sealed partial class Career
         PayWagesUntil(date);
         CatchUpYear(date.Year);
         DeliverIndyOrder(date);
+        AnnounceWorld(Today, date);
         Today = date;
     }
 
@@ -533,18 +550,20 @@ public sealed partial class Career
         for (var i = 0; i < result.Classification.Count; i++)
         {
             var car = result.Classification[i];
-            var prize = Finance.Prize(ev, i + 1);
+            var prize = (int)Math.Round(Finance.Prize(ev, i + 1) * WorldFactor(WorldEffect.Prizes, ev.Date, _data.Circuits[ev.CircuitId].Country));
             if (car.Entry.Team.Id == Team.Id && car.Finished && prize > 0)
                 earned += Pay(MoneyKind.Prize, $"{car.Entry.Driver.Name}, {Place(i + 1)} at {ev.Name}", prize);
         }
         var record = Record(result, entered: true, earned);
         LearnFromRace(record);
+        AnnounceWorld(Today, ev.Date.AddDays(1));
         Today = ev.Date.AddDays(1);
         return record;
     }
 
     /// <summary>Start money per car the organisers pay this team: the team manager bargains for more.</summary>
-    public int StartMoney(RaceEvent ev) => (int)Math.Round(ev.StartMoney * Works.StartMoneyFactor(SkillOf(StaffRole.Manager)) / 10) * 10;
+    public int StartMoney(RaceEvent ev) => (int)Math.Round(ev.StartMoney * Works.StartMoneyFactor(SkillOf(StaffRole.Manager))
+                                                           * WorldFactor(WorldEffect.StartMoney, ev.Date, _data.Circuits[ev.CircuitId].Country) / 10) * 10;
 
     /// <summary>Winter break: moves on to the first day of next year.</summary>
     public void StartNextSeason()
@@ -633,7 +652,7 @@ public sealed partial class Career
         {
             _paidUntil = _paidUntil.AddDays(7);
             Pay(MoneyKind.Wages, "Wages and works", -WeeklyCosts, _paidUntil);
-            Pay(MoneyKind.Backing, "Works backing", WeeklyBacking, _paidUntil);
+            Pay(MoneyKind.Backing, "Works backing", BackingOn(_paidUntil), _paidUntil);
             WorkOnProjects(_paidUntil);
             WorkOnBuilding(_paidUntil);
             DevelopRivals(_paidUntil);
@@ -654,9 +673,10 @@ public sealed partial class Career
     {
         var target = _data.Circuits[ev.CircuitId];
         var previous = _entries.LastOrDefault(e => e.Date < ev.Date);
-        return Works.Haul(previous is null
+        var plan = Works.Haul(previous is null
             ? Travel.Plan(_data.Cities[Team.BaseCityId], target)
             : Travel.Plan(_data.Circuits[previous.CircuitId], target), Level(Facility.Transport));
+        return plan with { Cost = (int)Math.Round(plan.Cost * WorldFactor(WorldEffect.Travel, ev.Date)) };
     }
 
     /// <summary>Earliest day the cars can leave for an event: today, or the day after the previous race.</summary>

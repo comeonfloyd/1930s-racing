@@ -9,4 +9,7 @@ public static class Session
 
     public static GameData? Data { get; set; }
     public static Career? Career { get; set; }
+
+    /// <summary>The settings a new career starts with, chosen on the team screen.</summary>
+    public static RaceSettings Settings { get; set; } = new();
 }

@@ -40,7 +40,9 @@ public sealed record CareerSave(
     CarDesign? IndyDesign = null,
     IndyOrder? IndyOrder = null,
     int TeethingFaults = 0,
-    int WaitingFaults = 0);
+    int WaitingFaults = 0,
+    IReadOnlyList<Part>? Researched = null,
+    RaceSettings? Settings = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -82,7 +84,9 @@ public sealed partial class Career
         IndyDesign,
         IndyOrder,
         TeethingFaults,
-        _waitingFaults);
+        _waitingFaults,
+        _researched.ToList(),
+        Settings);
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -94,7 +98,7 @@ public sealed partial class Career
         if (save.Version > SaveVersion)
             throw new InvalidDataException($"The save is from a newer version of the game ({save.Version}).");
         var events = data.Seasons.Values.SelectMany(s => s.Events).ToDictionary(e => e.Id);
-        var career = new Career(data, save.TeamId, save.Today.Year, save.Seed, new RaceSettings(save.FatalCrashes))
+        var career = new Career(data, save.TeamId, save.Today.Year, save.Seed, save.Settings ?? new RaceSettings(save.FatalCrashes))
         {
             Today = save.Today,
             _paidUntil = save.PaidUntil,
@@ -148,6 +152,12 @@ public sealed partial class Career
         career.IndyOrder = save.IndyOrder;
         career.TeethingFaults = save.TeethingFaults;
         career._waitingFaults = save.WaitingFaults;
+        // Saves from before research keep the parts known in the year they were made.
+        if (save.Researched is { } researched)
+        {
+            career._researched.Clear();
+            career._researched.UnionWith(researched);
+        }
         return career;
     }
 }

@@ -60,6 +60,15 @@ public class LiveRaceTests
     }
 
     [Fact]
+    public void APlayersDriverComesInForFuelIfNeverCalled()
+    {
+        var race = Race("1930-belgium", 4, "alfa-rossa");
+        race.RunToEnd();
+        Assert.DoesNotContain(race.Result().Classification,
+            c => c.Entry.Team.Id == "alfa-rossa" && c.Retirement?.Cause == RetirementCause.OutOfFuel);
+    }
+
+    [Fact]
     public void CalledCarStopsAtTheEndOfItsLap()
     {
         var race = Race("1930-monza", 2, "alfa-rossa");

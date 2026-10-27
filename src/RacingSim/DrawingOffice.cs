@@ -7,6 +7,8 @@ public enum Upgrade
     Handling,
     Reliability,
     NewCar,
+    /// <summary>Studying a new part so own designs may use it.</summary>
+    Research,
 }
 
 /// <summary>One kind of work the drawing office can do on the car, with its base cost and time.</summary>
@@ -26,6 +28,12 @@ public sealed record Project(Upgrade Upgrade, int Cost, int Weeks)
 
     /// <summary>The teething troubles the car of an own design will come out with.</summary>
     public int Faults { get; init; }
+
+    /// <summary>For research: the part being studied.</summary>
+    public Part? Part { get; init; }
+
+    /// <summary>The work has already overrun once, and will not again.</summary>
+    public bool Overran { get; init; }
 
     /// <summary>The project is the team's Indianapolis car, built beside the Grand Prix car.</summary>
     public bool Indy { get; init; }
@@ -58,10 +66,11 @@ public static class DrawingOffice
         new(Upgrade.Handling, "Suspension and steering", $"+{HandlingStep} handling", 1400, 5, "new suspension and steering"),
         new(Upgrade.Reliability, "Reliability work", $"+{ReliabilityStep * 100:0}% reliability", 1000, 4, "a stronger, more reliable car"),
         new(Upgrade.NewCar, "New car", "the works' next model", 6000, 14, "a new car"),
+        new(Upgrade.Research, "Research", "a new part for own designs", 0, 0, "research"),
     ];
 
     /// <summary>Work the other works choose from each week; their new cars come from the data.</summary>
-    public static IEnumerable<UpgradeKind> Tuning => Kinds.Where(k => k.Id != Upgrade.NewCar);
+    public static IEnumerable<UpgradeKind> Tuning => Kinds.Where(k => k.Id is not (Upgrade.NewCar or Upgrade.Research));
 
     public static int HorsepowerStep(Car car) => Math.Max(MinHorsepowerStep, (int)Math.Round(car.Horsepower * HorsepowerShare));
 

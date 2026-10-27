@@ -26,7 +26,9 @@ public partial class CalendarScreen
     private void DesignerView(Career career)
     {
         var indy = _designIndy;
-        var draft = indy ? _indyDraft ?? Indianapolis.Default(career.Today.Year) : _draft ?? CarDesigner.Default(career.Today.Year);
+        // A fresh design starts from the parts the drawing office knows, so it can be ordered at once.
+        var draft = indy ? _indyDraft ?? career.KnownParts(Indianapolis.Default(career.Today.Year))
+            : _draft ?? career.KnownParts(CarDesigner.Default(career.Today.Year));
         var preview = career.Preview(draft, indy);
         draft = Fit(draft, preview.Year, indy);
         SetDraft(draft);
@@ -42,9 +44,8 @@ public partial class CalendarScreen
         {
             Text = indy
                 ? $"A special for the 500, built with the engineering of {preview.Year} to its {Indianapolis.Name(preview.Year).ToLowerInvariant()}: {Indianapolis.Rule(preview.Year)}. "
-                  + "It is built in the drawing office beside your Grand Prix work and races only at Indianapolis."
-                : $"Your own car, built with the engineering of {preview.Year}. Parts not yet invented that year are greyed out. "
-                  + "The works' next model stays on offer in the drawing office as the cheaper choice.",
+                  + "It races only at Indianapolis."
+                : $"Your own car, built with the engineering of {preview.Year}. Parts not yet invented are greyed out.",
             ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
 
@@ -52,7 +53,7 @@ public partial class CalendarScreen
         // Two choices to a row, so the comparison and the Order button fit without scrolling.
         var grid = new GridContainer { Columns = 4 };
         grid.AddThemeConstantOverride("h_separation", 16);
-        grid.AddThemeConstantOverride("v_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 4);
         card.AddChild(grid);
         var year = preview.Year;
         var d = draft;
@@ -67,6 +68,8 @@ public partial class CalendarScreen
         Choice(grid, "Brakes", Enum.GetValues<Brakes>(), d.Brakes, CarDesigner.Name, CarDesigner.FirstYear, year, v => SetDraft(Draft with { Brakes = v }));
         Choice(grid, "Body", Enum.GetValues<Body>(), d.Body, CarDesigner.Name, CarDesigner.FirstYear, year, v => SetDraft(Draft with { Body = v }));
         _body.AddChild(card);
+        if (preview.Unresearched is { Count: > 0 } unknown)
+            _body.AddChild(ResearchCard(career, unknown));
 
         // The price and the Order button come before the figures, so they stay in view.
         var order = new HBoxContainer();
@@ -82,6 +85,7 @@ public partial class CalendarScreen
         var why = (indy ? career.IndyCarUnderway : career.NewCarUnderway) ? "A new car is already being built."
             : preview.TooEarly.Count > 0 ? $"Not invented yet: {string.Join(", ", preview.TooEarly)}."
             : indy && preview.Breach is { } rules ? rules
+            : preview.Unresearched is { Count: > 0 } study ? $"Research first: {string.Join(", ", study.Select(Research.Name))}."
             : preview.Cost > career.Cash ? "Not enough money."
             : "";
         var go = new Button
@@ -106,6 +110,7 @@ public partial class CalendarScreen
                 ProjectResult.PartsNotInvented => "That design uses parts not invented yet.",
                 ProjectResult.NewCarUnderway => "A new car is already being built.",
                 ProjectResult.BreaksRules => preview.Breach ?? "That design breaks the rules.",
+                ProjectResult.NotResearched => "The drawing office must study the new parts first.",
                 _ => "",
             });
             Refresh();
@@ -120,6 +125,12 @@ public partial class CalendarScreen
                    + (preview.Faults > 0 ? $" Expect about {preview.Faults}–{preview.Faults + 1} teething troubles, each costing {Prototype.FaultReliability * 100:0}% reliability until a test day or a race shows it up." : ""),
             ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
+        if (CarDesigner.FrameFlex(d, preview.Year) is > 0 and var flex)
+            _body.AddChild(new Label
+            {
+                Text = $"The {CarDesigner.Name(d.Frame).ToLowerInvariant()} twists under an engine this strong: {flex} handling lost. A stiffer frame would hold it.",
+                Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
         var engineHp = CarDesigner.EngineHorsepower(d, preview.Year);
         if (engineHp > preview.Car.Horsepower)
             _body.AddChild(new Label
@@ -134,6 +145,43 @@ public partial class CalendarScreen
         else if ((indy ? Indianapolis.Breach(d, preview.Car.Name, preview.Year + 1) : Formula.Breach(preview.Car, preview.Year + 1)) is { } next && career.HasNextSeason)
             _body.AddChild(new Label { Text = $"Next year: {next}", Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart });
     }
+
+    /// <summary>The new parts the design needs that the drawing office has not studied, as one row of buttons.</summary>
+    private Control ResearchCard(Career career, IReadOnlyList<Part> parts)
+    {
+        var row = new HFlowContainer();
+        row.AddThemeConstantOverride("h_separation", 8);
+        row.AddThemeConstantOverride("v_separation", 4);
+        row.AddChild(new Label { Text = "Research first:", Modulate = UiTheme.Accent, VerticalAlignment = VerticalAlignment.Center });
+        foreach (var part in parts)
+        {
+            var queued = career.ResearchQueued(part);
+            var cost = career.ResearchCost(part);
+            var study = new Button
+            {
+                Text = queued ? $"{ShortName(part)} · studying" : $"{ShortName(part)} £{cost:N0}",
+                Disabled = queued || cost > career.Cash,
+                TooltipText = $"{Capital(Research.Name(part))}, new to racing in {Research.FirstYear(part)}. Paid now, then {career.ResearchWeeks(part)} weeks in the drawing office; once studied, every design may use it. "
+                              + "It gets cheaper each year as others show how it is done.",
+            };
+            study.Pressed += () =>
+            {
+                Notice(career.StartResearch(part) == ProjectResult.NotEnoughMoney ? "Not enough money for that research." : "");
+                Refresh();
+            };
+            row.AddChild(study);
+        }
+        return row;
+    }
+
+    private static string ShortName(Part part) => part switch
+    {
+        Part.IndependentFront => "Independent front",
+        Part.AllIndependent => "All-independent",
+        Part.TwoStage => "Two-stage",
+        Part.BoxedLadder => "Boxed frame",
+        _ => Capital(Research.Name(part)),
+    };
 
     private static CarDesign Draft => (_designIndy ? _indyDraft : _draft)!;
 
@@ -229,24 +277,38 @@ public partial class CalendarScreen
         var power = Between(Prototype.Range(design.Horsepower, preview.Spread), " hp");
         var weight = Between(Prototype.Range(design.WeightKg, preview.Spread, 0.5, higherIsBetter: false), " kg");
         var reliability = design.Reliability - preview.Faults * Prototype.FaultReliability;
+        // Tyre wear against a typical 200 hp, 750 kg car of the day.
+        var typical = LiveRace.TyreWear(new Car("", 200, 750, 0, 0));
+        var wearNow = LiveRace.TyreWear(now) / typical;
+        var wearDesign = LiveRace.TyreWear(design) / typical;
+
+        // Two figures to a row, so the card stays short enough to fit under the form.
         var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
-        var grid = new GridContainer { Columns = 3 };
-        grid.AddThemeConstantOverride("h_separation", 24);
-        grid.AddChild(new Label { Text = "", CustomMinimumSize = new Vector2(120, 0) });
-        grid.AddChild(new Label { Text = now.Name, ThemeTypeVariation = "Muted" });
-        grid.AddChild(new Label { Text = design.Name, ThemeTypeVariation = "Heading" });
-        void Row(string what, string a, string b, int better)
+        var stack = new VBoxContainer();
+        stack.AddThemeConstantOverride("separation", 4);
+        stack.AddChild(new Label { Text = $"{design.Name} against the {now.Name}", ThemeTypeVariation = "Heading" });
+        var grid = new GridContainer { Columns = 6 };
+        grid.AddThemeConstantOverride("h_separation", 18);
+        stack.AddChild(grid);
+        for (var i = 0; i < 2; i++)
+        {
+            grid.AddChild(new Label { Text = "" });
+            grid.AddChild(new Label { Text = "NOW", ThemeTypeVariation = "Overline" });
+            grid.AddChild(new Label { Text = "NEW", ThemeTypeVariation = "Overline" });
+        }
+        void Cell(string what, string a, string b, int better)
         {
             grid.AddChild(new Label { Text = what, ThemeTypeVariation = "Muted" });
             grid.AddChild(new Label { Text = a, ThemeTypeVariation = "Muted" });
             grid.AddChild(new Label { Text = b, Modulate = better > 0 ? UiTheme.Good : better < 0 ? new Color(1, 0.65f, 0.55f) : Colors.White });
         }
-        Row("Power", $"{now.Horsepower} hp", power, design.Horsepower.CompareTo(now.Horsepower));
-        Row("Weight", $"{now.WeightKg} kg", weight, now.WeightKg.CompareTo(design.WeightKg));
-        Row("Handling", now.Handling.ToString(), $"about {design.Handling}", design.Handling.CompareTo(now.Handling));
-        Row("Reliability", $"{now.Reliability:P0}", preview.Faults > 0 ? $"about {reliability:P0} at first" : $"about {design.Reliability:P0}", reliability.CompareTo(now.Reliability));
-        Row("Engine", $"{now.EngineLitres:0.0#} L", $"{design.EngineLitres:0.0#} L", 0);
-        card.AddChild(grid);
+        Cell("Power", $"{now.Horsepower} hp", power, design.Horsepower.CompareTo(now.Horsepower));
+        Cell("Weight", $"{now.WeightKg} kg", weight, now.WeightKg.CompareTo(design.WeightKg));
+        Cell("Handling", now.Handling.ToString(), $"about {design.Handling}", design.Handling.CompareTo(now.Handling));
+        Cell("Reliability", $"{now.Reliability:P0}", preview.Faults > 0 ? $"about {reliability:P0} at first" : $"about {design.Reliability:P0}", reliability.CompareTo(now.Reliability));
+        Cell("Fuel use", $"{now.Thirst:P0}", $"{design.Thirst:P0}", now.Thirst.CompareTo(design.Thirst));
+        Cell("Tyre wear", $"{wearNow:P0}", $"{wearDesign:P0}", Math.Round(wearNow, 2).CompareTo(Math.Round(wearDesign, 2)));
+        card.AddChild(stack);
         return card;
     }
 }

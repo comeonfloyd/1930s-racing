@@ -191,7 +191,8 @@ public static class CarDesigner
                        + (int)d.Suspension
                        + (d.Brakes == Brakes.Hydraulic ? 1 : 0)
                        - (int)Math.Floor(Math.Max(0, engineHp - limit) / 60)
-                       - (d.Layout == EngineLayout.V16 ? 1 : 0);
+                       - (d.Layout == EngineLayout.V16 ? 1 : 0)
+                       - FrameFlex(d.Frame, engineHp / (d.Body == Body.Streamlined ? 1.05 : 1));
         handling = Math.Clamp(handling, 8, DrawingOffice.MaxHandling);
 
         // A new design is fragile, more so with parts new to the sport and highly stressed engines.
@@ -208,8 +209,26 @@ public static class CarDesigner
 
         var cylinders = Cylinders(d.Layout);
         return new Car($"{teamName} {cylinders}C-{year % 100:00}{(indy ? " Special" : "")}", (int)Math.Round(hp), weight, handling,
-            Math.Round(reliability, 2), d.Litres);
+            Math.Round(reliability, 2), d.Litres, Thirst(d));
     }
+
+    /// <summary>
+    /// Fuel use against a typical car of the day (a supercharged 3-litre): bigger engines drink
+    /// more, a supercharger more again, and a two-stage one burns alcohol by the gallon.
+    /// </summary>
+    public static double Thirst(CarDesign d) =>
+        Math.Round(Math.Pow(d.Litres / 3, 0.6) * d.Supercharging switch { Supercharging.None => 0.85, Supercharging.Single => 1, _ => 1.25 }, 2);
+
+    /// <summary>A plain frame twists under a big engine: power it was not built for costs handling.</summary>
+    private static int FrameFlex(Frame frame, double engineHp) => frame switch
+    {
+        Frame.Ladder => (int)Math.Floor(Math.Max(0, engineHp - 220) / 50),
+        Frame.BoxedLadder => (int)Math.Floor(Math.Max(0, engineHp - 330) / 60),
+        _ => 0,
+    };
+
+    /// <summary>The handling a frame loses to the engine's power, for the designer to warn about.</summary>
+    public static int FrameFlex(CarDesign d, int year) => FrameFlex(d.Frame, EngineHorsepower(d, year) / (d.Body == Body.Streamlined ? 1.05 : 1));
 
     /// <summary>What designing and building it costs, before the chief engineer's skill.</summary>
     public static int Cost(CarDesign d)
@@ -245,7 +264,7 @@ public static class CarDesigner
 /// with about <see cref="Faults"/> teething troubles.
 /// </summary>
 public sealed record DesignPreview(Car Car, int Cost, int Weeks, int Year, IReadOnlyList<string> TooEarly, string? Breach, bool Indy = false,
-    double Spread = 0, int Faults = 0);
+    double Spread = 0, int Faults = 0, IReadOnlyList<Part>? Unresearched = null);
 
 public sealed partial class Career
 {
@@ -275,10 +294,10 @@ public sealed partial class Career
         var ready = Today.AddDays(7 * (queued + weeks));
         var year = HasSeason(ready.Year) ? ready.Year : Today.Year;
         var car = CarDesigner.Build(design, Team.Name, year, indy);
-        var cost = (int)(Math.Round(CarDesigner.Cost(design) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
+        var cost = (int)(Math.Round(CarDesigner.Cost(design) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) * Prices / 50) * 50);
         var breach = indy ? Indianapolis.Breach(design, car.Name, year) : Formula.Breach(car, year);
         return new DesignPreview(car, cost, weeks, year, CarDesigner.TooEarly(design, year), breach, indy,
-            DesignSpread, indy ? 0 : ExpectedFaults(design, year));
+            DesignSpread, indy ? 0 : ExpectedFaults(design, year), Unresearched(design));
     }
 
     private bool HasSeason(int year) => _data.Seasons.ContainsKey(year);
@@ -296,6 +315,8 @@ public sealed partial class Career
             return ProjectResult.PartsNotInvented;
         if (indy && preview.Breach is not null)
             return ProjectResult.BreaksRules;
+        if (preview.Unresearched?.Count > 0)
+            return ProjectResult.NotResearched;
         if (preview.Cost > Cash)
             return ProjectResult.NotEnoughMoney;
         Pay(MoneyKind.Development, $"Own design: {preview.Car.Name}", -preview.Cost);

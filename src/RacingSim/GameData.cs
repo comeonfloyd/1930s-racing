@@ -17,6 +17,9 @@ public sealed class GameData
     /// <summary>Engineers, mechanics and team managers.</summary>
     public IReadOnlyDictionary<string, StaffMember> Staff { get; }
 
+    /// <summary>World news: historical events and the random pool.</summary>
+    public IReadOnlyList<WorldEvent> World { get; }
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -31,7 +34,8 @@ public sealed class GameData
         IEnumerable<Team> teams,
         IEnumerable<Season> seasons,
         LeMansData? leMans = null,
-        IEnumerable<StaffMember>? staff = null)
+        IEnumerable<StaffMember>? staff = null,
+        WorldData? world = null)
     {
         Circuits = circuits.ToDictionary(c => c.Id);
         Cities = cities.ToDictionary(c => c.Id);
@@ -41,6 +45,7 @@ public sealed class GameData
         LeMans = (leMans?.Entries ?? new Dictionary<string, IReadOnlyList<LeMansEntry>>())
             .ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         Staff = (staff ?? []).ToDictionary(s => s.Id);
+        World = world?.Events ?? [];
         Validate();
     }
 
@@ -49,7 +54,7 @@ public sealed class GameData
     /// code works from Godot (res:// paths) and from tests (disk paths).
     /// </summary>
     public static GameData FromJson(string circuits, string cities, string drivers, string teams, IEnumerable<string> seasons,
-        string? leMans = null, string? staff = null) =>
+        string? leMans = null, string? staff = null, string? world = null) =>
         new(
             Parse<List<Circuit>>(circuits),
             Parse<List<City>>(cities),
@@ -57,7 +62,8 @@ public sealed class GameData
             Parse<List<Team>>(teams),
             seasons.Select(Parse<Season>),
             leMans is null ? null : Parse<LeMansData>(leMans),
-            staff is null ? null : Parse<List<StaffMember>>(staff));
+            staff is null ? null : Parse<List<StaffMember>>(staff),
+            world is null ? null : Parse<WorldData>(world));
 
     /// <summary>Loads every file from a data directory on disk.</summary>
     public static GameData FromDirectory(string dir) =>
@@ -68,7 +74,8 @@ public sealed class GameData
             File.ReadAllText(Path.Combine(dir, "teams.json")),
             Directory.GetFiles(Path.Combine(dir, "seasons"), "*.json").Order().Select(File.ReadAllText),
             File.Exists(Path.Combine(dir, "lemans.json")) ? File.ReadAllText(Path.Combine(dir, "lemans.json")) : null,
-            File.Exists(Path.Combine(dir, "staff.json")) ? File.ReadAllText(Path.Combine(dir, "staff.json")) : null);
+            File.Exists(Path.Combine(dir, "staff.json")) ? File.ReadAllText(Path.Combine(dir, "staff.json")) : null,
+            File.Exists(Path.Combine(dir, "world.json")) ? File.ReadAllText(Path.Combine(dir, "world.json")) : null);
 
     private static T Parse<T>(string json) =>
         JsonSerializer.Deserialize<T>(json, Options) ?? throw new InvalidDataException($"Empty {typeof(T).Name} data");
@@ -110,6 +117,10 @@ public sealed class GameData
         foreach (var member in Staff.Values)
             if (member.TeamId is { } teamId && !Teams.ContainsKey(teamId))
                 throw new InvalidDataException($"Staff member {member.Id} works for unknown team {teamId}");
+
+        foreach (var ev in World)
+            if (ev.Factor <= 0 || ev.Weeks <= 0 || ev.Chance is < 0 or > 1)
+                throw new InvalidDataException($"World event {ev.Id} needs a positive factor and weeks, and a chance from 0 to 1");
 
         foreach (var season in Seasons.Values)
         foreach (var ev in season.Events)

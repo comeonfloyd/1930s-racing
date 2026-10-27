@@ -95,9 +95,10 @@ public sealed record Driver(
 /// <summary>
 /// A team's race car. Handling runs 1 to 20; reliability is the chance (0 to 1) of
 /// finishing 500 km without a mechanical failure. <see cref="EngineLitres"/> matters for the
-/// 3-litre formula from 1938 (0 means unknown and counts as within it).
+/// 3-litre formula from 1938 (0 means unknown and counts as within it). <see cref="Thirst"/>
+/// scales fuel use: 1 is a typical car of the day, more for a big or highly supercharged engine.
 /// </summary>
-public sealed record Car(string Name, int Horsepower, int WeightKg, int Handling, double Reliability, double EngineLitres = 0);
+public sealed record Car(string Name, int Horsepower, int WeightKg, int Handling, double Reliability, double EngineLitres = 0, double Thirst = 1);
 
 /// <summary>
 /// A team. <see cref="Name"/> is the in-game brand (altered from the real maker's
