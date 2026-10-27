@@ -10,7 +10,7 @@ The full, living design plan is a shared doc: https://claude.ai/artifact/YZFxuTn
 | Drivers and events | Real names |
 | Team and maker brands | Slightly changed but recognisable: Alfa Rossa (Alfa Romeo), Bugetti (Bugatti), Masarelli (Maserati), Mercator-Benz (Mercedes-Benz), Auto Unitas (Auto Union) |
 | Danger | Drivers can die; fatal crashes come from the sim, never scripted; a setting turns them into career-ending injuries |
-| Race view | Animated, detailed 2D drawing of each circuit, drawn by code from traced track paths |
+| Race view | 3D view of each circuit (painted ground, trees, houses and stands stood up as models, procedural 3D cars, newsreel camera that drops behind the followed car), with the flat painted map one button away |
 | Other art | AI-generated posters, portraits and backgrounds (needs Steam's AI-content disclosure) |
 | MVP span | Full career, 1930 to 1939, all three rule eras |
 | Player's team | Take over a real team; Alfa Rossa and Bugetti first. A fictional own team comes after the MVP |

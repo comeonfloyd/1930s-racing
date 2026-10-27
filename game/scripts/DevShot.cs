@@ -13,6 +13,9 @@ namespace RacingManager;
 ///   --year=1934                  start the career in this year (with --team)
 ///   --stay=1                     keep running after the last picture
 ///   --no-textures                draw the race without the painted art (for debugging)
+///   --zoom=5                     zoom for race-zoom.png
+///   --view=map                   race shots in the flat map instead of 3D
+///   --rain=1                     show the race in the wet (looks only)
 ///   --night                      in a 24-hour race, start the race shots at midnight
 /// It saves calendar.png, map.png, drivers.png, works.png, designer.png, race.png, race-zoom.png, race-result.png and season.png, then quits.
 /// </summary>
