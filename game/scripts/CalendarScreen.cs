@@ -233,8 +233,8 @@ public partial class CalendarScreen : Control
             foreach (var team in _data.Teams.Values.Where(t => t.Playable))
                 teams.AddChild(TeamCard(team));
             _body.AddChild(teams);
+            _body.AddChild(HowToPlay());
             _side.AddChild(SettingsCard());
-            _side.AddChild(HowToPlay());
             return;
         }
 
@@ -397,7 +397,7 @@ public partial class CalendarScreen : Control
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 8);
             row.AddChild(new Label { Text = label, SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = tip, MouseFilter = MouseFilterEnum.Pass, VerticalAlignment = VerticalAlignment.Center });
-            var option = new OptionButton { CustomMinimumSize = new Vector2(150, 0), TooltipText = tip };
+            var option = new OptionButton { CustomMinimumSize = new Vector2(190, 0), ClipText = true, TooltipText = tip };
             for (var i = 0; i < options.Length; i++)
             {
                 option.AddItem(options[i].Name, i);
