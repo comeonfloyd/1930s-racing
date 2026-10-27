@@ -1,0 +1,44 @@
+// Engineers, chief mechanics and team managers of the era. teamId is the works they were
+// with (null: free to hire); firstYear/lastYear bound their time in racing inside 1930-1939.
+// Makers' family names follow the altered brands (Bugetti, Masarelli, Millard, Duesenhoff).
+// Skills are placeholder game values, 1 to 20. Years are approximate.
+[
+  { "id": "vittorio-jano", "name": "Vittorio Jano", "role": "Engineer", "skill": 18, "nationality": "Italy", "teamId": "alfa-rossa", "lastYear": 1937 },
+  { "id": "gioachino-colombo", "name": "Gioachino Colombo", "role": "Engineer", "skill": 15, "nationality": "Italy", "teamId": "alfa-rossa", "firstYear": 1937 },
+  { "id": "luigi-bazzi", "name": "Luigi Bazzi", "role": "Mechanic", "skill": 16, "nationality": "Italy", "teamId": "alfa-rossa" },
+  { "id": "attilio-marinoni", "name": "Attilio Marinoni", "role": "Mechanic", "skill": 13, "nationality": "Italy", "teamId": "alfa-rossa" },
+  { "id": "enzo-ferrari", "name": "Enzo Ferrari", "role": "Manager", "skill": 17, "nationality": "Italy", "teamId": "alfa-rossa", "lastYear": 1938 },
+
+  { "id": "jean-bugetti", "name": "Jean Bugetti", "role": "Engineer", "skill": 15, "nationality": "France", "teamId": "bugetti" },
+  { "id": "robert-aumaitre", "name": "Robert Aumaître", "role": "Mechanic", "skill": 13, "nationality": "France", "teamId": "bugetti" },
+  { "id": "meo-costantini", "name": "Meo Costantini", "role": "Manager", "skill": 16, "nationality": "Italy", "teamId": "bugetti", "lastYear": 1935 },
+
+  { "id": "hans-nibel", "name": "Hans Nibel", "role": "Engineer", "skill": 17, "nationality": "Germany", "teamId": "mercator-benz", "lastYear": 1934 },
+  { "id": "max-wagner", "name": "Max Wagner", "role": "Engineer", "skill": 15, "nationality": "Germany", "teamId": "mercator-benz" },
+  { "id": "rudolf-uhlenhaut", "name": "Rudolf Uhlenhaut", "role": "Engineer", "skill": 19, "nationality": "Germany", "teamId": "mercator-benz", "firstYear": 1936 },
+  { "id": "alfred-neubauer", "name": "Alfred Neubauer", "role": "Manager", "skill": 20, "nationality": "Germany", "teamId": "mercator-benz" },
+
+  { "id": "ferdinand-porsche", "name": "Ferdinand Porsche", "role": "Engineer", "skill": 19, "nationality": "Germany", "teamId": "auto-unitas", "firstYear": 1933, "lastYear": 1937 },
+  { "id": "robert-eberan-von-eberhorst", "name": "Robert Eberan von Eberhorst", "role": "Engineer", "skill": 17, "nationality": "Austria", "teamId": "auto-unitas", "firstYear": 1937 },
+  { "id": "ludwig-sebastian", "name": "Ludwig Sebastian", "role": "Mechanic", "skill": 15, "nationality": "Germany", "teamId": "auto-unitas", "firstYear": 1934 },
+  { "id": "willy-walb", "name": "Willy Walb", "role": "Manager", "skill": 13, "nationality": "Germany", "teamId": "auto-unitas", "firstYear": 1934, "lastYear": 1934 },
+  { "id": "karl-feuereissen", "name": "Karl Feuereissen", "role": "Manager", "skill": 16, "nationality": "Germany", "teamId": "auto-unitas", "firstYear": 1935 },
+
+  { "id": "alfieri-masarelli", "name": "Alfieri Masarelli", "role": "Engineer", "skill": 15, "nationality": "Italy", "teamId": "masarelli", "lastYear": 1931 },
+  { "id": "ernesto-masarelli", "name": "Ernesto Masarelli", "role": "Engineer", "skill": 14, "nationality": "Italy", "teamId": "masarelli", "firstYear": 1932 },
+  { "id": "guerino-bertocchi", "name": "Guerino Bertocchi", "role": "Mechanic", "skill": 16, "nationality": "Italy", "teamId": "masarelli" },
+
+  { "id": "harry-millard", "name": "Harry Millard", "role": "Engineer", "skill": 17, "nationality": "USA", "teamId": "millard" },
+  { "id": "august-duesenhoff", "name": "August Duesenhoff", "role": "Engineer", "skill": 15, "nationality": "USA", "teamId": "duesenhoff", "lastYear": 1937 },
+
+  { "id": "giulio-ramponi", "name": "Giulio Ramponi", "role": "Mechanic", "skill": 16, "nationality": "Italy" },
+  { "id": "amedee-gordini", "name": "Amédée Gordini", "role": "Mechanic", "skill": 14, "nationality": "France", "firstYear": 1935 },
+  { "id": "walter-hassan", "name": "Walter Hassan", "role": "Mechanic", "skill": 13, "nationality": "Britain" },
+  { "id": "reid-railton", "name": "Reid Railton", "role": "Engineer", "skill": 15, "nationality": "Britain" },
+  { "id": "peter-berthon", "name": "Peter Berthon", "role": "Engineer", "skill": 12, "nationality": "Britain", "firstYear": 1933 },
+  { "id": "leo-goossen", "name": "Leo Goossen", "role": "Engineer", "skill": 15, "nationality": "USA" },
+  { "id": "fred-offenhauser", "name": "Fred Offenhauser", "role": "Engineer", "skill": 14, "nationality": "USA", "firstYear": 1933 },
+  { "id": "ernest-friderich", "name": "Ernest Friderich", "role": "Manager", "skill": 13, "nationality": "France" },
+  { "id": "jules-goux", "name": "Jules Goux", "role": "Manager", "skill": 12, "nationality": "France" },
+  { "id": "lou-moore", "name": "Lou Moore", "role": "Manager", "skill": 14, "nationality": "USA", "firstYear": 1936 }
+]

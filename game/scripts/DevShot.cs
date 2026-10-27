@@ -14,7 +14,7 @@ namespace RacingManager;
 ///   --stay=1                     keep running after the last picture
 ///   --no-textures                draw the race without the painted art (for debugging)
 ///   --night                      in a 24-hour race, start the race shots at midnight
-/// It saves calendar.png, map.png, drivers.png, race.png, race-zoom.png, race-result.png and season.png, then quits.
+/// It saves calendar.png, map.png, drivers.png, works.png, designer.png, race.png, race-zoom.png, race-result.png and season.png, then quits.
 /// </summary>
 public static class DevShot
 {

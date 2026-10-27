@@ -29,8 +29,9 @@ public partial class CalendarScreen : Control
     private Button _calendarTab = null!;
     private Button _mapTab = null!;
     private Button _driversTab = null!;
+    private Button _worksTab = null!;
 
-    private enum View { Calendar, Map, Drivers }
+    private enum View { Calendar, Map, Drivers, Works, Designer }
 
     // Kept across scene changes, so coming back from a race shows the same view.
     private static View _view;
@@ -95,10 +96,13 @@ public partial class CalendarScreen : Control
         _driversTab = new Button { Text = "Drivers", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(110, 0) };
         _calendarTab.Pressed += () => { _view = View.Calendar; Refresh(); };
         _mapTab.Pressed += () => { _view = View.Map; Refresh(); };
+        _worksTab = new Button { Text = "Works", ToggleMode = true, ThemeTypeVariation = "Segment", CustomMinimumSize = new Vector2(110, 0) };
         _driversTab.Pressed += () => { _view = View.Drivers; Refresh(); };
+        _worksTab.Pressed += () => { _view = View.Works; Refresh(); };
         _tabs.AddChild(_calendarTab);
         _tabs.AddChild(_mapTab);
         _tabs.AddChild(_driversTab);
+        _tabs.AddChild(_worksTab);
         column.AddChild(_tabs);
 
         var row = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -155,8 +159,18 @@ public partial class CalendarScreen : Control
                 Refresh();
                 DevShot.Capture(this, "drivers.png", 1, () =>
                 {
-                    _view = View.Calendar;
-                    GoToRace();
+                    _view = View.Works;
+                    Refresh();
+                    DevShot.Capture(this, "works.png", 1, () =>
+                    {
+                        _view = View.Designer;
+                        Refresh();
+                        DevShot.Capture(this, "designer.png", 1, () =>
+                        {
+                            _view = View.Calendar;
+                            GoToRace();
+                        });
+                    });
                 });
             });
         });
@@ -198,6 +212,7 @@ public partial class CalendarScreen : Control
         _calendarTab.SetPressedNoSignal(_view == View.Calendar);
         _mapTab.SetPressedNoSignal(_view == View.Map);
         _driversTab.SetPressedNoSignal(_view == View.Drivers);
+        _worksTab.SetPressedNoSignal(_view == View.Works);
 
         if (Career is not { } career)
         {
@@ -239,6 +254,10 @@ public partial class CalendarScreen : Control
 
         if (_view == View.Drivers)
             DriverMarket(career);
+        else if (_view == View.Works)
+            WorksView(career);
+        else if (_view == View.Designer)
+            DesignerView(career);
         else
             foreach (var ev in career.CurrentSeason.Events)
                 _body.AddChild(EventCard(career, ev));
@@ -364,6 +383,7 @@ public partial class CalendarScreen : Control
                      "The drawing office improves the car: more power, less weight, better handling, fewer failures.",
                      "The rules change: from 1934 a car may weigh at most 750 kg, from 1938 its engine may be at most 3 litres. The drawing office can build the works' next car; one built for next season waits until 1 January, and the maker pays half when the rules rule out your car.",
                      "Sign drivers looking for a drive, or release one to save wages.",
+                     "In the works, build up the drawing office, workshop and transport, hire a better engineer, mechanic or team manager, and test the car to make it more reliable. Late on, a test track of your own makes testing cheap.",
                      "On race day you run the pit wall: pace orders and pit stops.",
                      "Le Mans is a 24-hour race outside the Grand Prix rules, for the maker's sports car. Two drivers share each car and change at the stops; there is no refuelling within 24 laps of the last fill, and the race runs through the night. The most distance in 24 hours wins.",
                  })
@@ -428,7 +448,7 @@ public partial class CalendarScreen : Control
             var kind = DrawingOffice.Kind(project.Upgrade);
             var line = new HBoxContainer();
             line.AddThemeConstantOverride("separation", 8);
-            var what = project.Upgrade == Upgrade.NewCar ? career.Team.CarFor(project.ModelYear).Name : kind.Effect;
+            var what = project.Upgrade == Upgrade.NewCar ? (project.Built ?? career.Team.CarFor(project.ModelYear)).Name : kind.Effect;
             line.AddChild(new Label { Text = $"{kind.Name} ({what})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
             line.AddChild(new Label
             {
@@ -443,11 +463,18 @@ public partial class CalendarScreen : Control
         if (career.WaitingModelYear is { } waiting)
             box.AddChild(new Label
             {
-                Text = $"The {career.Team.CarFor(waiting).Name} is built and races from 1 January {waiting}.",
+                Text = $"The {(career.WaitingCar ?? career.Team.CarFor(waiting)).Name} is built and races from 1 January {waiting}.",
                 ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
             });
 
         box.AddChild(new HSeparator());
+        var design = new Button
+        {
+            Text = "Design your own car  ›", Disabled = career.NewCarUnderway,
+            TooltipText = career.NewCarUnderway ? "A new car is already being built." : "Choose the engine and chassis of a new car.",
+        };
+        design.Pressed += () => { _view = View.Designer; Refresh(); };
+        box.AddChild(design);
         foreach (var kind in DrawingOffice.Kinds)
         {
             var next = career.NextModel;
@@ -465,7 +492,7 @@ public partial class CalendarScreen : Control
             var queued = career.Projects.Count(p => p.Upgrade == kind.Id);
             text.AddChild(new Label
             {
-                Text = $"{effect} · {kind.Weeks} weeks" + (queued > 0 ? $" · {queued} ordered" : ""),
+                Text = $"{effect} · {career.ProjectWeeks(kind.Id)} weeks" + (queued > 0 ? $" · {queued} ordered" : ""),
                 ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
             });
             line.AddChild(text);
@@ -473,9 +500,9 @@ public partial class CalendarScreen : Control
             {
                 Text = $"£{cost:N0}", CustomMinimumSize = new Vector2(84, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter,
                 TooltipText = kind.Id == Upgrade.NewCar
-                    ? $"Design and build the works' next car: paid now, {kind.Weeks} weeks of work after anything already ordered. It replaces the car you have, and its development starts afresh. A car designed for next season waits in the works until 1 January."
+                    ? $"Design and build the works' next car: paid now, {career.ProjectWeeks(kind.Id)} weeks of work after anything already ordered. It replaces the car you have, and its development starts afresh. A car designed for next season waits in the works until 1 January."
                       + (career.MakerPaysHalf ? " The rules rule out your car, so the maker pays half." : "")
-                    : $"Order {kind.Name.ToLowerInvariant()}: paid now, {kind.Weeks} weeks of work after anything already ordered. Each one of a kind costs more than the last.",
+                    : $"Order {kind.Name.ToLowerInvariant()}: paid now, {career.ProjectWeeks(kind.Id)} weeks of work after anything already ordered. Each one of a kind costs more than the last.",
                 Disabled = cost > career.Cash,
             };
             button.Pressed += () =>
@@ -621,7 +648,7 @@ public partial class CalendarScreen : Control
         var box = Stack(card, 6);
         box.AddChild(new Label { Text = "MONEY", ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = $"£{career.Cash:N0}", ThemeTypeVariation = "Big", Modulate = career.Cash < 0 ? UiTheme.Danger : Colors.White });
-        box.AddChild(new Label { Text = $"Every week: wages and works −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label { Text = $"Every week: wages and works −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         box.AddChild(new HSeparator());
 
         // Wages and backing come every week, so the list shows the race money and travel.
@@ -693,8 +720,10 @@ public partial class CalendarScreen : Control
                 : $"{circuit.Name}, {circuit.Country} · {ev.Laps} laps · {ev.Laps * circuit.LapKm:0} km",
             ThemeTypeVariation = "Muted",
         });
-        var facts = new HBoxContainer();
-        facts.AddThemeConstantOverride("separation", 6);
+        // Chips wrap onto a second line rather than widening the card past the window.
+        var facts = new HFlowContainer();
+        facts.AddThemeConstantOverride("h_separation", 6);
+        facts.AddThemeConstantOverride("v_separation", 4);
         if (record is not null)
         {
             var w = record.Winner;
@@ -710,7 +739,7 @@ public partial class CalendarScreen : Control
         }
         else
         {
-            facts.AddChild(Chip($"Start money £{ev.StartMoney:N0}/car"));
+            facts.AddChild(Chip($"Start money £{career.StartMoney(ev):N0}/car"));
             facts.AddChild(Chip($"Prizes £{ev.PrizeFund:N0}"));
             facts.AddChild(Chip($"Prestige {ev.Prestige}"));
             if (ev.IsEndurance)

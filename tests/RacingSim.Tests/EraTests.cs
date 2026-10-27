@@ -125,11 +125,15 @@ public class EraTests
         var career = new Career(data, "alfa-rossa", 1937);
         Assert.Equal(1938, career.NextModel!.Value.Year);
         Assert.True(career.MakerPaysHalf);
-        Assert.Equal(DrawingOffice.Kind(Upgrade.NewCar).BaseCost / 2, career.ProjectCost(Upgrade.NewCar));
+        Assert.Equal(Priced(career, DrawingOffice.Kind(Upgrade.NewCar).BaseCost / 2), career.ProjectCost(Upgrade.NewCar));
 
         // In 1931 the 8C Monza may race anywhere in 1932, so the P3 costs the full price.
         var early = new Career(data, "alfa-rossa", 1931);
         Assert.False(early.MakerPaysHalf);
-        Assert.Equal(DrawingOffice.Kind(Upgrade.NewCar).BaseCost, early.ProjectCost(Upgrade.NewCar));
+        Assert.Equal(Priced(early, DrawingOffice.Kind(Upgrade.NewCar).BaseCost), early.ProjectCost(Upgrade.NewCar));
     }
+
+    /// <summary>A list price as the team's chief engineer brings it in.</summary>
+    private static int Priced(Career career, int listPrice) =>
+        (int)(Math.Round(listPrice * Works.EngineerCostFactor(career.StaffIn(StaffRole.Engineer)!.Skill) / 50) * 50);
 }

@@ -101,7 +101,7 @@ public class SeasonTests
             .Select((c, i) => (c, i))
             .Where(x => x.c.Entry.Team.Id == "alfa-rossa" && x.c.Finished)
             .Sum(x => Finance.Prize(record.Event, x.i + 1));
-        Assert.Equal(300 * 3 + prizes, record.Earned);
+        Assert.Equal(career.StartMoney(record.Event) * 3 + prizes, record.Earned);
         Assert.Equal(cashBefore + record.Earned, career.Cash);
         Assert.Null(career.NextRace);
     }

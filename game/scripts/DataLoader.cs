@@ -22,7 +22,8 @@ public static class DataLoader
             Read("drivers.json"),
             Read("teams.json"),
             seasons,
-            FileAccess.FileExists($"{Root}/lemans.json") ? Read("lemans.json") : null);
+            FileAccess.FileExists($"{Root}/lemans.json") ? Read("lemans.json") : null,
+            FileAccess.FileExists($"{Root}/staff.json") ? Read("staff.json") : null);
     }
 
     private static string Read(string file) => FileAccess.GetFileAsString($"{Root}/{file}");

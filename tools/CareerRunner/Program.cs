@@ -9,6 +9,10 @@ using RacingSim;
 var idle = args.Contains("--idle");
 // --money: also print the average money in and out by kind, per year.
 var money = args.Contains("--money");
+// --works: also build up the facilities and test before races when there is money to spare.
+var works = args.Contains("--works");
+// --design: build the team's own designs instead of the works' models.
+var design = args.Contains("--design");
 // --races=YEAR: print each race of that year in the first career, with the field's cars.
 var racesYear = args.FirstOrDefault(a => a.StartsWith("--races="))?.Split('=')[1] is { } ry ? int.Parse(ry) : 0;
 args = args.Where(a => !a.StartsWith("--")).ToArray();
@@ -30,7 +34,7 @@ for (var seed = 0; seed < careers; seed++)
         {
             // Plan and enter again before each race: a new car may make more races open.
             if (!idle)
-                Plan(career);
+                Plan(career, works, design);
             foreach (var ev in career.CurrentSeason.Events)
                 career.Enter(ev.Id);
             if (career.NextRace is null)
@@ -86,13 +90,35 @@ if (money)
 }
 Console.WriteLine($"careers that went broke: {broke}; own drivers killed: {lostDrivers / (double)careers:0.0} per career");
 
-static void Plan(Career career)
+static void Plan(Career career, bool works, bool design)
 {
     // Keep at least two cars racing.
     while (career.Drivers.Count < 2 && career.FreeAgents.FirstOrDefault(d => Finance.SigningFee(d) < career.Cash / 4) is { } driver)
         career.Sign(driver.Id);
 
     var reserve = 2500;
+    if (design && !career.NewCarUnderway)
+    {
+        // The most powerful legal design of the parts of the day, when clearly better than the car.
+        var best = Enumerable.Range(0, 23).Select(i => CarDesigner.MinLitres + i * CarDesigner.LitreStep)
+            .Select(l => career.Preview(Fit(CarDesigner.Default(career.Today.Year + 1), career.Today.Year) with { Litres = l }))
+            .Where(p => p.TooEarly.Count == 0 && p.Breach is null && Formula.Breach(p.Car, p.Year + 1) is null)
+            .MaxBy(p => p.Car.Horsepower * 1000 / p.Car.WeightKg + p.Car.Handling * 10);
+        if (best is not null && Better(best.Car, career.Car) && best.Cost + reserve < career.Cash)
+            career.StartDesign(Fit(CarDesigner.Default(career.Today.Year + 1), career.Today.Year) with { Litres = best.Car.EngineLitres });
+    }
+    if (works)
+    {
+        // The cheapest next level first, keeping money for the car; a test day when it is cheap enough.
+        var next = Enum.GetValues<Facility>()
+            .Where(f => career.Level(f) < Works.MaxLevel(f))
+            .OrderBy(f => Works.BuildCost(f, career.Level(f) + 1))
+            .FirstOrDefault(f => f != Facility.TestTrack || career.Level(Facility.Workshop) == 3);
+        if (career.Building is null && career.Level(next) < Works.MaxLevel(next) && Works.BuildCost(next, career.Level(next) + 1) + reserve + 2000 < career.Cash)
+            career.Build(next);
+        if (career.TestCost + reserve < career.Cash)
+            career.TestDay();
+    }
     // Build the next model when it is clearly quicker, or when the rules will soon rule the car out.
     var year = career.Today.Year;
     var wanted = career.NextModel is { } model
@@ -136,3 +162,11 @@ static string FindDataDir()
     }
     throw new DirectoryNotFoundException("Could not find game/data above the program folder");
 }
+
+// The default design of a year, with parts not yet invented swapped for older ones.
+static CarDesign Fit(CarDesign d, int year) => d with
+{
+    Frame = CarDesigner.FirstYear(d.Frame) <= year ? d.Frame : year >= 1932 ? Frame.BoxedLadder : Frame.Ladder,
+    Suspension = CarDesigner.FirstYear(d.Suspension) <= year ? d.Suspension : Suspension.BeamAxles,
+    Brakes = CarDesigner.FirstYear(d.Brakes) <= year ? d.Brakes : Brakes.Mechanical,
+};

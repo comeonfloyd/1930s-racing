@@ -10,11 +10,12 @@ public class DrawingOfficeTests
         var career = NewCareer();
         var before = career.Car.Horsepower;
 
+        var cost = career.ProjectCost(Upgrade.Engine);
         Assert.Equal(ProjectResult.Queued, career.StartProject(Upgrade.Engine));
-        Assert.Equal(12000 - DrawingOffice.Kind(Upgrade.Engine).BaseCost, career.Cash);
+        Assert.Equal(12000 - cost, career.Cash);
         Assert.Equal(before, career.Car.Horsepower);
 
-        career.AdvanceDays(7 * DrawingOffice.Kind(Upgrade.Engine).Weeks);
+        career.AdvanceDays(7 * career.ProjectWeeks(Upgrade.Engine));
         Assert.Equal(before + DrawingOffice.HorsepowerStep(career.Team.Car), career.Car.Horsepower);
         Assert.Empty(career.Projects);
         Assert.Contains(career.News, n => n.Text.StartsWith("Engine tuning finished"));
@@ -49,9 +50,11 @@ public class DrawingOfficeTests
     public void CannotSpendMoneyTheTeamDoesNotHave()
     {
         var career = NewCareer();
-        while (career.StartProject(Upgrade.Engine) == ProjectResult.Queued) { }
+        var results = new List<ProjectResult>();
+        for (var i = 0; i < 20; i++)
+            results.AddRange(DrawingOffice.Tuning.Select(k => career.StartProject(k.Id)));
 
-        Assert.Equal(ProjectResult.NotEnoughMoney, career.StartProject(Upgrade.Engine));
+        Assert.Contains(ProjectResult.NotEnoughMoney, results);
         Assert.True(career.Cash >= 0);
     }
 

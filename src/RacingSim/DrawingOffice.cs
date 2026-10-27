@@ -19,6 +19,10 @@ public sealed record Project(Upgrade Upgrade, int Cost, int Weeks)
 
     /// <summary>For a new car: the year of the works model being built.</summary>
     public int ModelYear { get; init; }
+
+    /// <summary>For a car of the team's own design: the design, and the car it makes.</summary>
+    public CarDesign? Design { get; init; }
+    public Car? Built { get; init; }
     public double Progress => Weeks == 0 ? 1 : WeeksDone / (double)Weeks;
 }
 
