@@ -18,7 +18,7 @@ import time
 import urllib.parse
 import urllib.request
 
-UA = "1930s-racing-art-tools/1.0 (personal game project; apersidskiy@icloud.com)"
+UA = "1930s-racing-art-tools/1.0 (personal game project; https://github.com/comeonfloyd)"
 COMMONS = "https://commons.wikimedia.org/w/api.php"
 WIKIDATA = "https://www.wikidata.org/w/api.php"
 FREE = re.compile(r"^(public domain|pd|cc0|cc[- ]by([- ]sa)?[- ]?\d)", re.I)
@@ -109,6 +109,8 @@ def main():
     jobs = []
     for kind in ("drivers", "staff"):
         for key, name in queries.get(kind, {}).items():
+            for alt, r in REAL.items():
+                name = name.replace(alt.split("-")[0], r.split("-")[0])
             jobs.append((kind, key, lambda name=name: wikidata_images(name) + commons_search(f'"{name}"', 5)))
     for name in queries.get("cars", []):
         real = name
