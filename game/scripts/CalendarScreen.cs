@@ -273,6 +273,9 @@ public partial class CalendarScreen : Control
         if (career.SeasonOver)
             _side.AddChild(SummaryCard(career));
         _side.AddChild(MoneyCard(career));
+        // World news right under the money, since it changes what things cost and pay.
+        if (career.WorldOn(career.Today).Any())
+            _side.AddChild(WorldCard(career));
         // The Indianapolis card goes above the drawing office while the 500 is still to come and the team has no car for it.
         var indy = career.CurrentSeason.Events.FirstOrDefault(e => Indianapolis.Is(_data.Circuits[e.CircuitId]));
         var indyFirst = indy is not null && indy.Date >= career.Today && career.RaceCarFor(indy) is null;
@@ -283,8 +286,6 @@ public partial class CalendarScreen : Control
             _side.AddChild(IndyCard(career));
         _side.AddChild(RivalsCard(career));
         _side.AddChild(TeamCard(career));
-        if (career.WorldOn(career.Today).Any())
-            _side.AddChild(WorldCard(career));
         if (career.News.Count > 0)
             _side.AddChild(NewsCard(career));
     }
