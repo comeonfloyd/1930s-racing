@@ -1,0 +1,44 @@
+{
+ "drivers": {
+  "achille-varzi": 4, "albert-divo": 2, "andre-morel": 1, "antonio-brivio": 2, "august-momberger": 1,
+  "baconin-borzacchini": 3, "bernd-rosemeyer": 0, "boris-ivanowski": 2, "brian-lewis": 0,
+  "carlo-felice-trossi": 1, "christian-werner": 0, "clemente-biondetti": 1, "cliff-bergere": 0, "dick-seaman": 2,
+  "earl-howe": 3, "eugene-chaboud": 1, "floyd-roberts": 0, "franco-cortese": 3, "frank-clement": 4,
+  "freddie-dixon": 4, "gb-guidotti": 2, "georges-delaroche": 0, "georges-monneret": 2, "giuseppe-campari": 3,
+  "giuseppe-farina": 4, "glen-kidston": 1, "goffredo-zehender": 1, "guy-bouriat": 1, "guy-moll": 2,
+  "hans-stuck": 0, "henri-stoffel": 1, "hermann-paul-muller": 1, "hermann-zu-leiningen": 1, "hugh-eaton": 0,
+  "jean-chassagne": 1, "jean-pierre-wimille": 3, "jean-tremoulet": 0, "john-hindmarsh": 3, "joseph-paul": 1,
+  "kelly-petillo": 0, "lord-selsdon": 4, "louis-chiron": 2, "louis-gerard": 1, "louis-meyer": 4,
+  "luigi-arcangeli": 4, "luigi-chinetti": 4, "luigi-fagioli": 4, "luis-fontes": 3,
+  "manfred-von-brauchitsch": 2, "marcel-lehoux": 3, "marcel-mongin": 5, "peter-depaolo": 3,
+  "philippe-etancelin": 3, "piero-taruffi": 4, "pierre-veyron": 2, "ralph-hepburn": 3, "raymond-sommer": 0,
+  "rene-dreyfus": 2, "rex-mays": 3, "robert-benoist": 2, "rudolf-caracciola": 3, "rudolf-hasse": 3,
+  "tazio-nuvolari": 2, "ted-horn": 0, "tim-birkin": 3, "wilbur-shaw": 3, "william-grover-williams": 3,
+  "woolf-barnato": 1, "yves-giraud-cabantous": 2
+ },
+ "staff": {
+  "alfred-neubauer": 1, "amedee-gordini": 0, "attilio-marinoni": 2, "enzo-ferrari": 2, "ernest-friderich": 1,
+  "ferdinand-porsche": 1, "fred-offenhauser": 0, "gioachino-colombo": 0, "harry-millard": 1, "jules-goux": 4,
+  "meo-costantini": 3, "reid-railton": 1, "vittorio-jano": 1
+ },
+ "cars": {
+  "alfa-rossa-12c-36": 3, "alfa-rossa-308": 1, "alfa-rossa-316": 2, "alfa-rossa-6c-1750-ss": 0, "alfa-rossa-8c-2300-lm": 1,
+  "alfa-rossa-8c-2900b": 0, "alfa-rossa-8c-35": 1, "alfa-rossa-8c-monza": 1, "alfa-rossa-p2": 1, "alfa-rossa-p3": 0,
+  "alfa-rossa-p3-2-9": 3, "auto-unitas-typ-a": 0, "auto-unitas-typ-b": 0, "auto-unitas-typ-c": 0, "auto-unitas-typ-d": 0,
+  "auto-unitas-typ-d-1939": 0, "bugetti-type-35b": 1, "bugetti-type-50": 0, "bugetti-type-51": 1, "bugetti-type-57c": 1,
+  "bugetti-type-57g": 1, "bugetti-type-59": 2, "bugetti-type-59-50b": 0, "duesenhoff-special": 2, "indianapolis-special": 6,
+  "masarelli-26m": 2, "masarelli-6cm": 2, "masarelli-8cm": 3, "masarelli-8ctf": 0, "masarelli-v8ri": 0,
+  "mercator-benz-ssk": 3, "mercator-benz-sskl": 3, "mercator-benz-w125": 3, "mercator-benz-w154": 0,
+  "mercator-benz-w154-1939": 2, "mercator-benz-w25": 4, "mercator-benz-w25k": 3, "millard-91-special": 0, "millard-special": 0
+ },
+ "circuits": {
+  "avus": 3, "brooklands": 1, "indianapolis": 7, "lemans": 4, "monaco": 0, "montlhery": 0,
+  "monza": 3, "nurburgring": 3, "pescara": 0, "reims": 0, "spa": 3, "tripoli": 6
+ },
+ "focus": {
+  "drivers/antonio-brivio": 0.5, "drivers/august-momberger": 0.45, "drivers/hermann-zu-leiningen": 0.5, "drivers/hugh-eaton": 0.5,
+  "drivers/luigi-arcangeli": 0.5, "drivers/gb-guidotti": 0.5, "drivers/freddie-dixon": 0.5, "drivers/pierre-veyron": 0.45,
+  "drivers/ralph-hepburn": 0.45, "drivers/franco-cortese": 0.5, "drivers/christian-werner": 0.45, "drivers/georges-delaroche": 0.5,
+  "drivers/wilbur-shaw": 0.45, "staff/gioachino-colombo": 0.45, "staff/fred-offenhauser": 0.45
+ }
+}
