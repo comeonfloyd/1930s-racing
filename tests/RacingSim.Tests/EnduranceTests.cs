@@ -46,6 +46,22 @@ public class EnduranceTests
     }
 
     [Fact]
+    public void ACarRunningWhenTheClockRunsOutIsClassified()
+    {
+        // A breakdown on the lap that runs past the 24 hours does not count: the car was running at the end.
+        foreach (var seed in Enumerable.Range(0, 40))
+        {
+            var (ev, circuit, grid) = LeMans(1933);
+            var race = new LiveRace(ev, circuit, grid, seed);
+            race.RunToEnd();
+            Assert.All(race.Result().Classification.Where(c => c.Retirement is { } r),
+                c => Assert.True(race.Messages.Last(m => m.DriverId == c.Entry.Driver.Id).Time < 24 * 3600,
+                    $"seed {seed}: {c.Entry.Names} retired after the clock"));
+            Assert.Null(race.Result().Classification[0].Retirement);
+        }
+    }
+
+    [Fact]
     public void EveryCarHasTwoDriversWhoTakeTurns()
     {
         var (ev, circuit, grid) = LeMans(1932);

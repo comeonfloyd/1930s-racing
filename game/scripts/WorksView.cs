@@ -13,13 +13,6 @@ public partial class CalendarScreen
 {
     private void WorksView(Career career)
     {
-        _body.AddChild(new Label { Text = "FACILITIES", ThemeTypeVariation = "Overline" });
-        foreach (var facility in Enum.GetValues<Facility>())
-            _body.AddChild(FacilityCard(career, facility));
-
-        _body.AddChild(new Label { Text = "TESTING", ThemeTypeVariation = "Overline" });
-        _body.AddChild(TestingCard(career));
-
         _body.AddChild(new Label { Text = "STAFF", ThemeTypeVariation = "Overline" });
         foreach (var role in Enum.GetValues<StaffRole>())
         {
@@ -27,6 +20,13 @@ public partial class CalendarScreen
             var label = new Label { Text = "In post", ThemeTypeVariation = "Muted", CustomMinimumSize = new Vector2(110, 0), HorizontalAlignment = HorizontalAlignment.Center, SizeFlagsVertical = SizeFlags.ShrinkCenter };
             _body.AddChild(StaffCard(career, role, member, label, mine: true));
         }
+
+        _body.AddChild(new Label { Text = "FACILITIES", ThemeTypeVariation = "Overline" });
+        foreach (var facility in Enum.GetValues<Facility>())
+            _body.AddChild(FacilityCard(career, facility));
+
+        _body.AddChild(new Label { Text = "TESTING", ThemeTypeVariation = "Overline" });
+        _body.AddChild(TestingCard(career));
 
         _body.AddChild(new Label { Text = "FOR HIRE", ThemeTypeVariation = "Overline" });
         var free = career.StaffForHire;
@@ -72,7 +72,7 @@ public partial class CalendarScreen
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 14);
         row.AddChild(Badge(facility == Facility.TestTrack ? (level > 0 ? "✓" : "–") : level.ToString(),
-            facility == Facility.TestTrack ? "BUILT" : $"OF {max}", level > Works.StartLevel(facility)));
+            facility == Facility.TestTrack ? (level > 0 ? "BUILT" : "NONE") : $"OF {max}", level > Works.StartLevel(facility)));
 
         var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         titles.AddThemeConstantOverride("separation", 2);

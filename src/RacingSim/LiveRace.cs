@@ -199,7 +199,8 @@ public sealed class LiveRace
         // Finished cars by finishing time, then everyone else by distance covered.
         return list
             .Select((c, i) => (c, finishedAt: c.Finished ? _cars[i].LapEnd : double.MaxValue))
-            .OrderByDescending(x => x.c.Distance)
+            .OrderBy(x => Unclassified(x.c.Retirement) ? 1 : 0)
+            .ThenByDescending(x => x.c.Distance)
             .ThenBy(x => x.finishedAt)
             .Select(x => x.c)
             .ToList();
@@ -211,7 +212,8 @@ public sealed class LiveRace
         if (!IsOver)
             throw new InvalidOperationException("The race is still running.");
         var order = Enumerable.Range(0, _cars.Length)
-            .OrderByDescending(i => _cars[i].LapTimes.Count)
+            .OrderBy(i => Unclassified(_cars[i].Retirement) ? 1 : 0)
+            .ThenByDescending(i => _cars[i].LapTimes.Count)
             .ThenBy(i => _cars[i].LapTimes.Sum())
             .ThenBy(i => i)
             .ToList();
@@ -234,6 +236,12 @@ public sealed class LiveRace
         }
         return new RaceResult(Event, Circuit, classification) { Positions = positions };
     }
+
+    /// <summary>
+    /// In a timed race only cars running at the end are classified, so a retired car ranks
+    /// behind every finisher however far it got. In a race over a distance the laps decide.
+    /// </summary>
+    private bool Unclassified(Retirement? retirement) => Event.IsEndurance && retirement is not null;
 
     private CarState Car(string driverId) => _cars.First(c => c.Entry.Driver.Id == driverId);
 
@@ -281,13 +289,13 @@ public sealed class LiveRace
             risk *= EnduranceRisk;
             wear *= EnduranceWear;
         }
-        if (rng.NextDouble() < FailureChancePerLap(entry, Circuit) * strain)
+        if (rng.NextDouble() < FailureChancePerLap(entry, Circuit) * strain && !PastTheClock(car, start))
         {
             Retire(car, start, lap, RetirementCause.MechanicalFailure, 0.5, "retires with a mechanical failure");
             return;
         }
         var grip = 1 + 2 * car.Tyres * car.Tyres;
-        if (rng.NextDouble() < CrashChancePerLap(driver, Circuit) * risk * grip)
+        if (rng.NextDouble() < CrashChancePerLap(driver, Circuit) * risk * grip && !PastTheClock(car, start))
         {
             var fatal = _settings.FatalCrashes && rng.NextDouble() < Circuit.Danger * 0.15;
             // A driver who survives may still be hurt: more often on a dangerous circuit.
@@ -418,6 +426,13 @@ public sealed class LiveRace
         var weary = car.Entry.CoDriver is not null && (time - car.StintStart) / 3600 > 3 && lapsLeft > 3;
         return fuelShort || tyresGone || weary;
     }
+
+    /// <summary>
+    /// True when a breakdown or crash on this lap would come after the clock ran out: the car
+    /// was still running at the end of a timed race, so it is classified as running.
+    /// </summary>
+    private bool PastTheClock(CarState car, double start) =>
+        TimeLimit is { } limit && start + car.PitTime + Circuit.LapKm / RaceSim.AverageSpeedKmh(car.Entry, Circuit) * 3600 * 0.5 >= limit;
 
     private void Retire(CarState car, double start, int lap, RetirementCause cause, double fraction, string text, int injuryWeeks = 0)
     {

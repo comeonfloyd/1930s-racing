@@ -706,8 +706,10 @@ public partial class CalendarScreen : Control
                 : $"{circuit.Name}, {circuit.Country} · {ev.Laps} laps · {ev.Laps * circuit.LapKm:0} km",
             ThemeTypeVariation = "Muted",
         });
-        var facts = new HBoxContainer();
-        facts.AddThemeConstantOverride("separation", 6);
+        // Chips wrap onto a second line rather than widening the card past the window.
+        var facts = new HFlowContainer();
+        facts.AddThemeConstantOverride("h_separation", 6);
+        facts.AddThemeConstantOverride("v_separation", 4);
         if (record is not null)
         {
             var w = record.Winner;
