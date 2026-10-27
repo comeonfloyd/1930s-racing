@@ -163,6 +163,8 @@ public partial class CalendarScreen : Control
                     Refresh();
                     DevShot.Capture(this, "works.png", 1, () =>
                     {
+                        // The newest parts, so the shot shows any research they need.
+                        _draft = CarDesigner.Default(Career!.Today.Year);
                         _view = View.Designer;
                         Refresh();
                         DevShot.Capture(this, "designer.png", 1, () =>

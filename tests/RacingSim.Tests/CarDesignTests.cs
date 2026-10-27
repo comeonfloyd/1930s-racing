@@ -120,6 +120,11 @@ public class CarDesignTests
         Assert.Equal(ProjectResult.Queued, career.StartDesign(design));
         var loaded = Career.FromJson(TestData.Load(), career.ToJson());
         Assert.True(loaded.Knows(Part.Tubular));
+        // A fresh design can start from the parts the drawing office knows.
+        var fresh = new Career(TestData.Load(), "alfa-rossa", 1934, seed: 6);
+        var known = fresh.KnownParts(design with { Layout = EngineLayout.V16 });
+        Assert.Empty(fresh.Unresearched(known));
+        Assert.Equal(Frame.BoxedLadder, known.Frame);
         // Research gets cheaper once others have shown how it is done.
         Assert.True(Research.Cost(Part.Tubular, 1936) < Research.Cost(Part.Tubular, 1934));
     }

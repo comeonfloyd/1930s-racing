@@ -26,7 +26,9 @@ public partial class CalendarScreen
     private void DesignerView(Career career)
     {
         var indy = _designIndy;
-        var draft = indy ? _indyDraft ?? Indianapolis.Default(career.Today.Year) : _draft ?? CarDesigner.Default(career.Today.Year);
+        // A fresh design starts from the parts the drawing office knows, so it can be ordered at once.
+        var draft = indy ? _indyDraft ?? career.KnownParts(Indianapolis.Default(career.Today.Year))
+            : _draft ?? career.KnownParts(CarDesigner.Default(career.Today.Year));
         var preview = career.Preview(draft, indy);
         draft = Fit(draft, preview.Year, indy);
         SetDraft(draft);
@@ -145,30 +147,23 @@ public partial class CalendarScreen
             _body.AddChild(new Label { Text = $"Next year: {next}", Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart });
     }
 
-    /// <summary>The new parts the design needs that the drawing office has not studied, each with a button to start.</summary>
+    /// <summary>The new parts the design needs that the drawing office has not studied, as one row of buttons.</summary>
     private Control ResearchCard(Career career, IReadOnlyList<Part> parts)
     {
-        var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
-        var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 4);
-        box.AddChild(new Label { Text = "RESEARCH FIRST", ThemeTypeVariation = "Overline" });
+        var row = new HFlowContainer();
+        row.AddThemeConstantOverride("h_separation", 8);
+        row.AddThemeConstantOverride("v_separation", 4);
+        row.AddChild(new Label { Text = "Research first:", Modulate = UiTheme.Accent, VerticalAlignment = VerticalAlignment.Center });
         foreach (var part in parts)
         {
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 12);
             var queued = career.ResearchQueued(part);
-            row.AddChild(new Label
-            {
-                Text = $"{Capital(Research.Name(part))}: new to racing in {Research.FirstYear(part)}"
-                       + (queued ? ", being studied" : $" · {career.ResearchWeeks(part)} weeks in the drawing office"),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center,
-            });
             var cost = career.ResearchCost(part);
             var study = new Button
             {
-                Text = queued ? "Ordered" : $"Research · £{cost:N0}", CustomMinimumSize = new Vector2(130, 0),
+                Text = queued ? $"{Capital(Research.Name(part))} · being studied" : $"{Capital(Research.Name(part))} · £{cost:N0} · {career.ResearchWeeks(part)} wk",
                 Disabled = queued || cost > career.Cash,
-                TooltipText = "Paid now. Once studied, every design may use it. It gets cheaper each year as others show how it is done.",
+                TooltipText = $"New to racing in {Research.FirstYear(part)}. Paid now, then weeks in the drawing office; once studied, every design may use it. "
+                              + "It gets cheaper each year as others show how it is done.",
             };
             study.Pressed += () =>
             {
@@ -176,10 +171,8 @@ public partial class CalendarScreen
                 Refresh();
             };
             row.AddChild(study);
-            box.AddChild(row);
         }
-        card.AddChild(box);
-        return card;
+        return row;
     }
 
     private static CarDesign Draft => (_designIndy ? _indyDraft : _draft)!;

@@ -126,6 +126,36 @@ public sealed partial class Career
         return ProjectResult.Queued;
     }
 
+    /// <summary>A design with every part the drawing office has not studied swapped for the plainer one it knows.</summary>
+    public CarDesign KnownParts(CarDesign d)
+    {
+        var frame = d.Frame;
+        if (frame == Frame.Tubular && !Knows(Part.Tubular))
+            frame = Frame.BoxedLadder;
+        if (frame == Frame.BoxedLadder && !Knows(Part.BoxedLadder))
+            frame = Frame.Ladder;
+        var suspension = d.Suspension;
+        if (suspension == Suspension.AllIndependent && !Knows(Part.AllIndependent))
+            suspension = Suspension.IndependentFront;
+        if (suspension == Suspension.IndependentFront && !Knows(Part.IndependentFront))
+            suspension = Suspension.BeamAxles;
+        return d with
+        {
+            Layout = d.Layout switch
+            {
+                EngineLayout.V8 when !Knows(Part.V8) => EngineLayout.Straight8,
+                EngineLayout.V12 when !Knows(Part.V12) => EngineLayout.Straight8,
+                EngineLayout.V16 when !Knows(Part.V16) => EngineLayout.Straight8,
+                var layout => layout,
+            },
+            Supercharging = d.Supercharging == Supercharging.TwoStage && !Knows(Part.TwoStage) ? Supercharging.Single : d.Supercharging,
+            Frame = frame,
+            Suspension = suspension,
+            Brakes = d.Brakes == Brakes.Hydraulic && !Knows(Part.Hydraulic) ? Brakes.Mechanical : d.Brakes,
+            Body = d.Body == Body.Streamlined && !Knows(Part.Streamlined) ? Body.OpenWheel : d.Body,
+        };
+    }
+
     /// <summary>Parts already racing before the career began are known to the drawing office.</summary>
     private void KnowPartsBefore(int year)
     {
