@@ -360,7 +360,7 @@ public partial class CalendarScreen : Control
                      "Travel costs money and days: the cars must get from one race to the next in time.",
                      "Wages are paid every week. Your maker's backing comes in every week too.",
                      "The drawing office improves the car: more power, less weight, better handling, fewer failures.",
-                     "The rules change: from 1934 a car may weigh at most 750 kg, from 1938 its engine may be at most 3 litres. The drawing office can build the works' next car.",
+                     "The rules change: from 1934 a car may weigh at most 750 kg, from 1938 its engine may be at most 3 litres. The drawing office can build the works' next car; one built for next season waits until 1 January, and the maker pays half when the rules rule out your car.",
                      "Sign drivers looking for a drive, or release one to save wages.",
                      "On race day you run the pit wall: pace orders and pit stops.",
                  })
@@ -432,6 +432,13 @@ public partial class CalendarScreen : Control
                 box.AddChild(new ProgressBar { MaxValue = 1, Step = 0, Value = project.Progress, ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6) });
         }
 
+        if (career.WaitingModelYear is { } waiting)
+            box.AddChild(new Label
+            {
+                Text = $"The {career.Team.CarFor(waiting).Name} is built and races from 1 January {waiting}.",
+                ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            });
+
         box.AddChild(new HSeparator());
         foreach (var kind in DrawingOffice.Kinds)
         {
@@ -458,7 +465,8 @@ public partial class CalendarScreen : Control
             {
                 Text = $"£{cost:N0}", CustomMinimumSize = new Vector2(84, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter,
                 TooltipText = kind.Id == Upgrade.NewCar
-                    ? $"Design and build the works' next car: paid now, {kind.Weeks} weeks of work after anything already ordered. It replaces the car you have, and its development starts afresh."
+                    ? $"Design and build the works' next car: paid now, {kind.Weeks} weeks of work after anything already ordered. It replaces the car you have, and its development starts afresh. A car designed for next season waits in the works until 1 January."
+                      + (career.MakerPaysHalf ? " The rules rule out your car, so the maker pays half." : "")
                     : $"Order {kind.Name.ToLowerInvariant()}: paid now, {kind.Weeks} weeks of work after anything already ordered. Each one of a kind costs more than the last.",
                 Disabled = cost > career.Cash,
             };

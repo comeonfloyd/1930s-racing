@@ -6,7 +6,7 @@
   "events": [
     { "id": "1936-monaco", "name": "Monaco Grand Prix", "circuitId": "monaco", "date": "1936-04-13", "laps": 100, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
     { "id": "1936-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1936-05-10", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
-    { "id": "1936-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1936-05-30", "laps": 200, "startMoney": 0, "prizeFund": 10000, "prestige": 10 },
+    { "id": "1936-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1936-05-30", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
     { "id": "1936-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1936-06-14", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
     { "id": "1936-germany", "name": "German Grand Prix", "circuitId": "nurburgring", "date": "1936-07-26", "laps": 22, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
     { "id": "1936-acerbo", "name": "Coppa Acerbo", "circuitId": "pescara", "date": "1936-08-15", "laps": 20, "startMoney": 250, "prizeFund": 1200, "prestige": 7 },

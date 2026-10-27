@@ -35,11 +35,11 @@ public static class DrawingOffice
     public const int HandlingStep = 1;
     public const double ReliabilityStep = 0.04;
     public const double MaxReliability = 0.95;
-    public const int MinWeightKg = 650;
-    public const int MaxHandling = 20;
+    public const int MinWeightKg = 680;
+    public const int MaxHandling = 18;
 
     /// <summary>Each finished project of a kind raises the next one's cost by this factor.</summary>
-    public const double CostGrowth = 1.3;
+    public const double CostGrowth = 1.5;
 
     public static readonly IReadOnlyList<UpgradeKind> Kinds =
     [
@@ -56,22 +56,35 @@ public static class DrawingOffice
     public static int HorsepowerStep(Car car) => Math.Max(MinHorsepowerStep, (int)Math.Round(car.Horsepower * HorsepowerShare));
 
     /// <summary>
-    /// Chance each week that a rival works finishes a piece of work: about four a season for a
-    /// team with £10,000, fewer for a poorer one.
+    /// Chance each week that a rival works finishes a piece of work: about six a season for a
+    /// team with £10,000, fewer for a poorer one. Works the player keeps beating push harder:
+    /// each win the player has had this season adds a tenth to the chance.
     /// </summary>
-    public static double RivalWeeklyChance(int startingCash) => Math.Clamp(startingCash / 130000.0, 0.02, 0.15);
+    public static double RivalWeeklyChance(int startingCash, int playerWins = 0) =>
+        Math.Min(0.25, Math.Clamp(startingCash / 80000.0, 0.03, 0.15) * (1 + 0.1 * playerWins));
+
+    /// <summary>
+    /// A new car to new rules costs this share of the usual price when the old car is ruled out:
+    /// the maker pays the rest.
+    /// </summary>
+    public const double NewRulesCarShare = 0.5;
 
     public static UpgradeKind Kind(Upgrade upgrade) => Kinds.First(k => k.Id == upgrade);
 
     public static int Cost(Upgrade upgrade, int timesDone) =>
         (int)(Math.Round(Kind(upgrade).BaseCost * Math.Pow(CostGrowth, timesDone) / 50) * 50);
 
+    /// <summary>Engine work gets at most this much more power than the car was designed with.</summary>
+    public const double MaxPowerGrowth = 1.25;
+
     /// <summary>
-    /// False when the car is already at the limit for this kind of work. A new car is decided by
-    /// the career, which knows the works' models (<see cref="Career.NextModel"/>).
+    /// False when the car is already at the limit for this kind of work. The design is the car
+    /// as first built, which caps engine work. A new car is decided by the career, which knows
+    /// the works' models (<see cref="Career.NextModel"/>).
     /// </summary>
-    public static bool CanImprove(Car car, Upgrade upgrade) => upgrade switch
+    public static bool CanImprove(Car car, Upgrade upgrade, Car? design = null) => upgrade switch
     {
+        Upgrade.Engine => design is null || car.Horsepower + HorsepowerStep(car) <= design.Horsepower * MaxPowerGrowth,
         Upgrade.Lightening => car.WeightKg - WeightStep >= MinWeightKg,
         Upgrade.Handling => car.Handling + HandlingStep <= MaxHandling,
         Upgrade.Reliability => car.Reliability < MaxReliability,

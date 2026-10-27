@@ -41,6 +41,9 @@ public partial class RaceScreen : Control
     // Godot objects, and finalizing those during shutdown crashed the engine.
     private readonly StyleBoxFlat _rowMine = UiTheme.Box(new Color(UiTheme.Accent, 0.16f), 6, 6, vertical: 3);
     private readonly StyleBoxFlat _rowOther = UiTheme.Box(Colors.Transparent, 6, 6, vertical: 3);
+    // Thinner rows for a full grid, so twenty cars or more fit the tower.
+    private readonly StyleBoxFlat _rowMineTight = UiTheme.Box(new Color(UiTheme.Accent, 0.16f), 6, 6, vertical: 0);
+    private readonly StyleBoxFlat _rowOtherTight = UiTheme.Box(Colors.Transparent, 6, 6, vertical: 0);
     private readonly StyleBoxFlat _barGood = UiTheme.Box(UiTheme.Good, 4, 0);
     private readonly StyleBoxFlat _barWarn = UiTheme.Box(UiTheme.Accent, 4, 0);
     private readonly StyleBoxFlat _barBad = UiTheme.Box(UiTheme.Danger, 4, 0);
@@ -161,8 +164,8 @@ public partial class RaceScreen : Control
             if (compact)
             {
                 foreach (var label in new[] { position, name, gap })
-                    label.AddThemeFontSizeOverride("font_size", 12);
-                stripe.CustomMinimumSize = new Vector2(4, 11);
+                    label.AddThemeFontSizeOverride("font_size", _race.Cars().Count > 18 ? 11 : 12);
+                stripe.CustomMinimumSize = new Vector2(4, 10);
             }
             line.AddChild(position);
             line.AddChild(stripe);
@@ -504,7 +507,7 @@ public partial class RaceScreen : Control
                 _ => Gap(cars[0], c, averageLap),
             };
             var mine = c.Entry.Team.Id == team;
-            SetStyle(row.Panel, "panel", mine ? _rowMine : _rowOther);
+            SetStyle(row.Panel, "panel", _tower.Count > 14 ? (mine ? _rowMineTight : _rowOtherTight) : mine ? _rowMine : _rowOther);
             row.Name.Modulate = c.Retirement is null ? Colors.White : new Color(1, 1, 1, 0.45f);
         }
 
@@ -515,10 +518,11 @@ public partial class RaceScreen : Control
             var fuelLaps = car.Fuel * LiveRace.TankRangeKm / _race.Circuit.LapKm;
             card.Position.Text = $"P{position + 1}";
             card.Fuel.Value = car.Fuel;
-            card.FuelText.Text = $"{fuelLaps:0} laps";
+            // After the flag the tank is all but empty by design: no need to show it.
+            card.FuelText.Text = car.Running ? $"{fuelLaps:0} laps" : "–";
             card.Tyres.Value = 1 - car.TyreWear;
             card.TyreText.Text = $"{100 - car.TyreWear * 100:0}%";
-            SetStyle(card.Fuel, "fill", fuelLaps < 2 ? _barBad : _barGood);
+            SetStyle(card.Fuel, "fill", fuelLaps < 2 && car.Running ? _barBad : _barGood);
             SetStyle(card.Tyres, "fill", car.TyreWear > 0.8 ? _barBad : car.TyreWear > 0.6 ? _barWarn : _barGood);
 
             card.Box.Text = car.PitCalled ? "Boxing this lap · cancel" : "Box this lap";
@@ -600,6 +604,8 @@ public partial class RaceScreen : Control
         list.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         scroll.AddChild(list);
         box.AddChild(scroll);
+        if (result.Classification.Count * rowHeight > scroll.CustomMinimumSize.Y)
+            box.AddChild(new Label { Text = $"Scroll for the rest of the {result.Classification.Count} cars.", ThemeTypeVariation = "Muted", HorizontalAlignment = HorizontalAlignment.Center });
 
         for (var i = 0; i < result.Classification.Count; i++)
         {

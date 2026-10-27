@@ -8,7 +8,7 @@
     { "id": "1933-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1933-05-07", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
     { "id": "1933-avus", "name": "Avusrennen", "circuitId": "avus", "date": "1933-05-21", "laps": 15, "startMoney": 300, "prizeFund": 1500, "prestige": 7 },
     { "id": "1933-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1933-05-28", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },
-    { "id": "1933-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1933-05-30", "laps": 200, "startMoney": 0, "prizeFund": 10000, "prestige": 10 },
+    { "id": "1933-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1933-05-30", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
     { "id": "1933-france", "name": "French Grand Prix", "circuitId": "montlhery", "date": "1933-06-11", "laps": 40, "startMoney": 350, "prizeFund": 2000, "prestige": 9 },
     { "id": "1933-marne", "name": "Marne Grand Prix", "circuitId": "reims", "date": "1933-07-02", "laps": 51, "startMoney": 200, "prizeFund": 1000, "prestige": 6, "absentTeams": ["mercator-benz", "auto-unitas"] },
     { "id": "1933-belgium", "name": "Belgian Grand Prix", "circuitId": "spa", "date": "1933-07-09", "laps": 40, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
