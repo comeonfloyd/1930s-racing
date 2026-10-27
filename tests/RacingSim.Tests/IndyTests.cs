@@ -70,12 +70,15 @@ public class IndyTests
         Assert.Null(preview.Breach);
         // Two seats for the riding mechanic weigh more than the same car as a single-seater.
         Assert.True(preview.Car.WeightKg > CarDesigner.Build(design, "Alfa Rossa", 1934).WeightKg);
+        Assert.Equal(ProjectResult.NotResearched, career.StartDesign(design, indy: true));
+        CarDesignTests.ResearchFor(career, design);
+        preview = career.Preview(design, indy: true);
         Assert.Equal(ProjectResult.Queued, career.StartDesign(design, indy: true));
         Assert.Equal(ProjectResult.NewCarUnderway, career.BuyIndyCar());
         // A new Grand Prix car may still be designed alongside.
         Assert.False(career.NewCarUnderway);
 
-        career.AdvanceDays(7 * preview.Weeks);
+        career.AdvanceDays(7 * (preview.Weeks + CarDesignTests.MostOverrunWeeks));
         CarDesignTests.AsEstimated(preview, career.IndyCar);
         Assert.NotEqual(preview.Car, career.Car);
     }

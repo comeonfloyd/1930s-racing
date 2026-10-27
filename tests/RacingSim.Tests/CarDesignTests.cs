@@ -73,7 +73,7 @@ public class CarDesignTests
         Assert.Equal(ProjectResult.NewCarUnderway, career.StartDesign(design));
         Assert.Null(career.NextModel);
 
-        career.AdvanceDays(7 * preview.Weeks);
+        career.AdvanceDays(7 * (preview.Weeks + MostOverrunWeeks));
         AsEstimated(preview, career.Car);
         Assert.Equal(career.Car, career.DesignBase);
         Assert.True(career.TeethingFaults >= 1);
@@ -82,6 +82,68 @@ public class CarDesignTests
         var loaded = Career.FromJson(TestData.Load(), career.ToJson());
         Assert.Equal(career.DesignBase, loaded.DesignBase);
         Assert.Equal(career.TeethingFaults, loaded.TeethingFaults);
+    }
+
+    /// <summary>The longest an own design or research can overrun.</summary>
+    public const int MostOverrunWeeks = 4;
+
+    /// <summary>Studies every part a design needs and waits until the drawing office is done.</summary>
+    public static void ResearchFor(Career career, CarDesign design)
+    {
+        var weeks = 0;
+        foreach (var part in career.Unresearched(design).Where(p => !career.ResearchQueued(p)))
+        {
+            Assert.Equal(ProjectResult.Queued, career.StartResearch(part));
+            weeks += career.ResearchWeeks(part) + MostOverrunWeeks;
+        }
+        career.AdvanceDays(7 * weeks);
+        Assert.Empty(career.Unresearched(design));
+    }
+
+    [Fact]
+    public void NewPartsMustBeResearchedBeforeADesignMayUseThem()
+    {
+        var career = new Career(TestData.Load(), "alfa-rossa", 1934, seed: 6);
+        var design = CarDesigner.Default(1934);
+        // Parts that raced before the career began are known; this year's are not.
+        Assert.True(career.Knows(Part.BoxedLadder));
+        Assert.Contains(Part.Tubular, career.Unresearched(design));
+        Assert.Equal(ProjectResult.NotResearched, career.StartDesign(design));
+        Assert.Equal(ProjectResult.PartsNotInvented, career.StartResearch(Part.V12));
+
+        var cash = career.Cash;
+        var cost = career.ResearchCost(Part.Tubular);
+        Assert.Equal(ProjectResult.Queued, career.StartResearch(Part.Tubular));
+        Assert.Equal(cash - cost, career.Cash);
+        Assert.Equal(ProjectResult.AtLimit, career.StartResearch(Part.Tubular));
+        ResearchFor(career, design);
+        Assert.Equal(ProjectResult.Queued, career.StartDesign(design));
+        var loaded = Career.FromJson(TestData.Load(), career.ToJson());
+        Assert.True(loaded.Knows(Part.Tubular));
+        // Research gets cheaper once others have shown how it is done.
+        Assert.True(Research.Cost(Part.Tubular, 1936) < Research.Cost(Part.Tubular, 1934));
+    }
+
+    [Fact]
+    public void OwnDesignsSometimesOverrun()
+    {
+        var overran = 0;
+        for (var seed = 1; seed <= 60; seed++)
+        {
+            var career = new Career(TestData.Load(), "alfa-rossa", 1930, seed: seed);
+            var preview = career.Preview(CarDesigner.Default(1930));
+            career.StartDesign(CarDesigner.Default(1930));
+            career.AdvanceDays(7 * preview.Weeks);
+            if (career.DesignBase is null)
+            {
+                overran++;
+                Assert.True(career.Projects[0].Overran);
+                career.AdvanceDays(7 * MostOverrunWeeks);
+                Assert.NotNull(career.DesignBase);
+            }
+        }
+        // Jano is a fine engineer: about one design in eight overruns.
+        Assert.InRange(overran, 2, 20);
     }
 
     /// <summary>The built car is the estimate give or take the spread.</summary>
@@ -124,7 +186,7 @@ public class CarDesignTests
         var design = CarDesigner.Default(1930);
         var preview = career.Preview(design);
         career.StartDesign(design);
-        career.AdvanceDays(7 * preview.Weeks);
+        career.AdvanceDays(7 * (preview.Weeks + MostOverrunWeeks));
         var faults = career.TeethingFaults;
         var reliability = career.Car.Reliability;
         for (var week = 0; week < 12 && career.TeethingFaults > 0; week++)
@@ -142,8 +204,7 @@ public class CarDesignTests
         var data = TestData.Load();
         var career = new Career(data, "alfa-rossa", 1933, seed: 5);
         career.AdvanceTo(new DateOnly(1933, 11, 1));
-        var design = CarDesigner.Default(1934);
-        Assert.NotEmpty(CarDesigner.TooEarly(design, 1933));
+        var design = CarDesigner.Default(1933);
         var preview = career.Preview(design);
         Assert.Equal(1934, preview.Year);
         Assert.Empty(preview.TooEarly);
@@ -153,7 +214,7 @@ public class CarDesignTests
         career.AdvanceTo(new DateOnly(1933, 12, 31));
         Assert.Equal(old, career.Car);
         career.StartNextSeason();
-        career.AdvanceDays(7 * preview.Weeks);
+        career.AdvanceDays(7 * (preview.Weeks + MostOverrunWeeks));
         AsEstimated(preview, career.Car);
         Assert.True(career.TeethingFaults >= 1);
         Assert.Equal(1934, career.ModelYear);

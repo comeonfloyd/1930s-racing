@@ -467,6 +467,8 @@ public partial class CalendarScreen : Control
             var line = new HBoxContainer();
             line.AddThemeConstantOverride("separation", 8);
             var what = project.Upgrade == Upgrade.NewCar ? (project.Built ?? career.Team.CarFor(project.ModelYear)).Name : kind.Effect;
+            if (project.Part is { } part)
+                what = Research.Name(part);
             line.AddChild(new Label { Text = $"{(project.Indy ? "Indianapolis car" : kind.Name)} ({what})", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
             line.AddChild(new Label
             {
@@ -496,7 +498,7 @@ public partial class CalendarScreen : Control
         foreach (var kind in DrawingOffice.Kinds)
         {
             var next = career.NextModel;
-            if (kind.Id == Upgrade.NewCar && next is null)
+            if (kind.Id == Upgrade.NewCar && next is null || kind.Id == Upgrade.Research)
                 continue;
             var cost = career.ProjectCost(kind.Id);
             var effect = kind.Id == Upgrade.NewCar && next is { } model

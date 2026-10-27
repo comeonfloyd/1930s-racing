@@ -264,7 +264,7 @@ public static class CarDesigner
 /// with about <see cref="Faults"/> teething troubles.
 /// </summary>
 public sealed record DesignPreview(Car Car, int Cost, int Weeks, int Year, IReadOnlyList<string> TooEarly, string? Breach, bool Indy = false,
-    double Spread = 0, int Faults = 0);
+    double Spread = 0, int Faults = 0, IReadOnlyList<Part>? Unresearched = null);
 
 public sealed partial class Career
 {
@@ -297,7 +297,7 @@ public sealed partial class Career
         var cost = (int)(Math.Round(CarDesigner.Cost(design) * Works.EngineerCostFactor(SkillOf(StaffRole.Engineer)) / 50) * 50);
         var breach = indy ? Indianapolis.Breach(design, car.Name, year) : Formula.Breach(car, year);
         return new DesignPreview(car, cost, weeks, year, CarDesigner.TooEarly(design, year), breach, indy,
-            DesignSpread, indy ? 0 : ExpectedFaults(design, year));
+            DesignSpread, indy ? 0 : ExpectedFaults(design, year), Unresearched(design));
     }
 
     private bool HasSeason(int year) => _data.Seasons.ContainsKey(year);
@@ -315,6 +315,8 @@ public sealed partial class Career
             return ProjectResult.PartsNotInvented;
         if (indy && preview.Breach is not null)
             return ProjectResult.BreaksRules;
+        if (preview.Unresearched?.Count > 0)
+            return ProjectResult.NotResearched;
         if (preview.Cost > Cash)
             return ProjectResult.NotEnoughMoney;
         Pay(MoneyKind.Development, $"Own design: {preview.Car.Name}", -preview.Cost);

@@ -97,15 +97,22 @@ static void Plan(Career career, bool works, bool design)
         career.Sign(driver.Id);
 
     var reserve = 2500;
+    if (design)
+    {
+        // Study the parts of the day first, when the money allows.
+        foreach (var part in Research.Uses(CarDesigner.Default(career.Today.Year)).Where(p => !career.Knows(p) && !career.ResearchQueued(p)))
+            if (career.ResearchCost(part) + reserve < career.Cash)
+                career.StartResearch(part);
+    }
     if (design && !career.NewCarUnderway)
     {
         // The most powerful legal design of the parts of the day, when clearly better than the car.
         var best = Enumerable.Range(0, 23).Select(i => CarDesigner.MinLitres + i * CarDesigner.LitreStep)
-            .Select(l => career.Preview(Fit(CarDesigner.Default(career.Today.Year + 1), career.Today.Year) with { Litres = l }))
-            .Where(p => p.TooEarly.Count == 0 && p.Breach is null && Formula.Breach(p.Car, p.Year + 1) is null)
+            .Select(l => career.Preview(Fit(career, CarDesigner.Default(career.Today.Year + 1), career.Today.Year) with { Litres = l }))
+            .Where(p => p.TooEarly.Count == 0 && p.Unresearched?.Count == 0 && p.Breach is null && Formula.Breach(p.Car, p.Year + 1) is null)
             .MaxBy(p => p.Car.Horsepower * 1000 / p.Car.WeightKg + p.Car.Handling * 10);
         if (best is not null && Better(best.Car, career.Car) && best.Cost + reserve < career.Cash)
-            career.StartDesign(Fit(CarDesigner.Default(career.Today.Year + 1), career.Today.Year) with { Litres = best.Car.EngineLitres });
+            career.StartDesign(Fit(career, CarDesigner.Default(career.Today.Year + 1), career.Today.Year) with { Litres = best.Car.EngineLitres });
     }
     if (works)
     {
@@ -164,9 +171,24 @@ static string FindDataDir()
 }
 
 // The default design of a year, with parts not yet invented swapped for older ones.
-static CarDesign Fit(CarDesign d, int year) => d with
+// The design brought down to the parts invented by then and studied by the drawing office.
+static CarDesign Fit(Career career, CarDesign d, int year)
 {
-    Frame = CarDesigner.FirstYear(d.Frame) <= year ? d.Frame : year >= 1932 ? Frame.BoxedLadder : Frame.Ladder,
-    Suspension = CarDesigner.FirstYear(d.Suspension) <= year ? d.Suspension : Suspension.BeamAxles,
-    Brakes = CarDesigner.FirstYear(d.Brakes) <= year ? d.Brakes : Brakes.Mechanical,
-};
+    bool Usable(int first, Part? part) => first <= year && (part is null || career.Knows(part.Value));
+    var frame = d.Frame;
+    if (frame == Frame.Tubular && !Usable(CarDesigner.FirstYear(Frame.Tubular), Part.Tubular))
+        frame = Frame.BoxedLadder;
+    if (frame == Frame.BoxedLadder && !Usable(CarDesigner.FirstYear(Frame.BoxedLadder), Part.BoxedLadder))
+        frame = Frame.Ladder;
+    return d with
+    {
+        Frame = frame,
+        Suspension = d.Suspension switch
+        {
+            Suspension.IndependentFront when !Usable(CarDesigner.FirstYear(d.Suspension), Part.IndependentFront) => Suspension.BeamAxles,
+            Suspension.AllIndependent when !Usable(CarDesigner.FirstYear(d.Suspension), Part.AllIndependent) => Suspension.BeamAxles,
+            var s => s,
+        },
+        Brakes = d.Brakes == Brakes.Mechanical || Usable(CarDesigner.FirstYear(d.Brakes), Part.Hydraulic) ? d.Brakes : Brakes.Mechanical,
+    };
+}

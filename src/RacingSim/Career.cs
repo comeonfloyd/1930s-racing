@@ -36,6 +36,8 @@ public enum ProjectResult
     NewCarUnderway,
     /// <summary>The design breaks the rules it is built for (the Indianapolis 500's).</summary>
     BreaksRules,
+    /// <summary>The design uses a part the drawing office has not studied yet.</summary>
+    NotResearched,
 }
 
 /// <summary>A dated line of team news, such as a finished drawing-office project.</summary>
@@ -152,6 +154,7 @@ public sealed partial class Career
         _roster = Team.RosterFor(startYear).ToList();
         _carsYear = startYear;
         TakeOverStaff(startYear);
+        KnowPartsBefore(startYear);
     }
 
     /// <summary>
@@ -318,12 +321,16 @@ public sealed partial class Career
         if (_projects.Count == 0)
             return;
         var project = _projects[0] with { WeeksDone = _projects[0].WeeksDone + 1 };
-        if (project.WeeksDone < project.Weeks)
+        _projects[0] = project;
+        if (project.WeeksDone < project.Weeks || Overruns(project, date))
+            return;
+        _projects.RemoveAt(0);
+        if (project.Upgrade == Upgrade.Research && project.Part is { } part)
         {
-            _projects[0] = project;
+            _researched.Add(part);
+            _news.Add(new NewsItem(date, $"Research finished: own designs may now use the {Research.Name(part)}."));
             return;
         }
-        _projects.RemoveAt(0);
         var kind = DrawingOffice.Kind(project.Upgrade);
         if (project.Indy && project.Built is { } special)
         {

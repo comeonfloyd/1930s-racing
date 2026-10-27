@@ -67,6 +67,8 @@ public partial class CalendarScreen
         Choice(grid, "Brakes", Enum.GetValues<Brakes>(), d.Brakes, CarDesigner.Name, CarDesigner.FirstYear, year, v => SetDraft(Draft with { Brakes = v }));
         Choice(grid, "Body", Enum.GetValues<Body>(), d.Body, CarDesigner.Name, CarDesigner.FirstYear, year, v => SetDraft(Draft with { Body = v }));
         _body.AddChild(card);
+        if (preview.Unresearched is { Count: > 0 } unknown)
+            _body.AddChild(ResearchCard(career, unknown));
 
         // The price and the Order button come before the figures, so they stay in view.
         var order = new HBoxContainer();
@@ -82,6 +84,7 @@ public partial class CalendarScreen
         var why = (indy ? career.IndyCarUnderway : career.NewCarUnderway) ? "A new car is already being built."
             : preview.TooEarly.Count > 0 ? $"Not invented yet: {string.Join(", ", preview.TooEarly)}."
             : indy && preview.Breach is { } rules ? rules
+            : preview.Unresearched is { Count: > 0 } study ? $"Research first: {string.Join(", ", study.Select(Research.Name))}."
             : preview.Cost > career.Cash ? "Not enough money."
             : "";
         var go = new Button
@@ -106,6 +109,7 @@ public partial class CalendarScreen
                 ProjectResult.PartsNotInvented => "That design uses parts not invented yet.",
                 ProjectResult.NewCarUnderway => "A new car is already being built.",
                 ProjectResult.BreaksRules => preview.Breach ?? "That design breaks the rules.",
+                ProjectResult.NotResearched => "The drawing office must study the new parts first.",
                 _ => "",
             });
             Refresh();
@@ -139,6 +143,43 @@ public partial class CalendarScreen
             _body.AddChild(new Label { Text = $"{breach} It could not race {(indy ? "at Indianapolis" : "in Europe")}.", Modulate = new Color(1, 0.65f, 0.55f), AutowrapMode = TextServer.AutowrapMode.WordSmart });
         else if ((indy ? Indianapolis.Breach(d, preview.Car.Name, preview.Year + 1) : Formula.Breach(preview.Car, preview.Year + 1)) is { } next && career.HasNextSeason)
             _body.AddChild(new Label { Text = $"Next year: {next}", Modulate = UiTheme.Accent, AutowrapMode = TextServer.AutowrapMode.WordSmart });
+    }
+
+    /// <summary>The new parts the design needs that the drawing office has not studied, each with a button to start.</summary>
+    private Control ResearchCard(Career career, IReadOnlyList<Part> parts)
+    {
+        var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 4);
+        box.AddChild(new Label { Text = "RESEARCH FIRST", ThemeTypeVariation = "Overline" });
+        foreach (var part in parts)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 12);
+            var queued = career.ResearchQueued(part);
+            row.AddChild(new Label
+            {
+                Text = $"{Capital(Research.Name(part))}: new to racing in {Research.FirstYear(part)}"
+                       + (queued ? ", being studied" : $" · {career.ResearchWeeks(part)} weeks in the drawing office"),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center,
+            });
+            var cost = career.ResearchCost(part);
+            var study = new Button
+            {
+                Text = queued ? "Ordered" : $"Research · £{cost:N0}", CustomMinimumSize = new Vector2(130, 0),
+                Disabled = queued || cost > career.Cash,
+                TooltipText = "Paid now. Once studied, every design may use it. It gets cheaper each year as others show how it is done.",
+            };
+            study.Pressed += () =>
+            {
+                Notice(career.StartResearch(part) == ProjectResult.NotEnoughMoney ? "Not enough money for that research." : "");
+                Refresh();
+            };
+            row.AddChild(study);
+            box.AddChild(row);
+        }
+        card.AddChild(box);
+        return card;
     }
 
     private static CarDesign Draft => (_designIndy ? _indyDraft : _draft)!;

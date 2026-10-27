@@ -40,7 +40,8 @@ public sealed record CareerSave(
     CarDesign? IndyDesign = null,
     IndyOrder? IndyOrder = null,
     int TeethingFaults = 0,
-    int WaitingFaults = 0);
+    int WaitingFaults = 0,
+    IReadOnlyList<Part>? Researched = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -82,7 +83,8 @@ public sealed partial class Career
         IndyDesign,
         IndyOrder,
         TeethingFaults,
-        _waitingFaults);
+        _waitingFaults,
+        _researched.ToList());
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -148,6 +150,12 @@ public sealed partial class Career
         career.IndyOrder = save.IndyOrder;
         career.TeethingFaults = save.TeethingFaults;
         career._waitingFaults = save.WaitingFaults;
+        // Saves from before research keep the parts known in the year they were made.
+        if (save.Researched is { } researched)
+        {
+            career._researched.Clear();
+            career._researched.UnionWith(researched);
+        }
         return career;
     }
 }
