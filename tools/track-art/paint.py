@@ -4,6 +4,9 @@ The race view draws this picture under the cars instead of plain shapes. Everyth
 generated from the track file (game/data/tracks/<circuit>.json) and a few lines of scenery
 per circuit below, so the road in the picture is exactly the road the cars follow.
 
+It also writes game/data/scenery/<circuit>.json: every tree, house, boat and grandstand in the
+picture, so the 3D race view can stand them up where they were painted.
+
 Needs only numpy and Pillow.  Usage, from the repo root:
     python3 tools/track-art/paint.py            # all circuits
     python3 tools/track-art/paint.py monza      # one
@@ -16,6 +19,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 TRACKS = os.path.join(ROOT, "game", "data", "tracks")
 OUT = os.path.join(ROOT, "game", "art", "tracks")
+SCENERY_OUT = os.path.join(ROOT, "game", "data", "scenery")
 
 H = 2000
 W = int(H * 1.4)
@@ -78,6 +82,14 @@ def smooth(points, steps=16):
 
 def px(p):
     return (float(p[0]) * W, float(p[1]) * H)
+
+
+# Things painted into the picture, for the 3D view: filled in by paint() for one circuit at a time.
+SCENERY = {}
+
+
+def keep(kind, *values):
+    SCENERY.setdefault(kind, []).append([round(float(v), 4) for v in values])
 
 
 # ---------------------------------------------------------------- noise and masks
@@ -185,6 +197,7 @@ def crowns(draw, rng, mask, count, size, dark=(42, 64, 34), light=(88, 118, 60))
         g = rng.random()
         base = tuple(int(dark[k] + (light[k] - dark[k]) * g * 0.6) for k in range(3))
         draw.ellipse([x - r, y - r, x + r, y + r], fill=base + (255,))
+        keep("trees", x / W, y / H, r / H, g)
         hi = tuple(min(255, int(c * 1.25)) for c in base)
         draw.ellipse([x - r * 0.75, y - r * 0.8, x + r * 0.2, y + r * 0.1], fill=hi + (150,))
 
@@ -202,6 +215,7 @@ def houses(draw, rng, centre, count, spread, avoid):
         roof = [(168, 84, 58), (150, 72, 52), (122, 108, 98), (180, 104, 70)][rng.integers(4)]
         draw.rectangle([x + 4, y + 4, x + w + 4, y + h + 4], fill=(30, 30, 26, 110))
         draw.rectangle([x, y, x + w, y + h], fill=roof + (255,))
+        keep("houses", x / W, y / H, w / W, h / H, *roof)
         if w > h:
             draw.line([x, y + h / 2, x + w, y + h / 2], fill=tuple(int(c * 0.75) for c in roof) + (255,), width=2)
         else:
@@ -226,6 +240,7 @@ def town(draw, rng, avoid):
                     roof = palette[rng.integers(len(palette))]
                     draw.rectangle([x + 4, y + 5, x + w + 4, y + h + 5], fill=(40, 34, 28, 110))
                     draw.rectangle([x, y, x + w, y + h], fill=roof + (255,))
+                    keep("houses", x / W, y / H, w / W, h / H, *roof)
                     draw.line([x, y + h / 2, x + w, y + h / 2], fill=tuple(int(c * 0.8) for c in roof) + (255,), width=2)
 
 
@@ -240,6 +255,7 @@ def boats(draw, rng, areas, water):
             hull = [(x, y - B / 2), (x + L * 0.75, y - B / 2), (x + L, y), (x + L * 0.75, y + B / 2), (x, y + B / 2)]
             draw.polygon([(a + 3, b + 3) for a, b in hull], fill=(20, 30, 40, 90))
             draw.polygon(hull, fill=(238, 234, 222, 255), outline=(120, 110, 96, 255))
+            keep("boats", x / W, y / H, L / W, B / H)
             draw.rectangle([x + L * 0.25, y - B / 4, x + L * 0.55, y + B / 4], fill=(170, 130, 90, 255))
 
 
@@ -276,6 +292,7 @@ def bales(draw, road, rng):
         nrm = np.array([t[1], -t[0]]) * (1 if turn < 0 else -1)
         p = np.array(px(b)) + nrm * H * (VERGE / 2 + 0.004)
         draw.rectangle([p[0] - 5, p[1] - 3, p[0] + 5, p[1] + 3], fill=(214, 186, 104, 255), outline=(150, 124, 60, 255))
+        keep("bales", p[0] / W, p[1] / H, math.atan2(t[1], t[0]))
 
 
 def road_surface(img, mask, surface, rng):
@@ -301,6 +318,7 @@ def paint(cid):
     track = json.load(open(os.path.join(TRACKS, cid + ".json"), encoding="utf-8"))
     scene = SCENES.get(cid, dict(forest=0.3, fields="farm", surface="tarmac"))
     rng = np.random.default_rng(sum(map(ord, cid)))
+    SCENERY.clear()
     road = smooth(track["points"])
     unused = [np.array(u) for u in track.get("unused", [])]
 
@@ -424,4 +442,9 @@ if __name__ == "__main__":
         image = paint(cid)
         path = os.path.join(OUT, cid + ".jpg")
         image.save(path, quality=86, optimize=True)
-        print(f"{cid}: {os.path.getsize(path) // 1024} KB")
+        os.makedirs(SCENERY_OUT, exist_ok=True)
+        with open(os.path.join(SCENERY_OUT, cid + ".json"), "w", encoding="utf-8") as f:
+            json.dump({"note": "Written by tools/track-art/paint.py: what is painted where, in drawing units.",
+                       **{k: SCENERY.get(k, []) for k in ("trees", "houses", "boats", "bales")}},
+                      f, separators=(",", ":"))
+        print(f"{cid}: {os.path.getsize(path) // 1024} KB, {len(SCENERY.get('trees', []))} trees")

@@ -30,7 +30,10 @@ public partial class RaceScreen : Control
     private const float SideWidth = 290;
 
     private LiveRace _race = null!;
-    private TrackView _track = null!;
+    private IRaceView _track = null!;
+    private TrackView _map = null!;
+    private TrackView3D _scene = null!;
+    private Button _viewToggle = null!;
     private Control _frame = null!;
     private OptionButton _follow = null!;
     private readonly List<string?> _followChoices = new();
@@ -84,10 +87,18 @@ public partial class RaceScreen : Control
         _frame.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(_frame);
         _frame.GuiInput += OnTrackInput;
-        _track = new TrackView();
-        _frame.AddChild(_track);
+        // Two views of the same circuit: the 3D scene, and the flat map from above.
+        _map = new TrackView { Visible = false };
+        _frame.AddChild(_map);
+        _scene = new TrackView3D { SportsCars = race.Event.IsEndurance };
+        _frame.AddChild(_scene);
+        _track = _scene;
+        var shape = TrackShape.For(race.Circuit.Id);
         // A stable seed per circuit, so the scenery is the same every visit.
-        _track.SetTrack(TrackShape.For(race.Circuit.Id), race.Circuit.Id, race.Circuit.Id.Sum(ch => ch));
+        foreach (var view in new IRaceView[] { _map, _scene })
+            view.SetTrack(shape, race.Circuit.Id, race.Circuit.Id.Sum(ch => ch));
+        if (DevShot.Arg("view") == "map")
+            ShowView(_map);
 
         AddChild(LeftColumn());
         AddChild(RightColumn());
@@ -113,7 +124,7 @@ public partial class RaceScreen : Control
             {
                 var mine = _followChoices.IndexOf(_race.Cars().First(c => c.Entry.Team.Id == RaceRequest.PlayerTeamId).Entry.Driver.Id);
                 _follow.Selected = Math.Max(0, mine);
-                _track.Zoom = 5;
+                _track.Zoom = float.TryParse(DevShot.Arg("zoom"), System.Globalization.CultureInfo.InvariantCulture, out var zoom) ? zoom : 5;
                 SetSpeed(10);
                 DevShot.Capture(this, "race-zoom.png", 2, () =>
                 {
@@ -336,10 +347,14 @@ public partial class RaceScreen : Control
             Refresh();
         };
 
+        _viewToggle = new Button { Text = _track == _scene ? "Map" : "3D view", TooltipText = "Switch between the 3D view and the flat map" };
+        _viewToggle.Pressed += () => ShowView(_track == _scene ? _map : _scene);
+
         row.AddChild(zoomOut);
         row.AddChild(zoomIn);
         row.AddChild(whole);
         row.AddChild(_follow);
+        row.AddChild(_viewToggle);
         card.AddChild(row);
         card.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterTop, LayoutPresetMode.KeepSize, 16);
         card.GrowHorizontal = GrowDirection.Both;
@@ -460,6 +475,24 @@ public partial class RaceScreen : Control
         _ => "Normal racing pace",
     };
 
+    /// <summary>Swaps between the 3D view and the map, keeping the camera choice and the weather.</summary>
+    private void ShowView(IRaceView view)
+    {
+        if (view == _track)
+            return;
+        view.Area = _track.Area;
+        view.Rain = _track.Rain;
+        view.Night = _track.Night;
+        view.Zoom = _track.Zoom;
+        _track.Visible = false;
+        view.Visible = true;
+        _track = view;
+        if (_viewToggle is not null)
+            _viewToggle.Text = view == _scene ? "Map" : "3D view";
+        if (_race is not null && _follow is not null)
+            Refresh();
+    }
+
     private void Layout()
     {
         // Fit the whole circuit between the side columns; the picture still runs under them.
@@ -467,8 +500,11 @@ public partial class RaceScreen : Control
         var middle = new Rect2(SideWidth + 32, 70, size.X - 2 * (SideWidth + 32), size.Y - 140);
         if (middle.Size.X < 200)
             middle = new Rect2(0, 0, size.X, size.Y);
-        _track.Area = middle;
-        _track.Zoom = _track.Zoom;
+        foreach (var view in new IRaceView[] { _map, _scene })
+        {
+            view.Area = middle;
+            view.Zoom = view.Zoom;
+        }
     }
 
     // ------------------------------------------------------------------ camera input
@@ -492,6 +528,9 @@ public partial class RaceScreen : Control
             case InputEventMouseMotion { ButtonMask: MouseButtonMask.Left } drag:
                 SetFollow(0);
                 _track.Pan(drag.Relative);
+                break;
+            case InputEventMouseMotion { ButtonMask: MouseButtonMask.Right } turn:
+                _track.Turn(turn.Relative);
                 break;
         }
     }
@@ -520,7 +559,7 @@ public partial class RaceScreen : Control
 
         var laps = _race.Event.Laps;
         var leaderLap = Math.Min(laps, (int)Math.Floor(cars[0].Distance) + 1);
-        var wet = _race.Weather.IsWetAt(_time);
+        var wet = _race.Weather.IsWetAt(_time) || DevShot.Arg("rain") is not null;
         if (_race.Event.IsEndurance)
         {
             // No set number of laps: the hours left, and the time of day at the circuit.

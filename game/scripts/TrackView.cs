@@ -11,7 +11,7 @@ namespace RacingManager;
 /// can follow one car. The ground is the painted picture in res://art/tracks/{circuit}.jpg
 /// (tools/track-art/paint.py); a circuit without one is drawn from plain shapes.
 /// </summary>
-public partial class TrackView : Node2D
+public partial class TrackView : Node2D, IRaceView
 {
     private static readonly Color Grass = new(0.36f, 0.47f, 0.27f);
     private static readonly Color Verge = new(0.72f, 0.66f, 0.52f);
@@ -213,8 +213,7 @@ public partial class TrackView : Node2D
         if (Night > 0.01f)
             DrawRect(GetViewportRect(), NightShade with { A = 0.62f * Night });
         DrawCars(scale, roadWidth);
-        if (Rain > 0.01f)
-            DrawRain();
+        DrawRain(this, GetViewportRect(), Rain);
     }
 
     private static readonly Color NightShade = new(0.02f, 0.03f, 0.09f);
@@ -223,13 +222,14 @@ public partial class TrackView : Node2D
     private static readonly Color RainStreak = new(0.8f, 0.86f, 0.95f);
 
     /// <summary>A grey wash and slanting streaks, more of them the harder it rains.</summary>
-    private void DrawRain()
+    /// <summary>The whole window, not just the drawing's area, so no dry edge shows when zoomed in.</summary>
+    public static void DrawRain(CanvasItem canvas, Rect2 frame, float rain)
     {
-        // The whole window, not just the drawing's area, so no dry edge shows when zoomed in.
-        var frame = GetViewportRect();
-        DrawRect(frame, RainShade with { A = 0.3f * Rain });
+        if (rain <= 0.01f)
+            return;
+        canvas.DrawRect(frame, RainShade with { A = 0.3f * rain });
         var t = Time.GetTicksMsec() / 1000.0;
-        var count = (int)(320 * Rain);
+        var count = (int)(320 * rain);
         var fall = new Vector2(-6, 18);
         for (var i = 0; i < count; i++)
         {
@@ -237,7 +237,7 @@ public partial class TrackView : Node2D
             var x = Fract(Mathf.Sin(i * 12.9898f) * 43758.5453f);
             var y = Fract(Fract(Mathf.Sin(i * 78.233f) * 12345.678f) + t * (0.9f + 0.4f * x));
             var at = frame.Position + new Vector2(x, (float)y) * frame.Size;
-            DrawLine(at, at + fall, RainStreak with { A = 0.35f * Rain }, 1);
+            canvas.DrawLine(at, at + fall, RainStreak with { A = 0.35f * rain }, 1);
         }
     }
 
