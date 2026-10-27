@@ -35,7 +35,8 @@ public partial class CalendarScreen
         });
 
         var card = new PanelContainer { ThemeTypeVariation = "Card" };
-        var grid = new GridContainer { Columns = 2 };
+        // Two choices to a row, so the comparison and the Order button fit without scrolling.
+        var grid = new GridContainer { Columns = 4 };
         grid.AddThemeConstantOverride("h_separation", 16);
         grid.AddThemeConstantOverride("v_separation", 8);
         card.AddChild(grid);
@@ -121,7 +122,7 @@ public partial class CalendarScreen
     private void Choice<T>(GridContainer grid, string label, IReadOnlyList<T> values, T chosen, Func<T, string> name, Func<T, int> first, int year, Action<T> set)
         where T : struct, Enum
     {
-        grid.AddChild(new Label { Text = label, ThemeTypeVariation = "Muted", VerticalAlignment = VerticalAlignment.Center, CustomMinimumSize = new Vector2(120, 0) });
+        grid.AddChild(new Label { Text = label, ThemeTypeVariation = "Muted", VerticalAlignment = VerticalAlignment.Center, CustomMinimumSize = new Vector2(100, 0) });
         var option = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         for (var i = 0; i < values.Count; i++)
         {
