@@ -4,7 +4,7 @@
 {
   "year": 1937,
   "events": [
-    { "id": "1937-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1937-05-09", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
+    { "id": "1937-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1937-05-09", "laps": 40, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
     { "id": "1937-avus", "name": "Avusrennen", "circuitId": "avus", "date": "1937-05-30", "laps": 15, "startMoney": 300, "prizeFund": 1500, "prestige": 7 },
     { "id": "1937-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1937-05-31", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
     { "id": "1937-eifel", "name": "Eifelrennen", "circuitId": "nurburgring", "date": "1937-06-13", "laps": 12, "startMoney": 200, "prizeFund": 800, "prestige": 5 },

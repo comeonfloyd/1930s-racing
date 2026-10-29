@@ -99,11 +99,19 @@ public static class RaceSim
         var car = entry.Team.Car;
         var powerToWeight = car.Horsepower / (car.WeightKg / 1000.0);
         var power = ReferencePowerToWeight * Math.Pow(powerToWeight / ReferencePowerToWeight, PowerExponent);
-        return 25 + 70 * circuit.StraightShare
-            + 0.18 * power * (0.1 + circuit.StraightShare)
+        return 20 + 70 * circuit.StraightShare
+            + 0.32 * power * (0.1 + circuit.StraightShare)
             + 1.2 * car.Handling * (1.2 - circuit.StraightShare)
-            + 0.8 * entry.Driver.Skills.Speed;
+            + DriverPace(entry.Driver.Skills.Speed);
     }
+
+    /// <summary>
+    /// What the driver adds to the car's speed. Up to a good professional (16) each point counts
+    /// fully; above that half as much, as the aces of the day were close to one another in the
+    /// same cars: Caracciola, von Brauchitsch and Rosemeyer finished the 1937 German Grand Prix
+    /// a minute apart, while the lesser drivers in the same cars were minutes behind.
+    /// </summary>
+    public static double DriverPace(int speed) => 0.8 * Math.Min(speed, 16) + 0.4 * Math.Max(0, speed - 16);
 
     /// <summary>Every driver of every team, in team order: the default grid for an event.</summary>
     public static IReadOnlyList<RaceEntry> FullGrid(GameData data) =>
