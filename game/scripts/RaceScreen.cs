@@ -30,7 +30,7 @@ public partial class RaceScreen : Control
     private static readonly PaceOrder[] Paces = { PaceOrder.Nurse, PaceOrder.Hold, PaceOrder.Race, PaceOrder.Push };
     private static readonly int[] StopChoices = { 0, 1, 2, 3 };
     private static readonly FuelPlan[] FuelChoices = { FuelPlan.NextStop, FuelPlan.Full, FuelPlan.None };
-    private const float LeftWidth = 380;
+    private const float LeftWidth = 350;
     private const float RightWidth = 280;
     /// <summary>The race's fastest lap: purple, as on a modern timing screen. A driver's own best is green.</summary>
     private static readonly Color FastestLap = new("c58cf2");
@@ -50,6 +50,14 @@ public partial class RaceScreen : Control
     private readonly List<PitCard> _pitWall = new();
     private VBoxContainer _news = null!;
     private VBoxContainer _stats = null!;
+    private Control _statsScreen = null!;
+    private Button _statsButton = null!;
+    private readonly List<Label[]> _statRows = new();
+    private static readonly (string Head, int Width, bool Right)[] StatColumns =
+    {
+        ("POS", 34, true), ("DRIVER", 0, false), ("TEAM", 120, false), ("CAR", 150, false), ("GRID", 40, true), ("+/−", 40, true),
+        ("LAPS", 40, true), ("LAST LAP", 70, true), ("BEST LAP", 92, true), ("STOPS", 46, true), ("IN PITS", 56, true), ("STATUS", 96, true),
+    };
     // Made once and reused: a new style box every frame floods the garbage collector with
     // Godot objects, and finalizing those during shutdown crashed the engine.
     private readonly StyleBoxFlat _rowMine = UiTheme.Box(new Color(UiTheme.Accent, 0.16f), 6, 6, vertical: 3);
@@ -112,6 +120,7 @@ public partial class RaceScreen : Control
         AddChild(RightColumn());
         AddChild(CameraBar());
         AddChild(PlaybackBar());
+        AddChild(_statsScreen = StatsScreen());
 
         Resized += Layout;
         Layout();
@@ -142,13 +151,18 @@ public partial class RaceScreen : Control
                 SetSpeed(10);
                 DevShot.Capture(this, "race-zoom.png", 2, () =>
                 {
-                    _race.RunToEnd();
-                    _time = _race.FinishTime;
-                    Refresh();
-                    DevShot.Capture(this, "race-result.png", 1, () =>
+                    _statsButton.ButtonPressed = true;
+                    DevShot.Capture(this, "race-stats.png", 1, () =>
                     {
-                        Session.Career?.FinishRace(_race);
-                        GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+                        _statsButton.ButtonPressed = false;
+                        _race.RunToEnd();
+                        _time = _race.FinishTime;
+                        Refresh();
+                        DevShot.Capture(this, "race-result.png", 1, () =>
+                        {
+                            Session.Career?.FinishRace(_race);
+                            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+                        });
                     });
                 });
             });
@@ -206,16 +220,6 @@ public partial class RaceScreen : Control
         tower.AddChild(rows);
         column.AddChild(tower);
 
-        // Under the tower: the fastest lap, the leader's pace, the player's cars and the toll so far.
-        var stats = Card("CardTight");
-        _stats = new VBoxContainer();
-        _stats.AddThemeConstantOverride("separation", 3);
-        var statsBox = new VBoxContainer();
-        statsBox.AddChild(Margin(new Label { Text = "RACE STATS", ThemeTypeVariation = "Overline" }, 6, 2));
-        statsBox.AddChild(Margin(_stats, 6, 2));
-        stats.AddChild(statsBox);
-        column.AddChild(stats);
-
         return Scrolling(column, left: true);
     }
 
@@ -230,7 +234,7 @@ public partial class RaceScreen : Control
         name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         name.CustomMinimumSize = new Vector2(90, 0);
         var head = team.Length > 0;
-        var teamLabel = new Label { Text = team, ThemeTypeVariation = head ? "Overline" : "Muted", ClipText = true, CustomMinimumSize = new Vector2(84, 0) };
+        var teamLabel = new Label { Text = team, ThemeTypeVariation = head ? "Overline" : "Muted", ClipText = true, CustomMinimumSize = new Vector2(76, 0) };
         var lastLabel = new Label { Text = last, ThemeTypeVariation = head ? "Overline" : "", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(58, 0) };
         var gapLabel = new Label { Text = gap, ThemeTypeVariation = head ? "Overline" : "Muted", HorizontalAlignment = HorizontalAlignment.Right, CustomMinimumSize = new Vector2(66, 0) };
         if (head)
@@ -479,6 +483,13 @@ public partial class RaceScreen : Control
         row.AddChild(whole);
         row.AddChild(_follow);
         row.AddChild(_viewToggle);
+        _statsButton = new Button { Text = "Statistics", ToggleMode = true, ThemeTypeVariation = "Segment", TooltipText = "Every car's laps, stops and places, while the race runs on" };
+        _statsButton.Toggled += on =>
+        {
+            _statsScreen.Visible = on;
+            Refresh();
+        };
+        row.AddChild(_statsButton);
         card.AddChild(row);
         card.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterTop, LayoutPresetMode.KeepSize, 16);
         card.GrowHorizontal = GrowDirection.Both;
@@ -936,9 +947,123 @@ public partial class RaceScreen : Control
         return laps >= 1 ? $"+{Math.Floor(laps)} lap{(laps >= 2 ? "s" : "")}" : $"+{laps * averageLap:0.0}s";
     }
 
-    /// <summary>The figures under the tower: fastest lap, the leader's pace, the player's cars, stops and retirements.</summary>
+    /// <summary>
+    /// The statistics screen, over the circuit while the race runs on: the fastest lap, the
+    /// leader's pace, the player's cars and the toll so far, then a table of every car with its
+    /// team, car, places gained from the grid, laps, last and best lap, stops and time in the pits.
+    /// </summary>
+    private Control StatsScreen()
+    {
+        var shade = new ColorRect { Color = new Color(0, 0, 0, 0.75f), MouseFilter = MouseFilterEnum.Stop, Visible = false };
+        shade.SetAnchorsPreset(LayoutPreset.FullRect);
+        var margin = new MarginContainer();
+        foreach (var (side, size) in new[] { ("left", 40), ("right", 40), ("top", 90), ("bottom", 90) })
+            margin.AddThemeConstantOverride("margin_" + side, size);
+        margin.SetAnchorsPreset(LayoutPreset.FullRect);
+        margin.MouseFilter = MouseFilterEnum.Ignore;
+        shade.AddChild(margin);
+        var card = Card();
+        margin.AddChild(card);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 6);
+        card.AddChild(box);
+
+        var top = new HBoxContainer();
+        var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        titles.AddChild(new Label { Text = "RACE STATISTICS", ThemeTypeVariation = "Overline" });
+        titles.AddChild(new Label { Text = _race.Event.Name, ThemeTypeVariation = "Heading" });
+        top.AddChild(titles);
+        var close = new Button { Text = "Back to the race", SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        close.Pressed += () => _statsButton.ButtonPressed = false;
+        top.AddChild(close);
+        box.AddChild(top);
+
+        _stats = new VBoxContainer();
+        _stats.AddThemeConstantOverride("separation", 2);
+        box.AddChild(_stats);
+        box.AddChild(new HSeparator());
+
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = SizeFlags.ExpandFill };
+        var table = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        table.AddThemeConstantOverride("separation", 2);
+        scroll.AddChild(table);
+        table.AddChild(StatLine(head: true).Line);
+        foreach (var _ in _race.Cars())
+        {
+            var (line, labels) = StatLine(head: false);
+            table.AddChild(line);
+            _statRows.Add(labels);
+        }
+        box.AddChild(scroll);
+        return shade;
+    }
+
+    /// <summary>One line of the statistics table: the head, or a car's row of empty labels to fill.</summary>
+    private static (HBoxContainer Line, Label[] Labels) StatLine(bool head)
+    {
+        var line = new HBoxContainer();
+        line.AddThemeConstantOverride("separation", 10);
+        var labels = StatColumns.Select(c =>
+        {
+            var label = Small(new Label
+            {
+                Text = head ? c.Head : "", ThemeTypeVariation = head ? "Overline" : "", ClipText = true,
+                HorizontalAlignment = c.Right ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+                CustomMinimumSize = new Vector2(c.Width, 0),
+                SizeFlagsHorizontal = c.Width == 0 ? SizeFlags.ExpandFill : SizeFlags.Fill,
+            }, head ? 10 : 13);
+            line.AddChild(label);
+            return label;
+        }).ToArray();
+        return (line, labels);
+    }
+
+    /// <summary>Fills the statistics screen, while it is open.</summary>
     private void RefreshStats(IReadOnlyList<LiveCar> cars, LiveCar? fastest)
     {
+        if (!_statsScreen.Visible)
+            return;
+        var team = RaceRequest.PlayerTeamId;
+        for (var i = 0; i < _statRows.Count && i < cars.Count; i++)
+        {
+            var c = cars[i];
+            var gained = c.Grid - (i + 1);
+            var cells = new[]
+            {
+                (i + 1).ToString(),
+                FullNames(c.Entry),
+                TeamName(c.Entry),
+                c.Entry.Team.Car.Name,
+                c.Grid.ToString(),
+                gained > 0 ? $"▲{gained}" : gained < 0 ? $"▼{-gained}" : "–",
+                c.LapsDone.ToString(),
+                c.LastLap > 0 ? LapTime(c.LastLap) : "–",
+                c.BestLap > 0 ? $"{LapTime(c.BestLap)} ({c.BestLapNumber})" : "–",
+                c.PitStops.ToString(),
+                c.PitSeconds > 0 ? $"{c.PitSeconds:0} s" : "–",
+                c.Retirement?.Cause switch
+                {
+                    RetirementCause.MechanicalFailure => $"out lap {c.Retirement.Lap} · engine",
+                    RetirementCause.Crash => $"out lap {c.Retirement.Lap} · crash",
+                    RetirementCause.FatalCrash => "killed",
+                    RetirementCause.OutOfFuel => $"out lap {c.Retirement.Lap} · fuel",
+                    _ when c.Finished => "finished",
+                    _ when c.InPits => "in the pits",
+                    _ => "running",
+                },
+            };
+            var row = _statRows[i];
+            var mine = c.Entry.Team.Id == team;
+            for (var k = 0; k < row.Length; k++)
+            {
+                row[k].Text = cells[k];
+                row[k].Modulate = c.Retirement is not null ? new Color(1, 1, 1, 0.45f) : mine ? UiTheme.Accent : Colors.White;
+            }
+            row[5].Modulate = gained > 0 ? UiTheme.Good : gained < 0 ? UiTheme.Danger : row[5].Modulate;
+            if (c == fastest)
+                row[8].Modulate = FastestLap;
+        }
+
         var lines = new List<(string Text, Color Color)>();
         var lapKm = _race.Circuit.LapKm;
         lines.Add(fastest is null
@@ -954,7 +1079,6 @@ public partial class RaceScreen : Control
         var running = cars.Count(c => c.Running || c.Finished);
         lines.Add(($"Running {running} of {cars.Count} · pit stops {cars.Sum(c => c.PitStops)} · out {cars.Count - running}", Colors.White));
 
-        var team = RaceRequest.PlayerTeamId;
         for (var i = 0; i < cars.Count; i++)
         {
             var c = cars[i];
@@ -968,7 +1092,7 @@ public partial class RaceScreen : Control
         }
 
         while (_stats.GetChildCount() < lines.Count)
-            _stats.AddChild(Small(new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(LeftWidth - 40, 0) }, 12));
+            _stats.AddChild(Small(new Label(), 13));
         for (var i = 0; i < _stats.GetChildCount(); i++)
         {
             var label = (Label)_stats.GetChild(i);
