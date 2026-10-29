@@ -170,6 +170,11 @@ public partial class TrackView : Node2D, IRaceView
         }
     }
 
+    public (Vector2 At, float Height) Ear => (_focus, 0.25f / _zoom);
+
+    public float PanOf(Vector2 point) =>
+        Area.Size.X <= 0 ? 0 : Mathf.Clamp((Map(point).X - Area.GetCenter().X) / (Area.Size.X / 2), -1, 1);
+
     private Vector2 Map(Vector2 p) => Area.GetCenter() + (p - _focus) * Box.Size * _zoom;
 
     private Vector2 Unmap(Vector2 screen) => _focus + (screen - Area.GetCenter()) / (Box.Size * _zoom);

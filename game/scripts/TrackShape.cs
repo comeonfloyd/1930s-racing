@@ -135,14 +135,24 @@ public sealed class TrackShape
         return part <= 0 || Profile(car) is not { } profile ? car.Distance : lap + profile.DistanceAt(part);
     }
 
-    /// <summary>The car's speed now in km/h, or 0 when standing or the circuit is not known.</summary>
-    public double SpeedKmh(LiveCar car)
+    /// <summary>
+    /// The car's speed now in km/h, or 0 when standing or the circuit is not known; with
+    /// <paramref name="aheadMetres"/>, the speed it will be doing that far up the road.
+    /// </summary>
+    public double SpeedKmh(LiveCar car, double aheadMetres = 0)
     {
-        if (!car.Running || car.InPits || car.LapSeconds <= 0 || Profile(car) is not { } profile)
+        if (!car.Running || car.InPits || car.LapSeconds <= 0 || _line is null || Profile(car) is not { } profile)
             return 0;
-        var part = Placed(car) % 1;
+        var part = (Placed(car) + aheadMetres / _line.LapMetres) % 1;
         return profile.SpeedKmhAt(part) * profile.LapSeconds / car.LapSeconds;
     }
+
+    /// <summary>The fastest the car goes on this circuit, in km/h: the end of its longest straight.</summary>
+    public double TopSpeedKmh(LiveCar car) =>
+        car.LapSeconds <= 0 || Profile(car) is not { } profile ? 0 : profile.TopSpeedKmh * profile.LapSeconds / car.LapSeconds;
+
+    /// <summary>Metres to one drawing height (the drawing's y from 0 to 1), or 0 when the circuit is not known.</summary>
+    public double MetresPerHeight => _line?.MetresPerHeight ?? 0;
 
     /// <summary>Closed Catmull-Rom spline through the control points.</summary>
     private static Vector2[] Smooth(IReadOnlyList<Vector2> p, int steps)

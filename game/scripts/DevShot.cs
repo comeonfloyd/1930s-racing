@@ -17,6 +17,8 @@ namespace RacingManager;
 ///   --view=map                   race shots in the flat map instead of 3D
 ///   --rain=1                     show the race in the wet (looks only)
 ///   --night                      in a 24-hour race, start the race shots at midnight
+///   --listen=20                  follow the car at true speed for that many seconds before race-zoom.png
+///                                (with Godot's --write-movie the race's sound is saved too)
 /// It saves calendar.png, map.png, drivers.png, works.png, designer.png, race.png, race-zoom.png, race-result.png and season.png, then quits.
 /// </summary>
 public static class DevShot
