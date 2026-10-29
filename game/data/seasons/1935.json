@@ -4,7 +4,7 @@
   "year": 1935,
   "events": [
     { "id": "1935-monaco", "name": "Monaco Grand Prix", "circuitId": "monaco", "date": "1935-04-22", "laps": 100, "startMoney": 300, "prizeFund": 1500, "prestige": 8 },
-    { "id": "1935-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1935-05-12", "laps": 30, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
+    { "id": "1935-tripoli", "name": "Tripoli Grand Prix", "circuitId": "tripoli", "date": "1935-05-12", "laps": 40, "startMoney": 300, "prizeFund": 2500, "prestige": 8 },
     { "id": "1935-avus", "name": "Avusrennen", "circuitId": "avus", "date": "1935-05-26", "laps": 15, "startMoney": 300, "prizeFund": 1500, "prestige": 7 },
     { "id": "1935-indianapolis", "name": "Indianapolis 500", "circuitId": "indianapolis", "date": "1935-05-30", "laps": 200, "startMoney": 0, "prizeFund": 4000, "prestige": 10 },
     { "id": "1935-lemans", "name": "24 Hours of Le Mans", "circuitId": "lemans", "date": "1935-06-15", "laps": 300, "hours": 24, "startMoney": 200, "prizeFund": 3000, "prestige": 9 },

@@ -129,7 +129,7 @@ public sealed class LiveRace
         var dayForm = new Random(Seeds.Mix(seed, -1));
         _cars = grid.Select((entry, i) => new CarState(entry, new Random(Seeds.Mix(seed, i)),
             // Each car's form on the day: up to about 2% either way, so the fastest car does not always win.
-            1 + Gaussian(dayForm) * 0.01) { Grid = i + 1 }).ToArray();
+            1 + Gaussian(dayForm) * 0.002) { Grid = i + 1 }).ToArray();
         foreach (var car in _cars)
             StartLap(car, 0);
     }
@@ -196,6 +196,7 @@ public sealed class LiveRace
         while (_cars.Where(c => !c.Done && c.Retirement is null && c.LapEnd <= Time).MinBy(c => c.LapEnd) is { } car)
         {
             car.LapTimes.Add(car.LapEnd - car.LapStart);
+            car.Crossings.Add(car.LapEnd);
             car.LapsSinceFuel++;
             if (car.LapTimes.Count == Event.Laps)
                 FlagTime ??= car.LapEnd;
@@ -333,6 +334,8 @@ public sealed class LiveRace
 
         var driver = car.AtWheel;
         var entry = car.Entry with { Driver = driver };
+        if (!manual && !Event.IsEndurance)
+            car.Pace = RaceCraft(car, start);
         var (speed, wear, strain, risk) = PaceEffect(car.Pace);
         var wet = Weather.IsWetAt(start);
         if (wet)
@@ -370,7 +373,7 @@ public sealed class LiveRace
 
         var ideal = Circuit.LapKm / RaceSim.AverageSpeedKmh(entry, Circuit) * 3600;
         // Less consistent drivers spread their laps wider.
-        var spread = (21 - driver.Skills.Consistency) * 0.005;
+        var spread = (21 - driver.Skills.Consistency) * 0.001;
         var time = ideal * (1 + Math.Abs(Gaussian(rng)) * spread) * car.Form / speed;
         time *= 1 + 0.02 * car.Fuel;                  // a full tank is heavy: a light load is worth planning for
         time *= 1 + 0.05 * car.Tyres * car.Tyres;     // worn rear tyres lose grip
@@ -381,6 +384,8 @@ public sealed class LiveRace
         if (night)
             time *= NightLapFactor;                   // headlamps of the day light little of the road
         time *= 1 + tired;
+        if (Event.IsEndurance)
+            time *= EnduranceLapFactor;               // driven to last the day, not to win a lap
 
         car.Fuel -= fuelForLap;
         car.Tyres += TyreWearPerLap(car) * wear;
@@ -391,11 +396,82 @@ public sealed class LiveRace
             car.Tyres = 1;
             Say(car, start, lap, "has a tyre failure");
         }
-        car.LapEnd = start + car.PitTime + time;
+        car.LapEnd = Overtaking(car, start, start + car.PitTime + time);
+    }
+
+    /// <summary>Within this many seconds at the line, a car is close enough to fight the car ahead for the place.</summary>
+    public const double FightingSeconds = 6;
+
+    /// <summary>
+    /// Wheel to wheel: a car that would catch and pass the car ahead on the same lap has to
+    /// get by. A clearly faster car, a long straight and a brave driver make it likelier;
+    /// otherwise it is held up and crosses the line just behind. Close behind on a fast
+    /// circuit, a car also gains a little in the slipstream. This is what kept the leaders of
+    /// a 1930s Grand Prix together, as at Tripoli in 1933 and 1934, won by a fifth of a second.
+    /// Returns when the car finishes the lap.
+    /// </summary>
+    private double Overtaking(CarState car, double start, double lapEnd)
+    {
+        if (car.PitTime > 0 || car.Crossings.Count == 0)
+            return lapEnd;
+        var lap = car.Crossings.Count;
+        var ahead = _cars
+            .Where(c => c != car && c.Retirement is null && !c.Done && c.Crossings.Count == lap && c.Crossings[^1] <= start && c.PitTime == 0)
+            .MaxBy(c => c.Crossings[^1]);
+        if (ahead is null || start - ahead.Crossings[^1] > FightingSeconds)
+            return lapEnd;
+        var gap = start - ahead.Crossings[^1];
+        var straights = Circuit.StraightShare;
+        // The tow: a few tenths a lap on a fast circuit, from right behind.
+        if (gap < 2)
+            lapEnd -= (lapEnd - start) * 0.004 * straights;
+        if (lapEnd >= ahead.LapEnd)
+            return lapEnd;
+        var advantage = (ahead.LapEnd - ahead.LapStart) / (lapEnd - start) - 1;
+        var bravery = (car.AtWheel.Skills.Bravery - 10) / 100.0;
+        var chance = Math.Clamp(0.1 + 0.4 * straights + 12 * advantage + bravery, 0.05, 0.95);
+        if (car.Rng.NextDouble() < chance)
+            return lapEnd;
+        // Held up: over the line just behind, to try again next lap.
+        return ahead.LapEnd + 0.2 + car.Rng.NextDouble();
+    }
+
+    /// <summary>A lead this big lets a driver ease off and spare the car.</summary>
+    public const double ComfortableLeadSeconds = 45;
+
+    /// <summary>Closer than this to the car ahead, a driver presses to pass.</summary>
+    public const double BattleSeconds = 4;
+
+    /// <summary>
+    /// How an AI driver paces himself, as the drivers of the day did: one with a comfortable gap
+    /// to the car behind eases off to spare the car, one right on the tail of the car ahead
+    /// presses (at more risk to tyres, engine and himself, unless the tyres are already worn),
+    /// and the rest race. It is what kept the leaders of a 1930s Grand Prix seconds apart while
+    /// the field behind them spread out by laps. Decided as the car crosses the line.
+    /// </summary>
+    private PaceOrder RaceCraft(CarState car, double time)
+    {
+        var lap = car.Crossings.Count;
+        if (lap == 0)
+            return PaceOrder.Race;
+        // The car ahead on the road in the race: the last to cross this line on the same lap before us.
+        var ahead = _cars.Where(c => c != car && c.Retirement is null && c.Crossings.Count >= lap && c.Crossings[lap - 1] <= time)
+            .Select(c => time - c.Crossings[lap - 1]).DefaultIfEmpty(double.MaxValue).Min();
+        // The car behind: the first of those still on the lap we have just finished to come round.
+        var behind = _cars.Where(c => c != car && c.Retirement is null && c.Crossings.Count == lap - 1 && c.LapEnd > time)
+            .Select(c => c.LapEnd - time).DefaultIfEmpty(double.MaxValue).Min();
+        if (ahead < BattleSeconds && car.Tyres < 0.6)
+            return PaceOrder.Push;
+        if (behind > ComfortableLeadSeconds)
+            return PaceOrder.Hold;
+        return PaceOrder.Race;
     }
 
     /// <summary>Engine strain, crash risk and tyre wear at endurance pace, against a Grand Prix.</summary>
-    public const double EnduranceStrain = 0.5, EnduranceRisk = 0.4, EnduranceWear = 0.6;
+    public const double EnduranceStrain = 0.25, EnduranceRisk = 0.4, EnduranceWear = 0.6;
+
+    /// <summary>Laps at endurance pace are this much slower than a Grand Prix driver's in the same car.</summary>
+    public const double EnduranceLapFactor = 1.05;
 
     /// <summary>Laps at night are this much slower, and crashes this much more likely.</summary>
     public const double NightLapFactor = 1.05, NightCrashFactor = 1.6;
@@ -542,10 +618,17 @@ public sealed class LiveRace
         _ => (1, 1, 1, 1),
     };
 
+    /// <summary>
+    /// The distance a car's reliability figure is the chance of lasting. Set so that, as in the
+    /// races of the day, only about half the starters of a Grand Prix are running at the end
+    /// (checked against real results by tools/RealismRunner).
+    /// </summary>
+    public const double ReliabilityKm = 250;
+
     internal static double FailureChancePerLap(RaceEntry entry, Circuit circuit)
     {
-        // Reliability is the chance to survive 500 km; spread that risk over the laps.
-        var perKm = -Math.Log(entry.Team.Car.Reliability) / 500;
+        // Reliability is the chance to last ReliabilityKm; spread that risk over the laps.
+        var perKm = -Math.Log(entry.Team.Car.Reliability) / ReliabilityKm;
         var sympathy = 1.3 - entry.Driver.Skills.MechanicalSympathy / 40.0;
         return 1 - Math.Exp(-perKm * circuit.LapKm * sympathy);
     }
@@ -575,6 +658,8 @@ public sealed class LiveRace
         public Random Rng { get; } = rng;
         public double Form { get; } = form;
         public List<double> LapTimes { get; } = new();
+        /// <summary>Race time at which the car crossed the line at the end of each lap.</summary>
+        public List<double> Crossings { get; } = new();
         public double LapStart;
         public double LapEnd;
         /// <summary>Seconds standing in the pits at the start of the current lap.</summary>
