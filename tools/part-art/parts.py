@@ -6,7 +6,9 @@ PNG with Chromium through Playwright for Node (render.js), so the lettering font
 
     python3 tools/part-art/parts.py game/art/parts [name ...]
 
-Writes <group>-<choice>.png (e.g. engine-straight8.png, frame-tubular.png), 640x400.
+Writes <group>-<choice>.png (e.g. engine-straight8.png, frame-tubular.png) at 1280x800, twice the
+drawing's size so it stays sharp when shown large or on a high-DPI screen, and a thumbnail of the same
+name in thumbs/: no lettering and much heavier lines, so it still reads at the size of a button.
 Everything is drawn from code here, so the art can be changed without anyone drawing.
 """
 import base64
@@ -18,41 +20,50 @@ W, H = 640, 400
 INK = "#eaf2ff"
 FAINT = "rgba(234,242,255,0.35)"
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Thumbnails leave out the lettering, grid and title block and draw every line heavier.
+THUMB = False
+
+
+def sw(w, stroke):
+    """A stroke width: thumbnails thicken the ink lines a lot and the faint ones less."""
+    return w + (1.2 if stroke == FAINT else 4.5) if THUMB else w
 
 
 # ---------------------------------------------------------------- helpers
 
 def path(d, w=2.0, fill="none", stroke=INK, extra=""):
-    return f'<path d="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{w}" stroke-linejoin="round" stroke-linecap="round" {extra}/>'
+    return f'<path d="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{sw(w, stroke)}" stroke-linejoin="round" stroke-linecap="round" {extra}/>'
 
 
 def line(x1, y1, x2, y2, w=2.0, stroke=INK, dash=None):
     d = f' stroke-dasharray="{dash}"' if dash else ""
-    return f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{stroke}" stroke-width="{w}" stroke-linecap="round"{d}/>'
+    return f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{stroke}" stroke-width="{sw(w, stroke)}" stroke-linecap="round"{d}/>'
 
 
-def rect(x, y, w, h, r=0, sw=2.0, fill="none", stroke=INK, dash=None):
+def rect(x, y, w, h, r=0, width=2.0, fill="none", stroke=INK, dash=None):
     d = f' stroke-dasharray="{dash}"' if dash else ""
-    return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{r}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"{d}/>'
+    return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{r}" fill="{fill}" stroke="{stroke}" stroke-width="{sw(width, stroke)}"{d}/>'
 
 
-def circle(cx, cy, r, sw=2.0, fill="none", stroke=INK, dash=None):
+def circle(cx, cy, r, width=2.0, fill="none", stroke=INK, dash=None):
     d = f' stroke-dasharray="{dash}"' if dash else ""
-    return f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"{d}/>'
+    return f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{fill}" stroke="{stroke}" stroke-width="{sw(width, stroke)}"{d}/>'
 
 
 def text(x, y, s, size=15, anchor="start", fill=INK, rotate=None):
+    if THUMB:
+        return ""
     t = f' transform="rotate({rotate} {x} {y})"' if rotate is not None else ""
     return f'<text x="{x}" y="{y}" font-size="{size}" text-anchor="{anchor}" fill="{fill}"{t}>{s}</text>'
 
 
-def hatch(x, y, w, h, gap=7, sw=1.0):
+def hatch(x, y, w, h, gap=7, width=1.0):
     """Section hatching at 45 degrees, clipped to the rectangle."""
     cid = f"h{abs(hash((x, y, w, h))) % 10**8}"
     out = [f'<clipPath id="{cid}"><rect x="{x}" y="{y}" width="{w}" height="{h}"/></clipPath><g clip-path="url(#{cid})">']
     k = -h
     while k < w:
-        out.append(line(x + k, y + h, x + k + h, y, sw, FAINT))
+        out.append(line(x + k, y + h, x + k + h, y, width, FAINT))
         k += gap
     out.append("</g>")
     return "".join(out)
@@ -60,21 +71,25 @@ def hatch(x, y, w, h, gap=7, sw=1.0):
 
 def callout(x, y, tx, ty, label, anchor="start"):
     """A leader line from a point on the drawing to its hand-lettered label."""
+    if THUMB:
+        return ""
     return (circle(x, y, 2.5, 1.2, INK) + line(x, y, tx, ty, 1.0, FAINT)
-            + text(tx + (4 if anchor == "start" else -4), ty + 5, label, 13, anchor))
+            + text(tx + (5 if anchor == "start" else -5), ty + 6, label, 18, anchor))
 
 
 def dimension(x1, x2, y, label):
     """A horizontal dimension line with arrow ticks."""
+    if THUMB:
+        return ""
     return (line(x1, y, x2, y, 1.0, FAINT) + line(x1, y - 6, x1, y + 6, 1.0, FAINT) + line(x2, y - 6, x2, y + 6, 1.0, FAINT)
             + path(f"M{x1 + 8},{y - 3} L{x1},{y} L{x1 + 8},{y + 3}", 1.0, stroke=FAINT)
             + path(f"M{x2 - 8},{y - 3} L{x2},{y} L{x2 - 8},{y + 3}", 1.0, stroke=FAINT)
-            + text((x1 + x2) / 2, y - 6, label, 12, "middle", FAINT))
+            + text((x1 + x2) / 2, y - 8, label, 16, "middle", FAINT))
 
 
-def wheel(cx, cy, r, spokes=True, sw=2.0):
+def wheel(cx, cy, r, spokes=True, width=2.0):
     """A wire wheel seen from the side: tyre, rim, knock-off hub and crossed spokes."""
-    out = [circle(cx, cy, r, sw), circle(cx, cy, r * 0.78, 1.4), circle(cx, cy, r * 0.16, 1.6)]
+    out = [circle(cx, cy, r, width), circle(cx, cy, r * 0.78, 1.4), circle(cx, cy, r * 0.16, 1.6)]
     if spokes:
         for i in range(24):
             a = i * math.pi / 12
@@ -96,32 +111,36 @@ def sheet(title, sub, number, body, inset=""):
     """The paper: blue ground, grid, border, title block, and the drawing itself."""
     font = base64.b64encode(open(os.path.join(HERE, "ArchitectsDaughter-Regular.ttf"), "rb").read()).decode()
     grid = []
-    for gx in range(0, W + 1, 16):
-        grid.append(line(gx, 0, gx, H, 0.5 if gx % 80 else 0.9, "rgba(234,242,255,0.07)" if gx % 80 else "rgba(234,242,255,0.13)"))
-    for gy in range(0, H + 1, 16):
-        grid.append(line(0, gy, W, gy, 0.5 if gy % 80 else 0.9, "rgba(234,242,255,0.07)" if gy % 80 else "rgba(234,242,255,0.13)"))
-    block = (rect(W - 232, H - 64, 216, 48, 0, 1.4) + line(W - 232, H - 40, W - 16, H - 40, 1.0)
-             + line(W - 70, H - 40, W - 70, H - 16, 1.0)
-             + text(W - 224, H - 46, title, 16)
-             + text(W - 224, H - 22, sub, 12, fill=FAINT)
-             + text(W - 62, H - 22, number, 12, fill=FAINT))
+    for g in [] if THUMB else range(0, max(W, H) + 1, 16):
+        major = g % 80 == 0
+        width, colour = (0.9, "rgba(234,242,255,0.13)") if major else (0.5, "rgba(234,242,255,0.07)")
+        if g <= W:
+            grid.append(line(g, 0, g, H, width, colour))
+        if g <= H:
+            grid.append(line(0, g, W, g, width, colour))
+    block = "" if THUMB else (
+        rect(W - 276, H - 70, 260, 54, 0, 1.4) + line(W - 276, H - 44, W - 16, H - 44, 1.0)
+        + line(W - 74, H - 44, W - 74, H - 16, 1.0)
+        + text(W - 268, H - 50, title, 20)
+        + text(W - 268, H - 24, sub, 15, fill=FAINT)
+        + text(W - 67, H - 24, number, 15, fill=FAINT))
+    border = rect(10, 10, W - 20, H - 20, 0, 1.6) + ("" if THUMB else rect(16, 16, W - 32, H - 32, 0, 0.7, stroke=FAINT))
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
 <defs>
 <style>@font-face{{font-family:Draft;src:url(data:font/ttf;base64,{font})}} text{{font-family:Draft}}</style>
 <radialGradient id="paper" cx="45%" cy="40%" r="80%"><stop offset="0" stop-color="#25578f"/><stop offset="0.7" stop-color="#1b4677"/><stop offset="1" stop-color="#132f53"/></radialGradient>
 <filter id="ink"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
-<filter id="bleed"><feGaussianBlur stdDeviation="0.35"/></filter>
 </defs>
 <rect width="{W}" height="{H}" fill="url(#paper)"/>
 {''.join(grid)}
 <rect width="{W}" height="{H}" filter="url(#ink)"/>
-{rect(10, 10, W - 20, H - 20, 0, 1.6)}{rect(16, 16, W - 32, H - 32, 0, 0.7, stroke=FAINT)}
-<g filter="url(#bleed)">{body}{inset}{block}</g>
+{border}
+<g>{body}{inset}{block}</g>
 </svg>"""
 
 
 def inset_box(x, y, w, h, label, content):
-    return rect(x, y, w, h, 0, 1.0, stroke=FAINT, dash="4 3") + text(x + 6, y + 15, label, 11, fill=FAINT) + content
+    return rect(x, y, w, h, 0, 1.0, stroke=FAINT, dash="4 3") + text(x + 6, y + 17, label, 14, fill=FAINT) + content
 
 
 # ---------------------------------------------------------------- engines
@@ -167,7 +186,7 @@ def engine(cyl_per_bank, vee, name, number):
     out.append(path(f"M{x1 + 20},150 L{x1 + 34},150 L{x1 + 34},262 L{x1 + 10},262", 2))  # bell housing
     out.append(path(f"M{x1 + 34},164 A46,46 0 0 1 {x1 + 34},252", 2))  # flywheel rim
     out.append(circle(x1 + 34, 208, 7, 1.4))
-    out.append(dimension(x0, x1, 336, f"{n} cylinders{' per bank' if vee else ''} in line"))
+    out.append(dimension(x0, x1, 322, f"{n} cylinders{' per bank' if vee else ''} in line"))
     # Front view inset: one tall cylinder, or two banks in a V.
     ix, iy = 512, 32
     if vee:
@@ -177,8 +196,10 @@ def engine(cyl_per_bank, vee, name, number):
         inset = bank(-1) + bank(1) + circle(ix + 55, iy + 112, 13, 1.4)
     else:
         inset = rect(ix + 44, iy + 32, 22, 68, 3, 1.4) + rect(ix + 40, iy + 24, 30, 10, 3, 1.2) + circle(ix + 55, iy + 112, 13, 1.4)
-    out.append(callout(x0 + 120, 104, x0 + 150, 40, "twin overhead camshafts"))
-    return sheet(name.upper(), "Engine · side elevation", number, "".join(out),
+    out.append(callout(x0 + 120, 104, x0 + 150, 34, "twin overhead camshafts"))
+    # Lifted clear of the dimension line and the title block.
+    drawing = f'<g transform="translate(0,-18)">{"".join(out[:-2])}</g>' + "".join(out[-2:])
+    return sheet(name.upper(), "Engine · side elevation", number, drawing,
                  inset_box(ix, iy, 110, 150, "FRONT", inset))
 
 
@@ -222,20 +243,20 @@ def supercharger(kind, number):
     if kind == "none":
         # Inlet manifold along the block with two carburettors under it.
         out.append(rect(120, 120, 380, 60, 3, 1.4, stroke=FAINT, dash="6 4"))
-        out.append(text(310, 156, "engine block", 13, "middle", FAINT))
+        out.append(text(310, 156, "engine block", 17, "middle", FAINT))
         out.append(path("M150,180 L150,200 L470,200 L470,180", 4))
         for x in (200, 380):
             out.append(carburettor(x, 214))
-        out.append(callout(234, 260, 290, 320, "twin updraught carburettors"))
-        out.append(callout(470, 200, 520, 150, "inlet manifold"))
-        return sheet("UNSUPERCHARGED", "Induction · side elevation", number, "".join(out))
+        out.append(callout(234, 260, 110, 326, "twin updraught carburettors"))
+        out.append(callout(470, 200, 488, 262, "inlet manifold"))
+        return sheet("UNSUPERCHARGED", "Induction · elevation", number, "".join(out))
     if kind == "single":
         out.append(roots(250, 196, 1.3))
-        out.append(text(250, 104, "to the engine", 13, "middle", FAINT))
-        out.append(text(250, 312, "air and fuel from the carburettor", 13, "middle", FAINT))
+        out.append(text(250, 104, "to the engine", 17, "middle", FAINT))
+        out.append(text(250, 312, "air and fuel from the carburettor", 17, "middle", FAINT))
         out.append(callout(211, 180, 90, 150, "rotor"))
-        out.append(callout(340, 150, 470, 116, "Roots-type blower"))
-        out.append(callout(310, 210, 470, 250, "geared to the crank"))
+        out.append(callout(340, 150, 440, 116, "Roots-type blower"))
+        out.append(callout(310, 210, 440, 250, "geared to the crank"))
         return sheet("SUPERCHARGED", "Roots blower · section", number, "".join(out))
     # Two stages: a large first blower feeding a smaller second one.
     out.append(roots(190, 210, 1.05, label=False))
@@ -244,7 +265,7 @@ def supercharger(kind, number):
     out.append(path("M430,216 C430,260 480,290 540,300", 6, stroke="rgba(234,242,255,0.85)"))
     out.append(path("M190,330 L190,268", 1.4) + path("M185,276 L190,268 L195,276", 1.4))
     out.append(callout(300, 96, 300, 40, "first stage feeds the second"))
-    out.append(text(200, 340, "air in", 13, "start", FAINT))
+    out.append(text(200, 340, "air in", 17, "start", FAINT))
     out.append(callout(520, 290, 440, 236, "to the engine"))
     return sheet("TWO-STAGE", "Supercharging · section", number, "".join(out))
 
@@ -269,7 +290,7 @@ def frame(kind, number):
             out.append(line(a, top + 4, b, bot - 4, 1.6) + line(a, bot - 4, b, top + 4, 1.6))
         inset = circle(560, 82, 22, 2) + circle(560, 82, 17, 1.2)
         out.append(callout(x0 + 260, top - 3, x0 + 240, 70, "drawn steel tube"))
-        out.append(callout(x0 + 390, 200, x0 + 330, 312, "cross-bracing"))
+        out.append(callout(x0 + 390, 200, x0 + 420, 300, "cross-bracing"))
         sub = "Tubular frame · plan"
         title = "TUBULAR FRAME"
     else:
@@ -284,7 +305,7 @@ def frame(kind, number):
                 out.append(circle(x0 + 230 + i * 30, bot + 8, 4, 1.2))
             inset = rect(538, 60, 44, 48, 0, 2) + hatch(540, 62, 40, 44) + rect(546, 68, 28, 32, 0, 1.4, fill="#1d4878")
             out.append(callout(x0 + 290, top - 8, x0 + 150, 70, "boxed side members, drilled"))
-            sub = "Boxed ladder frame · plan"
+            sub = "Boxed frame · plan"
             title = "BOXED LADDER FRAME"
         else:
             inset = path("M542,62 L582,62 L582,68 L550,68 L550,102 L582,102 L582,108 L542,108 Z", 2) + hatch(542, 62, 8, 46, 5)
@@ -293,10 +314,10 @@ def frame(kind, number):
             title = "LADDER FRAME"
     # Engine and axle positions in ghost lines.
     out.append(rect(x0 + 50, 168, 170, 64, 6, 1.0, stroke=FAINT, dash="6 4"))
-    out.append(text(x0 + 135, 205, "engine", 12, "middle", FAINT))
+    out.append(text(x0 + 135, 205, "engine", 16, "middle", FAINT))
     for x in (x0 + 30, x1 - 60):
         out.append(line(x, 100, x, 300, 1.0, FAINT, "10 4 2 4"))
-    out.append(dimension(x0 + 30, x1 - 60, 336, "wheelbase"))
+    out.append(dimension(x0 + 30, x1 - 60, 316, "wheelbase"))
     return sheet(title, sub, number, "".join(out), inset_box(520, 32, 80, 96, "SECTION", inset))
 
 
@@ -316,9 +337,9 @@ def suspension(kind, number):
             out.append(rect(x - 14, cy - 86, 28, 36, 0, 1.6) + hatch(x - 14, cy - 86, 28, 36, 6))
             out.append(line(x, cy - 50, x, cy - 42, 2))
         out.append(rect(170, cy - 120, 300, 18, 2, 1.0, stroke=FAINT, dash="6 4"))
-        out.append(callout(320, cy + 18, 250, 330, "one solid axle beam"))
+        out.append(callout(320, cy + 18, 110, 330, "one solid axle beam"))
         out.append(callout(230, cy - 30, 70, 90, "leaf springs"))
-        return sheet("BEAM AXLES", "Front suspension · elevation", number, "".join(out))
+        return sheet("BEAM AXLES", "Front axle · elevation", number, "".join(out))
     # Double wishbones with coil springs, each wheel on its own.
     def corner(xw, side, cyy, h=140):
         o = [tyre_front(xw, cyy, 34, h)]
@@ -337,7 +358,7 @@ def suspension(kind, number):
     out.append(rect(230, cy - 70, 180, 140, 4, 1.6) + hatch(230, cy - 70, 180, 140, 10))
     out.append(callout(190, cy - 37, 120, 80, "wishbones"))
     out.append(callout(200, cy + 8, 120, 340, "coil spring"))
-    title, sub, inset = "INDEPENDENT FRONT", "Front suspension · elevation", ""
+    title, sub, inset = "INDEPENDENT FRONT", "Front axle · elevation", ""
     if kind == "all":
         # Rear swing axles in the inset: two half-shafts pivoting at the differential.
         ix, iy = 476, 30
@@ -383,13 +404,13 @@ def brakes(kind, number):
         out.append(path(f"M{cx},{cy - 103} L{cx + 160},{cy - 150} L{cx + 300},{cy - 150}", 2))
         out.append(path(f"M{cx + 300},{cy - 150} L{cx + 316},{cy - 100}", 2.4))
         out.append(circle(cx + 316, cy - 100, 5, 1.4))
-        out.append(callout(cx, cy - 103, 400, 110, "cam pushes the shoes apart"))
-        out.append(callout(cx + 230, cy - 150, 400, 220, "rods and cables to the pedal"))
+        out.append(callout(cx, cy - 103, 40, 40, "cam pushes the shoes apart"))
+        out.append(callout(cx + 230, cy - 150, 420, 130, "cables to the pedal"))
         return sheet("MECHANICAL BRAKES", "Brake drum · section", number, "".join(out))
     out.append(rect(cx - 26, cy - 112, 52, 18, 4, 1.8) + rect(cx - 30, cy - 108, 6, 10, 1, 1.4) + rect(cx + 24, cy - 108, 6, 10, 1, 1.4))
     out.append(path(f"M{cx},{cy - 112} C{cx},{cy - 160} {cx + 120},{cy - 160} {cx + 240},{cy - 150}", 1.6))
     out.append(rect(cx + 240, cy - 166, 80, 30, 5, 2) + rect(cx + 256, cy - 180, 30, 14, 3, 1.4))
-    out.append(callout(cx + 4, cy - 104, 400, 230, "wheel cylinder: oil pressure"))
+    out.append(callout(cx + 4, cy - 104, 410, 230, "wheel cylinder"))
     out.append(callout(cx + 280, cy - 151, 420, 120, "master cylinder"))
     return sheet("HYDRAULIC BRAKES", "Brake drum · section", number, "".join(out))
 
@@ -432,9 +453,9 @@ def body(kind, number):
         for i in range(12):
             out.append(line(100 + i * 40, ground - 155 + abs(6 - i) * 3, 80 + i * 40, ground - 175 + abs(6 - i) * 3, 0.8, FAINT))  # airflow
         out.append(callout(300, ground - 150, 230, 70, "enclosed wheels, smooth tail"))
-        title, sub = "STREAMLINED BODY", "Side elevation · streamliner"
+        title, sub = "STREAMLINED BODY", "Streamliner · elevation"
     out.append(line(40, ground, 600, ground, 1.0, FAINT))
-    out.append(dimension(fw, rw, ground + 34, "wheelbase"))
+    out.append(dimension(fw, rw, ground + 20, "wheelbase"))
     return sheet(title, sub, number, "".join(out))
 
 
@@ -463,15 +484,20 @@ DRAWINGS = {
 
 
 def main():
+    global THUMB
     out_dir = sys.argv[1] if len(sys.argv) > 1 else "game/art/parts"
     only = sys.argv[2:]
-    svg_dir = os.path.join(HERE, "svg")
-    os.makedirs(svg_dir, exist_ok=True)
-    for name, draw in DRAWINGS.items():
-        if not only or name in only:
-            open(os.path.join(svg_dir, name + ".svg"), "w").write(draw())
-    # Chromium draws the SVGs (with the embedded lettering font) to PNG.
-    os.system(f'node "{os.path.join(HERE, "render.js")}" "{svg_dir}" "{out_dir}" {W} {H}')
+    render = os.path.join(HERE, "render.js")
+    # Chromium draws the SVGs (with the embedded lettering font) to PNG: the sheets at twice their
+    # size, the thumbnails at their own.
+    for thumb, svg_dir, png_dir, scale in ((False, "svg", out_dir, 2), (True, "svg-thumbs", os.path.join(out_dir, "thumbs"), 1)):
+        THUMB = thumb
+        svg_dir = os.path.join(HERE, svg_dir)
+        os.makedirs(svg_dir, exist_ok=True)
+        for name, draw in DRAWINGS.items():
+            if not only or name in only:
+                open(os.path.join(svg_dir, name + ".svg"), "w").write(draw())
+        os.system(f'node "{render}" "{svg_dir}" "{png_dir}" {W} {H} {scale}')
 
 
 if __name__ == "__main__":

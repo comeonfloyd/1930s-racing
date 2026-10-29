@@ -54,6 +54,10 @@ public partial class CalendarScreen
     /// <summary>The blueprint of one part, e.g. ("engine", "Straight8").</summary>
     private Texture2D? Blueprint(string group, string choice) => Picture($"res://art/parts/{group}-{choice.ToLowerInvariant()}.png");
 
+    /// <summary>The same part drawn for a button: no lettering and heavier lines, which stay legible that small.</summary>
+    private Texture2D? Thumbnail(string group, string choice) =>
+        Picture($"res://art/parts/thumbs/{group}-{choice.ToLowerInvariant()}.png") ?? Blueprint(group, choice);
+
     private Control CreditsCard()
     {
         var card = new PanelContainer { ThemeTypeVariation = "Card" };

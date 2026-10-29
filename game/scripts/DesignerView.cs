@@ -254,13 +254,14 @@ public partial class CalendarScreen
     /// </summary>
     private Control DrawingBoard(PartGroup group, int year, (double Litres, double Max)? engine)
     {
-        var column = new VBoxContainer { CustomMinimumSize = new Vector2(400, 0) };
+        var column = new VBoxContainer { CustomMinimumSize = new Vector2(480, 0) };
         column.AddThemeConstantOverride("separation", 8);
         var mount = new PanelContainer { ThemeTypeVariation = "Mount" };
         mount.AddChild(new TextureRect
         {
-            Texture = Blueprint(group.Key, group.Choices[group.Chosen]), CustomMinimumSize = new Vector2(392, 245),
+            Texture = Blueprint(group.Key, group.Choices[group.Chosen]), CustomMinimumSize = new Vector2(472, 295),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspect,
+            TextureFilter = TextureFilterEnum.LinearWithMipmaps,
         });
         column.AddChild(mount);
 
@@ -270,7 +271,7 @@ public partial class CalendarScreen
         stack.AddChild(new Label { Text = $"{group.Label.ToUpperInvariant()} · CHOOSE ONE", ThemeTypeVariation = "Overline" });
         var options = new HBoxContainer();
         options.AddThemeConstantOverride("separation", 6);
-        var width = (380 - 6 * (group.Choices.Length - 1)) / group.Choices.Length - 8;
+        var width = (460 - 6 * (group.Choices.Length - 1)) / group.Choices.Length - 8;
         for (var i = 0; i < group.Choices.Length; i++)
         {
             var late = group.FirstYears[i] > year;
@@ -285,8 +286,9 @@ public partial class CalendarScreen
             inner.SetAnchorsPreset(LayoutPreset.FullRect);
             inner.AddChild(new TextureRect
             {
-                Texture = Blueprint(group.Key, group.Choices[i]), CustomMinimumSize = new Vector2(width, width * 0.625f),
+                Texture = Thumbnail(group.Key, group.Choices[i]), CustomMinimumSize = new Vector2(width, width * 0.625f),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspect,
+                TextureFilter = TextureFilterEnum.LinearWithMipmaps,
                 MouseFilter = MouseFilterEnum.Ignore, Modulate = late ? new Color(1, 1, 1, 0.35f) : Colors.White,
             });
             inner.AddChild(new Label
@@ -326,8 +328,9 @@ public partial class CalendarScreen
         row.AddThemeConstantOverride("separation", 10);
         row.AddChild(new TextureRect
         {
-            Texture = Blueprint(group.Key, group.Choices[group.Chosen]), CustomMinimumSize = new Vector2(86, 54),
+            Texture = Thumbnail(group.Key, group.Choices[group.Chosen]), CustomMinimumSize = new Vector2(86, 54),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspect, MouseFilter = MouseFilterEnum.Ignore,
+            TextureFilter = TextureFilterEnum.LinearWithMipmaps,
         });
         var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
         names.AddThemeConstantOverride("separation", -4);
