@@ -13,6 +13,8 @@ var money = args.Contains("--money");
 var works = args.Contains("--works");
 // --design: build the team's own designs instead of the works' models.
 var design = args.Contains("--design");
+// --sponsors: sign the best-paying sponsor of each kind, and ask every organiser for more start money.
+var sponsors = args.Contains("--sponsors");
 // --races=YEAR: print each race of that year in the first career, with the field's cars.
 // --fair-germans: the German works race without state money (a career setting).
 var settings = new RaceSettings(StateFundedGermans: !args.Contains("--fair-germans"));
@@ -38,7 +40,11 @@ for (var seed = 0; seed < careers; seed++)
             if (!idle)
                 Plan(career, works, design);
             foreach (var ev in career.CurrentSeason.Events)
-                career.Enter(ev.Id);
+                if (career.Enter(ev.Id) == EntryResult.Entered && sponsors)
+                    career.Negotiate(ev.Id, Ask.More);
+            if (sponsors)
+                foreach (var offer in career.SponsorOffers().GroupBy(o => data.Sponsors[o.SponsorId].Kind).Select(g => g.MaxBy(o => o.WeeklyFee)!))
+                    career.SignSponsor(offer.SponsorId);
             if (career.NextRace is null)
                 break;
             var race = career.PrepareRace();

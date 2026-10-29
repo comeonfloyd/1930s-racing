@@ -33,8 +33,9 @@ public partial class CalendarScreen : Control
     private Button _driversTab = null!;
     private Button _worksTab = null!;
     private Button _officeTab = null!;
+    private Button _sponsorsTab = null!;
 
-    private enum View { Calendar, Map, Drivers, Works, Designer, Credits }
+    private enum View { Calendar, Map, Drivers, Works, Sponsors, Designer, Credits }
 
     // Kept across scene changes, so coming back from a race shows the same view.
     private static View _view;
@@ -104,16 +105,19 @@ public partial class CalendarScreen : Control
         _mapTab = new Button { Text = "Travel map", ToggleMode = true, ThemeTypeVariation = "Tab" };
         _driversTab = new Button { Text = "Drivers", ToggleMode = true, ThemeTypeVariation = "Tab" };
         _worksTab = new Button { Text = "Works", ToggleMode = true, ThemeTypeVariation = "Tab" };
+        _sponsorsTab = new Button { Text = "Sponsors", ToggleMode = true, ThemeTypeVariation = "Tab" };
         _officeTab = new Button { Text = "Drawing office", ToggleMode = true, ThemeTypeVariation = "Tab" };
         _calendarTab.Pressed += () => { _view = View.Calendar; Refresh(); };
         _mapTab.Pressed += () => { _view = View.Map; Refresh(); };
         _driversTab.Pressed += () => { _view = View.Drivers; Refresh(); };
         _worksTab.Pressed += () => { _view = View.Works; Refresh(); };
+        _sponsorsTab.Pressed += () => { _view = View.Sponsors; Refresh(); };
         _officeTab.Pressed += () => OpenDesigner(indy: false);
         _tabs.AddChild(_calendarTab);
         _tabs.AddChild(_mapTab);
         _tabs.AddChild(_driversTab);
         _tabs.AddChild(_worksTab);
+        _tabs.AddChild(_sponsorsTab);
         _tabs.AddChild(_officeTab);
         column.AddChild(_tabs);
 
@@ -150,6 +154,10 @@ public partial class CalendarScreen : Control
             var year = int.TryParse(DevShot.Arg("year"), out var y) ? y : Session.StartYear;
             Career = new Career(_data, team, year);
             Career.StartProject(Upgrade.Engine);
+            // The best-paying fuel and tyres, so the shots show contracts and offers.
+            foreach (var kind in new[] { SupplyKind.Fuel, SupplyKind.Tyres })
+                if (Career.SponsorOffers().FirstOrDefault(o => _data.Sponsors[o.SponsorId].Kind == kind) is { } offer)
+                    Career.SignSponsor(offer.SponsorId);
             if (DevShot.Arg("race") is { } race)
                 Career.Enter(race);
             Refresh();
@@ -175,17 +183,22 @@ public partial class CalendarScreen : Control
                     Refresh();
                     DevShot.Capture(this, "works.png", 1, () =>
                     {
-                        // The newest parts, so the shot shows any research they need.
-                        _draft = CarDesigner.Default(Career!.Today.Year);
-                        _view = View.Designer;
+                        _view = View.Sponsors;
                         Refresh();
-                        DevShot.Capture(this, "designer.png", 1, () =>
+                        DevShot.Capture(this, "sponsors.png", 1, () =>
                         {
-                            OpenDesigner(indy: true);
-                            DevShot.Capture(this, "designer-indy.png", 1, () =>
+                            // The newest parts, so the shot shows any research they need.
+                            _draft = CarDesigner.Default(Career!.Today.Year);
+                            _view = View.Designer;
+                            Refresh();
+                            DevShot.Capture(this, "designer.png", 1, () =>
                             {
-                                _view = View.Calendar;
-                                GoToRace();
+                                OpenDesigner(indy: true);
+                                DevShot.Capture(this, "designer-indy.png", 1, () =>
+                                {
+                                    _view = View.Calendar;
+                                    GoToRace();
+                                });
                             });
                         });
                     });
@@ -240,6 +253,7 @@ public partial class CalendarScreen : Control
         _mapTab.SetPressedNoSignal(_view == View.Map);
         _driversTab.SetPressedNoSignal(_view == View.Drivers);
         _worksTab.SetPressedNoSignal(_view == View.Works);
+        _sponsorsTab.SetPressedNoSignal(_view == View.Sponsors);
         _officeTab.SetPressedNoSignal(_view == View.Designer && !_designIndy);
 
         if (Career is not { } career)
@@ -293,6 +307,8 @@ public partial class CalendarScreen : Control
             DriverMarket(career);
         else if (_view == View.Works)
             WorksView(career);
+        else if (_view == View.Sponsors)
+            SponsorsView(career);
         else if (_view == View.Designer)
             DesignerView(career);
         else
@@ -852,11 +868,12 @@ public partial class CalendarScreen : Control
         var box = Stack(card, 6);
         box.AddChild(new Label { Text = "MONEY", ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = $"£{career.Cash:N0}", ThemeTypeVariation = "Big" }.Tint(career.Cash < 0 ? UiTheme.Red : null));
-        box.AddChild(new Label { Text = $"Every week: wages and works −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        box.AddChild(new Label { Text = $"Every week: wages and works −£{career.WeeklyCosts}, backing +£{career.WeeklyBacking}"
+                   + (career.WeeklySponsorship > 0 ? $", sponsors +£{career.WeeklySponsorship}" : ""), ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
         box.AddChild(new HSeparator());
 
         // Wages and backing come every week, so the list shows the race money and travel.
-        var recent = career.Ledger.Where(t => t.Kind is not MoneyKind.Wages and not MoneyKind.Backing).TakeLast(6).Reverse().ToList();
+        var recent = career.Ledger.Where(t => t.Kind is not MoneyKind.Wages and not MoneyKind.Backing && t.Text != "Sponsors").TakeLast(6).Reverse().ToList();
         if (recent.Count == 0)
             box.AddChild(new Label { Text = "No race money yet.", ThemeTypeVariation = "Muted" });
         foreach (var t in recent)
@@ -974,6 +991,8 @@ public partial class CalendarScreen : Control
             }
         }
         titles.AddChild(facts);
+        if (StartMoneyDeal(career, ev) is { } deal)
+            titles.AddChild(deal);
         row.AddChild(titles);
 
         if (record is not null)

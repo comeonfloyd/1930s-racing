@@ -1,0 +1,49 @@
+// Suppliers who pay a team to race on their fuel, oil, tyres or plugs. Names are altered
+// from the real makers and can be edited here. "fee" is pounds a week to a team of ordinary
+// standing (standing 60); a better team is offered more, and a maker pays a fifth more to a
+// team from its own country. "winBonus" and "podiumBonus" are paid per car. The rest is what
+// the product does to the car: "power" and "thirst" multiply horsepower and fuel use, "wear"
+// multiplies tyre wear, "handling" is added, and "reliability" is added to the car's
+// reliability. "minStanding" keeps the grand names away from small teams.
+// Figures are first-pass game values.
+[
+  { "id": "shellux", "name": "Shellux", "kind": "Fuel", "country": "United Kingdom", "fee": 10, "winBonus": 30, "podiumBonus": 10,
+    "power": 1.01, "minStanding": 65, "text": "The big name in racing fuel: a little more power." },
+  { "id": "essolene", "name": "Essolene", "kind": "Fuel", "country": "USA", "fee": 8, "winBonus": 20, "podiumBonus": 10,
+    "thirst": 0.97, "text": "A clean-burning blend that goes a little further." },
+  { "id": "benzolin", "name": "Benzolin", "kind": "Fuel", "country": "Germany", "fee": 9, "winBonus": 30, "podiumBonus": 10,
+    "power": 1.02, "thirst": 1.08, "text": "A heavy benzole mix: strong, and thirsty." },
+  { "id": "agipa", "name": "Agipa", "kind": "Fuel", "country": "Italy", "fee": 7, "winBonus": 20, "podiumBonus": 10,
+    "text": "Plain Italian fuel, and plain money." },
+  { "id": "antara", "name": "Antara", "kind": "Fuel", "country": "France", "fee": 6, "winBonus": 20, "podiumBonus": 10,
+    "power": 0.99, "thirst": 0.95, "text": "Light and economical: fewer stops, a shade less power." },
+
+  { "id": "castrel", "name": "Castrel", "kind": "Oil", "country": "United Kingdom", "fee": 5, "winBonus": 20, "podiumBonus": 10,
+    "reliability": 0.01, "minStanding": 55, "text": "The famous racing oil: engines last longer." },
+  { "id": "mobilux", "name": "Mobilux", "kind": "Oil", "country": "USA", "fee": 5, "winBonus": 10, "podiumBonus": 10,
+    "reliability": 0.005, "text": "A good mineral oil." },
+  { "id": "veedel", "name": "Veedel", "kind": "Oil", "country": "Germany", "fee": 6, "winBonus": 10, "podiumBonus": 10,
+    "text": "Pays well for its name on the bonnet; the oil is ordinary." },
+
+  { "id": "pirella", "name": "Pirella", "kind": "Tyres", "country": "Italy", "fee": 8, "winBonus": 20, "podiumBonus": 10,
+    "wear": 1.05, "text": "Italy's racing tyres, and Italy's money." },
+  { "id": "dunlap", "name": "Dunlap", "kind": "Tyres", "country": "United Kingdom", "fee": 7, "winBonus": 20, "podiumBonus": 10,
+    "wear": 0.9, "text": "Hard-wearing racing tyres." },
+  { "id": "englebart", "name": "Englebart", "kind": "Tyres", "country": "Belgium", "fee": 7, "winBonus": 20, "podiumBonus": 10,
+    "wear": 0.95, "text": "Belgian covers that last well." },
+  { "id": "kontinental", "name": "Kontinental", "kind": "Tyres", "country": "Germany", "fee": 9, "winBonus": 20, "podiumBonus": 10,
+    "wear": 0.95, "firstYear": 1934, "minStanding": 60, "text": "Built for the new German cars, and paid for by Berlin." },
+  { "id": "firestorm", "name": "Firestorm", "kind": "Tyres", "country": "USA", "fee": 6, "winBonus": 20, "podiumBonus": 10,
+    "handling": -1, "wear": 0.85, "text": "Indianapolis tyres: they last for ever, but slide on European corners." },
+  { "id": "michelon", "name": "Michelon", "kind": "Tyres", "country": "France", "fee": 5, "winBonus": 20, "podiumBonus": 10,
+    "text": "Sound French covers." },
+
+  { "id": "boschel", "name": "Boschel", "kind": "Plugs", "country": "Germany", "fee": 4, "winBonus": 10, "podiumBonus": 10,
+    "reliability": 0.005, "text": "Magnetos and plugs that rarely miss." },
+  { "id": "klj", "name": "K.L.J.", "kind": "Plugs", "country": "United Kingdom", "fee": 4, "winBonus": 10, "podiumBonus": 10,
+    "reliability": 0.005, "text": "The racing plug." },
+  { "id": "champeon", "name": "Champeon", "kind": "Plugs", "country": "USA", "fee": 4, "winBonus": 10, "podiumBonus": 10,
+    "text": "Pays a little more, and helps not at all." },
+  { "id": "marella", "name": "Marella", "kind": "Plugs", "country": "Italy", "fee": 4, "winBonus": 10, "podiumBonus": 10,
+    "reliability": 0.005, "text": "Italian ignition." }
+]

@@ -417,7 +417,7 @@ public sealed partial class Career
             teams.Insert(0, Team);
         return teams.SelectMany(t =>
             {
-                var team = t with { Car = t.Id == Team.Id ? Works.Prepared(RaceCarFor(ev)!, Level(Facility.Workshop)) : CarOf(t.Id) };
+                var team = t with { Car = t.Id == Team.Id ? Supplied(Works.Prepared(RaceCarFor(ev)!, Level(Facility.Workshop))) : CarOf(t.Id) };
                 return StartersOf(t, ev.Date).Select(id => new RaceEntry(_data.Drivers[id], team));
             })
             .Concat(PrivateersFor(ev, circuit))
@@ -438,7 +438,7 @@ public sealed partial class Career
         var taken = new HashSet<string>();
         if (_entries.Contains(ev) && SportsCarFor(ev) is { } sportsCar)
         {
-            var team = Team with { Car = Works.Prepared(sportsCar, Level(Facility.Workshop)) };
+            var team = Team with { Car = Supplied(Works.Prepared(sportsCar, Level(Facility.Workshop))) };
             var fit = StartersOf(Team, ev.Date);
             for (var i = 0; i + 1 < fit.Count; i += 2)
             {
@@ -473,6 +473,7 @@ public sealed partial class Career
         {
             _carsYear++;
             var day = new DateOnly(_carsYear, 1, 1);
+            EndDeals(_carsYear);
             if (_carsYear is Formula.FirstWeightYear or Formula.FirstLitreYear)
                 _news.Add(new NewsItem(day, $"The {Formula.Name(_carsYear)} comes in for European races: {Formula.Rule(_carsYear)}."));
             foreach (var team in RivalsIn(_carsYear))
@@ -554,6 +555,7 @@ public sealed partial class Career
             if (car.Entry.Team.Id == Team.Id && car.Finished && prize > 0)
                 earned += Pay(MoneyKind.Prize, $"{car.Entry.Driver.Name}, {Place(i + 1)} at {ev.Name}", prize);
         }
+        earned += PaySponsorBonuses(ev, result);
         var record = Record(result, entered: true, earned);
         LearnFromRace(record);
         AnnounceWorld(Today, ev.Date.AddDays(1));
@@ -561,8 +563,8 @@ public sealed partial class Career
         return record;
     }
 
-    /// <summary>Start money per car the organisers pay this team: the team manager bargains for more.</summary>
-    public int StartMoney(RaceEvent ev) => (int)Math.Round(ev.StartMoney * Works.StartMoneyFactor(SkillOf(StaffRole.Manager))
+    /// <summary>Start money per car the organisers pay this team: the team manager bargains for more, and so may the player.</summary>
+    public int StartMoney(RaceEvent ev) => (int)Math.Round(ev.StartMoney * Works.StartMoneyFactor(SkillOf(StaffRole.Manager)) * StartDeal(ev)
                                                            * WorldFactor(WorldEffect.StartMoney, ev.Date, _data.Circuits[ev.CircuitId].Country) / 10) * 10;
 
     /// <summary>Winter break: moves on to the first day of next year.</summary>
@@ -653,6 +655,8 @@ public sealed partial class Career
             _paidUntil = _paidUntil.AddDays(7);
             Pay(MoneyKind.Wages, "Wages and works", -WeeklyCosts, _paidUntil);
             Pay(MoneyKind.Backing, "Works backing", BackingOn(_paidUntil), _paidUntil);
+            if (WeeklySponsorship > 0)
+                Pay(MoneyKind.Sponsor, "Sponsors", WeeklySponsorship, _paidUntil);
             WorkOnProjects(_paidUntil);
             WorkOnBuilding(_paidUntil);
             DevelopRivals(_paidUntil);
