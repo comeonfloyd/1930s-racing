@@ -149,6 +149,11 @@ public partial class CalendarScreen : Control
     {
         // macOS stops drawing a window it thinks nobody can see, and the capture then waits forever.
         DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.AlwaysOnTop, true);
+        if (DevShot.Arg("scenario") is { } scenarioId && Career is null)
+        {
+            Session.Scenario = _data.Scenarios.FirstOrDefault(s => s.Id == scenarioId);
+            Refresh();
+        }
         if (DevShot.Arg("team") is { } team && Career is null)
         {
             var year = int.TryParse(DevShot.Arg("year"), out var y) ? y : Session.StartYear;
@@ -268,11 +273,32 @@ public partial class CalendarScreen : Control
                 CreditsView();
             else
             {
+                var scenario = Session.Scenario ?? _data.Scenarios[0];
+                _body.AddChild(new Label { Text = "WHERE TO BEGIN", ThemeTypeVariation = "Section" });
+                var starts = new HFlowContainer();
+                starts.AddThemeConstantOverride("h_separation", 0);
+                foreach (var s in _data.Scenarios)
+                {
+                    var tab = new Button { Text = $"{s.Year} · {s.Name}", ToggleMode = true, ThemeTypeVariation = "Tab", TooltipText = s.Text };
+                    tab.SetPressedNoSignal(s.Id == scenario.Id);
+                    var chosen = s;
+                    tab.Pressed += () =>
+                    {
+                        Session.Scenario = chosen;
+                        Refresh();
+                    };
+                    starts.AddChild(tab);
+                }
+                _body.AddChild(starts);
+                if (scenario.Text.Length > 0)
+                    _body.AddChild(new Label { Text = scenario.Text, ThemeTypeVariation = "Note", AutowrapMode = TextServer.AutowrapMode.WordSmart });
                 _body.AddChild(new Label { Text = "CHOOSE YOUR TEAM", ThemeTypeVariation = "Section" });
-                var teams = new HBoxContainer();
-                teams.AddThemeConstantOverride("separation", 16);
-                foreach (var team in _data.Teams.Values.Where(t => t.Playable))
-                    teams.AddChild(TeamCard(team));
+                // Cards wrap onto more rows when a scenario offers more teams than fit across.
+                var teams = new HFlowContainer();
+                teams.AddThemeConstantOverride("h_separation", 16);
+                teams.AddThemeConstantOverride("v_separation", 16);
+                foreach (var entry in scenario.Teams)
+                    teams.AddChild(TeamCard(_data.Teams[entry.TeamId], scenario, entry.Cash));
                 _body.AddChild(teams);
                 _body.AddChild(HowToPlay());
             }
@@ -386,24 +412,29 @@ public partial class CalendarScreen : Control
 
     // ------------------------------------------------------------------ cards
 
-    private Control TeamCard(Team team)
+    private Control TeamCard(Team team, Scenario scenario, int? cash)
     {
         var card = new PanelContainer { ThemeTypeVariation = "Card", CustomMinimumSize = new Vector2(320, 0) };
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 8);
-        var startCar = team.CarFor(Session.StartYear);
+        var startCar = team.CarFor(scenario.Year);
         box.AddChild(CarPhoto(startCar.Name, team.Id, new Vector2(288, 170)));
         box.AddChild(new ColorRect { Color = TrackView.TeamColor(team.Id), CustomMinimumSize = new Vector2(0, 4) });
         box.AddChild(new Label { Text = team.Nationality.ToUpperInvariant(), ThemeTypeVariation = "Overline" });
         box.AddChild(new Label { Text = team.Name, ThemeTypeVariation = "Heading" });
         box.AddChild(new Label { Text = $"{startCar.Name} · {startCar.Horsepower} hp · {startCar.WeightKg} kg", ThemeTypeVariation = "Muted" });
-        var drivers = string.Join(", ", team.RosterFor(Session.StartYear).Select(id => _data.Drivers[id].Name));
+        var drivers = string.Join(", ", team.RosterFor(scenario.Year).Select(id => _data.Drivers[id].Name));
         box.AddChild(new Label { Text = drivers, AutowrapMode = TextServer.AutowrapMode.WordSmart });
-        box.AddChild(new Label { Text = $"Budget £{Math.Round(team.StartingCash * Session.Settings.StartingMoney / 100) * 100:N0} · prestige {team.Prestige}", ThemeTypeVariation = "Muted" });
+        box.AddChild(new Label
+        {
+            Text = $"Budget £{Math.Round((cash ?? team.StartingCash) * Session.Settings.StartingMoney / 100) * 100:N0} · prestige {team.Prestige}"
+                   + (team.Nationality == "Germany" && scenario.Year >= RaceSettings.FirstStateFundedYear && Session.Settings.StateFundedGermans ? $" · state grant £{Finance.StateGrant} a week" : ""),
+            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
         var run = new Button { Text = "Run this team", ThemeTypeVariation = "Accent" };
         run.Pressed += () =>
         {
-            Career = new Career(_data, team.Id, Session.StartYear, seed: (int)(Time.GetUnixTimeFromSystem() % 100000), Session.Settings);
+            Career = new Career(_data, team.Id, scenario.Year, seed: (int)(Time.GetUnixTimeFromSystem() % 100000), Session.Settings, scenario.Id);
             Refresh();
         };
         box.AddChild(run);

@@ -23,6 +23,9 @@ public sealed class GameData
     /// <summary>Fuel, oil, tyre and plug makers who sponsor teams.</summary>
     public IReadOnlyDictionary<string, Sponsor> Sponsors { get; }
 
+    /// <summary>Where a new career can begin, in order; never empty.</summary>
+    public IReadOnlyList<Scenario> Scenarios { get; }
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -39,7 +42,8 @@ public sealed class GameData
         LeMansData? leMans = null,
         IEnumerable<StaffMember>? staff = null,
         WorldData? world = null,
-        IEnumerable<Sponsor>? sponsors = null)
+        IEnumerable<Sponsor>? sponsors = null,
+        IEnumerable<Scenario>? scenarios = null)
     {
         Circuits = circuits.ToDictionary(c => c.Id);
         Cities = cities.ToDictionary(c => c.Id);
@@ -51,6 +55,7 @@ public sealed class GameData
         Staff = (staff ?? []).ToDictionary(s => s.Id);
         World = world?.Events ?? [];
         Sponsors = (sponsors ?? []).ToDictionary(s => s.Id);
+        Scenarios = scenarios?.ToList() is { Count: > 0 } list ? list : [Scenario.Default(this)];
         Validate();
     }
 
@@ -59,7 +64,7 @@ public sealed class GameData
     /// code works from Godot (res:// paths) and from tests (disk paths).
     /// </summary>
     public static GameData FromJson(string circuits, string cities, string drivers, string teams, IEnumerable<string> seasons,
-        string? leMans = null, string? staff = null, string? world = null, string? sponsors = null) =>
+        string? leMans = null, string? staff = null, string? world = null, string? sponsors = null, string? scenarios = null) =>
         new(
             Parse<List<Circuit>>(circuits),
             Parse<List<City>>(cities),
@@ -69,7 +74,8 @@ public sealed class GameData
             leMans is null ? null : Parse<LeMansData>(leMans),
             staff is null ? null : Parse<List<StaffMember>>(staff),
             world is null ? null : Parse<WorldData>(world),
-            sponsors is null ? null : Parse<List<Sponsor>>(sponsors));
+            sponsors is null ? null : Parse<List<Sponsor>>(sponsors),
+            scenarios is null ? null : Parse<List<Scenario>>(scenarios));
 
     /// <summary>Loads every file from a data directory on disk.</summary>
     public static GameData FromDirectory(string dir) =>
@@ -82,7 +88,8 @@ public sealed class GameData
             File.Exists(Path.Combine(dir, "lemans.json")) ? File.ReadAllText(Path.Combine(dir, "lemans.json")) : null,
             File.Exists(Path.Combine(dir, "staff.json")) ? File.ReadAllText(Path.Combine(dir, "staff.json")) : null,
             File.Exists(Path.Combine(dir, "world.json")) ? File.ReadAllText(Path.Combine(dir, "world.json")) : null,
-            File.Exists(Path.Combine(dir, "sponsors.json")) ? File.ReadAllText(Path.Combine(dir, "sponsors.json")) : null);
+            File.Exists(Path.Combine(dir, "sponsors.json")) ? File.ReadAllText(Path.Combine(dir, "sponsors.json")) : null,
+            File.Exists(Path.Combine(dir, "scenarios.json")) ? File.ReadAllText(Path.Combine(dir, "scenarios.json")) : null);
 
     private static T Parse<T>(string json) =>
         JsonSerializer.Deserialize<T>(json, Options) ?? throw new InvalidDataException($"Empty {typeof(T).Name} data");
@@ -132,6 +139,15 @@ public sealed class GameData
         foreach (var sponsor in Sponsors.Values)
             if (sponsor.Fee <= 0 || sponsor.Power <= 0 || sponsor.Thirst <= 0 || sponsor.Wear <= 0)
                 throw new InvalidDataException($"Sponsor {sponsor.Id} needs a positive fee, power, thirst and wear");
+
+        foreach (var scenario in Scenarios)
+        {
+            if (!Seasons.ContainsKey(scenario.Year))
+                throw new InvalidDataException($"Scenario {scenario.Id} starts in {scenario.Year}, which has no season");
+            foreach (var entry in scenario.Teams)
+                if (!Teams.TryGetValue(entry.TeamId, out var team) || team.Privateer || team.FirstYear > scenario.Year)
+                    throw new InvalidDataException($"Scenario {scenario.Id} offers {entry.TeamId}, which is not a works racing in {scenario.Year}");
+        }
 
         foreach (var season in Seasons.Values)
         foreach (var ev in season.Events)
