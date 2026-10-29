@@ -133,4 +133,81 @@ public class LiveRaceTests
         Assert.True(laps[PaceOrder.Push].Average() > laps[PaceOrder.Nurse].Average(), "pushing should cover more ground in the same time");
         Assert.True(wear[PaceOrder.Push].Average() > wear[PaceOrder.Nurse].Average(), "pushing should wear tyres faster per lap");
     }
+
+    [Fact]
+    public void PlannedStopsBringTheCarInAtTheEndOfThoseLaps()
+    {
+        var driver = TestData.Load().Teams["alfa-rossa"].DriverIds[0];
+        var checkedOne = false;
+        foreach (var seed in Enumerable.Range(1, 6))
+        {
+            var race = Race("1930-monza", seed, "alfa-rossa");
+            var stops = race.EvenStops(driver, 2);
+            Assert.Equal(2, stops.Count);
+            race.SetPlannedStops(driver, stops);
+            race.RunToEnd();
+            var car = race.Cars().Single(c => c.Entry.Driver.Id == driver);
+            if (car.Retirement is not null && car.Retirement.Lap <= stops[^1] + 1)
+                continue;
+            // A stop at the end of lap n is told on lap n + 1, as the car sets off again.
+            var told = race.Messages.Where(m => m.DriverId == driver && m.Text.Contains("pits")).Select(m => m.Lap).ToList();
+            Assert.Equal(stops.Select(l => l + 1), told);
+            Assert.Empty(car.PlannedStops!);
+            Assert.True(car.PitSeconds > 0);
+            checkedOne = true;
+        }
+        Assert.True(checkedOne, "every seed retired the car before its stops");
+    }
+
+    [Fact]
+    public void EvenStopsSplitTheRaceIntoEqualStints()
+    {
+        var race = Race("1930-monza", 1, "alfa-rossa");
+        var driver = TestData.Load().Teams["alfa-rossa"].DriverIds[0];
+        var laps = race.Event.Laps;
+        var one = race.EvenStops(driver, 1);
+        Assert.Single(one);
+        Assert.InRange(one[0], laps / 2 - 1, laps / 2 + 1);
+        Assert.Empty(race.EvenStops(driver, 0));
+    }
+
+    [Fact]
+    public void ATyresOnlyStopAddsNoFuel()
+    {
+        var race = Race("1930-monza", 3, "alfa-rossa");
+        var driver = TestData.Load().Teams["alfa-rossa"].DriverIds[0];
+        race.SetPitPlan(driver, new PitPlan(FuelPlan.None, Tyres: true));
+        race.AdvanceTo(600);
+        race.CallPitStop(driver);
+        var fuelBefore = race.Cars().Single(c => c.Entry.Driver.Id == driver).Fuel;
+        for (var t = 600.0; t < 3000; t += 1)
+        {
+            race.AdvanceTo(t);
+            var car = race.Cars().Single(c => c.Entry.Driver.Id == driver);
+            if (!car.Running || car.PitStops == 1)
+                break;
+        }
+        var after = race.Cars().Single(c => c.Entry.Driver.Id == driver);
+        if (after.Retirement is not null)
+            return;
+        Assert.True(after.Fuel < fuelBefore);
+        Assert.Contains(race.Messages, m => m.DriverId == driver && m.Text.Contains("tyres only"));
+    }
+
+    [Fact]
+    public void TheTimingKnowsLastAndBestLapsAndTheGrid()
+    {
+        var race = Race("1930-monza", 5);
+        race.RunToEnd();
+        var cars = race.Cars();
+        var result = race.Result();
+        Assert.Equal(Enumerable.Range(1, cars.Count), cars.Select(c => c.Grid).Order());
+        foreach (var car in cars.Where(c => c.LapsDone > 0))
+        {
+            var laps = result.Classification.Single(r => r.Entry.Driver.Id == car.Entry.Driver.Id).LapTimes;
+            Assert.Equal(laps.Min(), car.BestLap);
+            Assert.Equal(laps[^1], car.LastLap);
+            Assert.Equal(laps.Min(), laps[car.BestLapNumber - 1]);
+        }
+    }
 }

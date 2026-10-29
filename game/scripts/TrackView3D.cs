@@ -273,6 +273,12 @@ public partial class TrackView3D : Control, IRaceView
         var offset = new Vector3(Mathf.Sin(_yaw) * Mathf.Cos(pitch), Mathf.Sin(pitch), Mathf.Cos(_yaw) * Mathf.Cos(pitch)) * Distance;
         _camera.Position = _target + offset;
         _camera.LookAt(_target, Vector3.Up);
+        // Clip planes follow the camera out: with a fixed near plane the depth buffer runs out of
+        // precision when the whole circuit is fitted into a narrow area, and the ground, road and
+        // water flicker through each other in stripes.
+        var distance = Distance;
+        _camera.Near = Mathf.Clamp(distance * 0.02f, 0.5f, 50);
+        _camera.Far = Mathf.Max(3000, distance * 6);
         _sun.DirectionalShadowMaxDistance = Mathf.Clamp(Distance * 2.2f, 40, 900);
         // Haze in the distance, but a clear view of whatever the camera looks at.
         _environment.Environment.FogDensity = (0.06f + 0.12f * Rain) / Distance;
