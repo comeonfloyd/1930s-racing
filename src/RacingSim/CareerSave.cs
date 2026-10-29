@@ -45,7 +45,8 @@ public sealed record CareerSave(
     RaceSettings? Settings = null,
     IReadOnlyList<SponsorDeal>? Deals = null,
     IReadOnlyDictionary<string, double>? StartDeals = null,
-    string? ScenarioId = null);
+    string? ScenarioId = null,
+    Team? OwnTeam = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -92,7 +93,8 @@ public sealed partial class Career
         Settings,
         _deals.Values.ToList(),
         new Dictionary<string, double>(_startDeals),
-        ScenarioId);
+        ScenarioId,
+        IsOwnTeam ? Team : null);
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -103,6 +105,8 @@ public sealed partial class Career
     {
         if (save.Version > SaveVersion)
             throw new InvalidDataException($"The save is from a newer version of the game ({save.Version}).");
+        if (save.OwnTeam is { } own)
+            data = data.WithTeam(own);
         var events = data.Seasons.Values.SelectMany(s => s.Events).ToDictionary(e => e.Id);
         var career = new Career(data, save.TeamId, save.Today.Year, save.Seed, save.Settings ?? new RaceSettings(save.FatalCrashes), save.ScenarioId)
         {

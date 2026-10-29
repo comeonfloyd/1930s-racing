@@ -154,10 +154,21 @@ public partial class CalendarScreen : Control
             Session.Scenario = _data.Scenarios.FirstOrDefault(s => s.Id == scenarioId);
             Refresh();
         }
-        if (DevShot.Arg("team") is { } team && Career is null)
+        // --scroll=N: shoot the first screen scrolled down by N pixels, once the layout is done.
+        if (int.TryParse(DevShot.Arg("scroll"), out var scroll))
+            Callable.From(() => _calendarScroll.ScrollVertical = scroll).CallDeferred();
+        if ((DevShot.Arg("team") ?? (DevShot.Arg("own") is null ? null : OwnTeam.Id)) is { } team && Career is null)
         {
             var year = int.TryParse(DevShot.Arg("year"), out var y) ? y : Session.StartYear;
-            Career = new Career(_data, team, year);
+            if (DevShot.Arg("own") is { } nation)
+            {
+                // A garage of one's own, with the two cheapest drivers going.
+                Career = new Career(_data, OwnTeam.Create(_data, "Scuderia Nuova", nation, OwnTeam.Colours[2].Hex, year), year);
+                foreach (var driver in Career.FreeAgents.TakeLast(2).ToList())
+                    Career.Sign(driver.Id);
+            }
+            else
+                Career = new Career(_data, team, year);
             Career.StartProject(Upgrade.Engine);
             // The best-paying fuel and tyres, so the shots show contracts and offers.
             foreach (var kind in new[] { SupplyKind.Fuel, SupplyKind.Tyres })
@@ -299,6 +310,7 @@ public partial class CalendarScreen : Control
                 teams.AddThemeConstantOverride("v_separation", 16);
                 foreach (var entry in scenario.Teams)
                     teams.AddChild(TeamCard(_data.Teams[entry.TeamId], scenario, entry.Cash));
+                teams.AddChild(GarageCard(scenario));
                 _body.AddChild(teams);
                 _body.AddChild(HowToPlay());
             }
@@ -438,6 +450,65 @@ public partial class CalendarScreen : Control
             Refresh();
         };
         box.AddChild(run);
+        card.AddChild(box);
+        return card;
+    }
+
+    // The garage being founded on the team screen, kept while the screen redraws.
+    private static string _garageName = "Scuderia Nuova";
+    private static string _garageNation = "Italy";
+    private static int _garageColour;
+
+    /// <summary>A team of the player's own: name, nationality and colours, with a bought customer car.</summary>
+    private Control GarageCard(Scenario scenario)
+    {
+        var card = new PanelContainer { ThemeTypeVariation = "Card", CustomMinimumSize = new Vector2(320, 0) };
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 8);
+        var car = OwnTeam.CustomerCar(_data, scenario.Year);
+        box.AddChild(CarPhoto(car.Name, "privateers", new Vector2(288, 170)));
+        box.AddChild(new ColorRect { Color = new Color(OwnTeam.Colours[_garageColour].Hex), CustomMinimumSize = new Vector2(0, 4) });
+        box.AddChild(new Label { Text = "YOUR OWN GARAGE", ThemeTypeVariation = "Overline" });
+        var name = new LineEdit { Text = _garageName, PlaceholderText = "Team name", MaxLength = 28 };
+        name.TextChanged += text => _garageName = text;
+        box.AddChild(name);
+        box.AddChild(new Label { Text = $"{car.Name}, bought from the factory · {car.Horsepower} hp · {car.WeightKg} kg", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        void Pick(string label, string[] options, int selected, Action<int> chosen)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            row.AddChild(new Label { Text = label, SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center });
+            var option = new OptionButton { CustomMinimumSize = new Vector2(170, 0), ClipText = true };
+            foreach (var o in options)
+                option.AddItem(o);
+            option.Selected = selected;
+            option.ItemSelected += i =>
+            {
+                chosen((int)i);
+                Refresh();
+            };
+            row.AddChild(option);
+            box.AddChild(row);
+        }
+        var nations = OwnTeam.Bases.Keys.ToArray();
+        Pick("Nationality", nations, Array.IndexOf(nations, _garageNation), i => _garageNation = nations[i]);
+        Pick("Colours", OwnTeam.Colours.Select(c => c.Name).ToArray(), _garageColour, i => _garageColour = i);
+        box.AddChild(new Label
+        {
+            Text = $"No drivers or staff yet: sign them. Based in {_data.Cities[OwnTeam.Bases[_garageNation]].Name} · "
+                   + $"budget £{Math.Round(OwnTeam.StartingCash * Session.Settings.StartingMoney / 100) * 100:N0} · prestige {OwnTeam.Prestige}. The hardest start.",
+            ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
+        var start = new Button { Text = "Found your team", ThemeTypeVariation = "Accent" };
+        start.Pressed += () =>
+        {
+            var team = OwnTeam.Create(_data, _garageName, _garageNation, OwnTeam.Colours[_garageColour].Hex, scenario.Year);
+            Career = new Career(_data, team, scenario.Year, seed: (int)(Time.GetUnixTimeFromSystem() % 100000), Session.Settings, scenario.Id);
+            _view = View.Drivers;
+            Notice($"{team.Name} is founded. Sign a driver or two to race.");
+            Refresh();
+        };
+        box.AddChild(start);
         card.AddChild(box);
         return card;
     }
@@ -623,6 +694,34 @@ public partial class CalendarScreen : Control
         };
         design.Pressed += () => OpenDesigner(indy: false);
         box.AddChild(design);
+        if (career.CustomerCarForSale is { } customer)
+        {
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 8);
+            var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            text.AddThemeConstantOverride("separation", -2);
+            text.AddChild(new Label { Text = "Buy a customer car" });
+            text.AddChild(new Label { Text = $"{customer.Name}: {customer.Horsepower} hp, {customer.WeightKg} kg, {customer.EngineLitres:0.0#} L · at once", ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+            line.AddChild(text);
+            var cost = OwnTeam.CustomerCarCost(customer);
+            var buy = new Button
+            {
+                Text = $"£{cost:N0}", CustomMinimumSize = new Vector2(84, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter, Disabled = cost > career.Cash || career.NewCarUnderway,
+                TooltipText = $"This year's customer car from the factory. It replaces the {career.Car.Name} at once, and its tuning starts afresh.",
+            };
+            buy.Pressed += () =>
+            {
+                Notice(career.BuyCustomerCar() switch
+                {
+                    ProjectResult.NotEnoughMoney => "Not enough money for the car.",
+                    ProjectResult.NewCarUnderway => "A new car is already being built.",
+                    _ => "",
+                });
+                Refresh();
+            };
+            line.AddChild(buy);
+            box.AddChild(line);
+        }
         foreach (var kind in DrawingOffice.Kinds)
         {
             var next = career.NextModel;

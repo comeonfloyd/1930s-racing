@@ -135,6 +135,8 @@ public partial class TrackView : Node2D, IRaceView
 
     public static Color TeamColor(string teamId) => teamId switch
     {
+        // A team of the player's own carries the colours they chose.
+        OwnTeam.Id when Session.Career?.Team.Colour is { } own => new Color(own),
         "alfa-rossa" => new Color(0.78f, 0.1f, 0.1f),
         "bugetti" => new Color(0.16f, 0.32f, 0.72f),
         "masarelli" => new Color(0.95f, 0.55f, 0.1f),

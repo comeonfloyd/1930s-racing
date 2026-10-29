@@ -148,6 +148,12 @@ public sealed partial class Career
     /// A new career with a team in a year. The team must be on offer in a scenario starting
     /// that year (or playable, for a test career in any year), which also sets its budget.
     /// </summary>
+    /// <summary>A new career with a team of the player's own making (see <see cref="OwnTeam"/>).</summary>
+    public Career(GameData data, Team ownTeam, int startYear, int seed = 1930, RaceSettings? settings = null, string? scenarioId = null)
+        : this(data.WithTeam(ownTeam), ownTeam.Id, startYear, seed, settings, scenarioId)
+    {
+    }
+
     public Career(GameData data, string teamId, int startYear, int seed = 1930, RaceSettings? settings = null, string? scenarioId = null)
     {
         Seed = seed;
@@ -397,11 +403,11 @@ public sealed partial class Career
 
     /// <summary>The works' backing in a week, after any world news.</summary>
     private int BackingOn(DateOnly date) =>
-        (int)Math.Round(Finance.WeeklyBacking(Team.Prestige) * WorldFactor(WorldEffect.Backing, date)) + StateGrantOn(date);
+        (int)Math.Round(Finance.WeeklyBacking(IsOwnTeam ? Standing : Team.Prestige) * WorldFactor(WorldEffect.Backing, date)) + StateGrantOn(date);
 
     /// <summary>The Reich's weekly grant to a German works from 1934, unless the settings take state money out of racing.</summary>
     private int StateGrantOn(DateOnly date) =>
-        Settings.StateFundedGermans && Team.Nationality == "Germany" && date.Year >= RaceSettings.FirstStateFundedYear ? Finance.StateGrant : 0;
+        Settings.StateFundedGermans && Team.Nationality == "Germany" && !IsOwnTeam && date.Year >= RaceSettings.FirstStateFundedYear ? Finance.StateGrant : 0;
 
     /// <summary>The next entered race still to be run, if any.</summary>
     public RaceEvent? NextRace => _entries.FirstOrDefault(e => e.Date >= Today && !HasRun(e));
