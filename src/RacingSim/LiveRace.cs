@@ -454,7 +454,7 @@ public sealed class LiveRace
         Circuit.LapKm * TyreWear(car.Entry.Team.Car) / 300 * (1.15 - 0.3 * Circuit.StraightShare);
 
     /// <summary>How hard a car is on its tyres: more power and more weight wear them faster.</summary>
-    public static double TyreWear(Car car) => (0.8 + car.Horsepower / 400.0) * (0.85 + car.WeightKg / 5000.0);
+    public static double TyreWear(Car car) => (0.8 + car.Horsepower / 400.0) * (0.85 + car.WeightKg / 5000.0) * car.Wear;
 
     /// <summary>(speed, tyre wear, engine strain, crash risk) multipliers for a pace order.</summary>
     private static (double Speed, double Wear, double Strain, double Risk) PaceEffect(PaceOrder pace) => pace switch

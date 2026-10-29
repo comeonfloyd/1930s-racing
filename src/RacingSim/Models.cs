@@ -98,7 +98,7 @@ public sealed record Driver(
 /// 3-litre formula from 1938 (0 means unknown and counts as within it). <see cref="Thirst"/>
 /// scales fuel use: 1 is a typical car of the day, more for a big or highly supercharged engine.
 /// </summary>
-public sealed record Car(string Name, int Horsepower, int WeightKg, int Handling, double Reliability, double EngineLitres = 0, double Thirst = 1);
+public sealed record Car(string Name, int Horsepower, int WeightKg, int Handling, double Reliability, double EngineLitres = 0, double Thirst = 1, double Wear = 1);
 
 /// <summary>
 /// A team. <see cref="Name"/> is the in-game brand (altered from the real maker's

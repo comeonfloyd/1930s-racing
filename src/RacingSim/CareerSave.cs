@@ -42,7 +42,9 @@ public sealed record CareerSave(
     int TeethingFaults = 0,
     int WaitingFaults = 0,
     IReadOnlyList<Part>? Researched = null,
-    RaceSettings? Settings = null);
+    RaceSettings? Settings = null,
+    IReadOnlyList<SponsorDeal>? Deals = null,
+    IReadOnlyDictionary<string, double>? StartDeals = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -86,7 +88,9 @@ public sealed partial class Career
         TeethingFaults,
         _waitingFaults,
         _researched.ToList(),
-        Settings);
+        Settings,
+        _deals.Values.ToList(),
+        new Dictionary<string, double>(_startDeals));
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -158,6 +162,10 @@ public sealed partial class Career
             career._researched.Clear();
             career._researched.UnionWith(researched);
         }
+        foreach (var deal in (save.Deals ?? []).Where(d => data.Sponsors.ContainsKey(d.SponsorId)))
+            career._deals[data.Sponsors[deal.SponsorId].Kind] = deal;
+        foreach (var (id, factor) in save.StartDeals ?? new Dictionary<string, double>())
+            career._startDeals[id] = factor;
         return career;
     }
 }

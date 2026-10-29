@@ -8,6 +8,7 @@ public enum MoneyKind
     Prize,
     Backing,
     Development,
+    Sponsor,
 }
 
 /// <summary>One line in the team's books. Costs are negative.</summary>
