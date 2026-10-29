@@ -133,7 +133,7 @@ public partial class RaceSounds : Node
 
         // Sped up, the engines step back and the revs smooth out: the race heard in a hurry.
         var hurry = Math.Max(1, speed);
-        var engineLevel = paused ? 0 : 0.45 * Math.Clamp(1 - 0.27 * Math.Log10(hurry), 0.25, 1);
+        var engineLevel = paused ? 0 : 0.28 * Math.Clamp(1 - 0.27 * Math.Log10(hurry), 0.25, 1);
         var smooth = 1 - Math.Exp(-dt / (0.05 * Math.Sqrt(hurry)));
 
         var heard = new List<(LiveCar Car, Vector2 At, double Metres, double Loudness)>();
@@ -205,7 +205,7 @@ public partial class RaceSounds : Node
 
         // The crowd is loudest close to the stands, and never quite silent.
         var stands = _shape.Grandstands.Sum(s => Math.Min(1, 80 / Metres(s.GetCenter())));
-        Fade(_crowd, Math.Min(0.7, 0.08 + 0.5 * stands), dt);
+        Fade(_crowd, Math.Min(0.45, 0.06 + 0.35 * stands), dt);
         Fade(_rain, 0.5 * rain, dt);
         Fade(_night, 0.35 * night * (1 - fieldLevel), dt);
 
