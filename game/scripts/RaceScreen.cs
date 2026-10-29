@@ -45,6 +45,8 @@ public partial class RaceScreen : Control
     private readonly List<string?> _followChoices = new();
     private Label _lap = null!;
     private Label _clock = null!;
+    private Label _speedo = null!;
+    private TrackShape _shape = null!;
     private Button _pause = null!;
     private readonly List<TowerRow> _tower = new();
     private readonly List<PitCard> _pitWall = new();
@@ -109,7 +111,8 @@ public partial class RaceScreen : Control
         _scene = new TrackView3D { SportsCars = race.Event.IsEndurance };
         _frame.AddChild(_scene);
         _track = _scene;
-        var shape = TrackShape.For(race.Circuit.Id);
+        var shape = _shape = TrackShape.For(race.Circuit.Id);
+        shape.SetCircuit(race.Circuit);
         // A stable seed per circuit, so the scenery is the same every visit.
         foreach (var view in new IRaceView[] { _map, _scene })
             view.SetTrack(shape, race.Circuit.Id, race.Circuit.Id.Sum(ch => ch));
@@ -482,6 +485,9 @@ public partial class RaceScreen : Control
         row.AddChild(zoomIn);
         row.AddChild(whole);
         row.AddChild(_follow);
+        // The followed car's speed, as a stopwatch at the roadside would make it.
+        _speedo = new Label { CustomMinimumSize = new Vector2(78, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, TooltipText = "Speed of the car the camera follows" };
+        row.AddChild(_speedo);
         row.AddChild(_viewToggle);
         _statsButton = new Button { Text = "Statistics", ToggleMode = true, ThemeTypeVariation = "Segment", TooltipText = "Every car's laps, stops and places, while the race runs on" };
         _statsButton.Toggled += on =>
@@ -691,6 +697,9 @@ public partial class RaceScreen : Control
         var follow = _followChoices.Count == 0 ? null : _followChoices[_follow.Selected];
         _track.FollowDriverId = follow == "" ? cars[0].Entry.Driver.Id : follow;
         _track.SetCars(cars);
+        var followed = cars.FirstOrDefault(c => c.Entry.Driver.Id == _track.FollowDriverId);
+        var kmh = followed is null ? 0 : _shape.SpeedKmh(followed);
+        _speedo.Text = kmh > 0 ? $"{kmh:0} km/h" : "";
 
         var laps = _race.Event.Laps;
         var leaderLap = Math.Min(laps, (int)Math.Floor(cars[0].Distance) + 1);

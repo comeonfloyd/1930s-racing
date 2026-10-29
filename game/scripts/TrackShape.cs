@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Godot;
+using RacingSim;
 
 namespace RacingManager;
 
 /// <summary>
 /// A closed circuit outline in normalised 0..1 coordinates, smoothed from a few control
-/// points. Maps a lap fraction to a point on the track.
+/// points. Maps a lap fraction to a point on the track, and, once it knows the circuit, a car's
+/// progress through its lap to where it really is: ahead of the even pace on the straights,
+/// behind it in the bends (see <see cref="SpeedProfile"/>).
 /// </summary>
 public sealed class TrackShape
 {
@@ -38,7 +41,7 @@ public sealed class TrackShape
         _points = Smooth(controlPoints, 16);
         _distances = new float[_points.Length + 1];
         for (var i = 1; i <= _points.Length; i++)
-            _distances[i] = _distances[i - 1] + _points[i - 1].DistanceTo(_points[i % _points.Length]);
+            _distances[i] = _distances[i - 1] + (float)TrackLine.Length(Pair(_points[i - 1]), Pair(_points[i % _points.Length]));
         Grandstands = grandstands;
         Water = water ?? Array.Empty<Rect2>();
         Unused = unused ?? Array.Empty<Vector2[]>();
@@ -90,6 +93,55 @@ public sealed class TrackShape
         var segment = _distances[i + 1] - _distances[i];
         var t = segment <= 0 ? 0 : (d - _distances[i]) / segment;
         return _points[i].Lerp(_points[(i + 1) % _points.Length], t);
+    }
+
+    private static (double X, double Y) Pair(Vector2 p) => (p.X, p.Y);
+
+    private Circuit? _circuit;
+    private TrackLine? _line;
+    private readonly Dictionary<(string DriverId, bool Standing), SpeedProfile> _profiles = new();
+
+    /// <summary>The circuit this outline is drawn for: its lap length scales the drawing to real metres.</summary>
+    public void SetCircuit(Circuit circuit)
+    {
+        _circuit = circuit;
+        _line = new TrackLine(_points.Select(Pair).ToList(), circuit.LapKm);
+        _profiles.Clear();
+    }
+
+    private SpeedProfile? Profile(LiveCar car)
+    {
+        if (_line is null || _circuit is null)
+            return null;
+        var key = (car.Entry.Driver.Id, car.StandingStart);
+        if (!_profiles.TryGetValue(key, out var profile))
+        {
+            // Fitted once to the car and driver's usual lap; the lap's own time is kept below in any case.
+            var usual = _circuit.LapKm / RaceSim.AverageSpeedKmh(car.Entry, _circuit) * 3600;
+            _profiles[key] = profile = SpeedProfile.Matching(_line, car.Entry.Team.Car, _circuit.Type, usual, car.StandingStart);
+        }
+        return profile;
+    }
+
+    /// <summary>
+    /// Where a car is, in laps as drawn. The race times each lap and moves the car round it at an
+    /// even pace; here that time is shared out along the lap as the car would really cover it,
+    /// so it still crosses the line on the same tick.
+    /// </summary>
+    public double Placed(LiveCar car)
+    {
+        var lap = Math.Floor(car.Distance);
+        var part = car.Distance - lap;
+        return part <= 0 || Profile(car) is not { } profile ? car.Distance : lap + profile.DistanceAt(part);
+    }
+
+    /// <summary>The car's speed now in km/h, or 0 when standing or the circuit is not known.</summary>
+    public double SpeedKmh(LiveCar car)
+    {
+        if (!car.Running || car.InPits || car.LapSeconds <= 0 || Profile(car) is not { } profile)
+            return 0;
+        var part = Placed(car) % 1;
+        return profile.SpeedKmhAt(part) * profile.LapSeconds / car.LapSeconds;
     }
 
     /// <summary>Closed Catmull-Rom spline through the control points.</summary>
