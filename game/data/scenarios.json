@@ -1,0 +1,20 @@
+// Where a new career can begin. Each scenario starts on 1 January of its year with the
+// teams listed; "cash" sets a team's budget for that start (otherwise the team's own
+// startingCash from teams.json). A team need not be playable in teams.json to be listed
+// here. Budgets are first-pass game values.
+[
+  { "id": "1930", "name": "The full decade", "year": 1930,
+    "text": "Formula libre: few rules, and the Italian and French works rule the sport. Ten seasons to the war.",
+    "teams": [ { "teamId": "alfa-rossa" }, { "teamId": "bugetti" } ] },
+  { "id": "1932", "name": "The monoposto", "year": 1932,
+    "text": "The single-seater arrives with Alfa's P3. Maserati fight back from Bologna on half the money.",
+    "teams": [ { "teamId": "alfa-rossa" }, { "teamId": "bugetti" }, { "teamId": "masarelli", "cash": 7000 } ] },
+  { "id": "1934", "name": "The Silver Arrows", "year": 1934,
+    "text": "The 750 kg formula, and the Reich pays Mercedes and Auto Union to win. Run one of them, or try to hold them off.",
+    "teams": [ { "teamId": "mercator-benz", "cash": 20000 }, { "teamId": "auto-unitas", "cash": 20000 },
+               { "teamId": "alfa-rossa", "cash": 14000 }, { "teamId": "bugetti", "cash": 11000 }, { "teamId": "masarelli", "cash": 7000 } ] },
+  { "id": "1938", "name": "The 3-litre formula", "year": 1938,
+    "text": "New rules make every car obsolete. Two seasons before the war.",
+    "teams": [ { "teamId": "mercator-benz", "cash": 22000 }, { "teamId": "auto-unitas", "cash": 20000 },
+               { "teamId": "alfa-rossa", "cash": 15000 }, { "teamId": "masarelli", "cash": 8000 }, { "teamId": "bugetti", "cash": 9000 } ] }
+]

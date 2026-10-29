@@ -15,6 +15,8 @@ var works = args.Contains("--works");
 var design = args.Contains("--design");
 // --sponsors: sign the best-paying sponsor of each kind, and ask every organiser for more start money.
 var sponsors = args.Contains("--sponsors");
+// --year=YEAR: start in that year, as a scenario starting then (e.g. --year=1934 mercator-benz).
+var startYear = args.FirstOrDefault(a => a.StartsWith("--year="))?.Split('=')[1] is { } sy ? int.Parse(sy) : 0;
 // --races=YEAR: print each race of that year in the first career, with the field's cars.
 // --fair-germans: the German works race without state money (a career setting).
 var settings = new RaceSettings(StateFundedGermans: !args.Contains("--fair-germans"));
@@ -24,7 +26,7 @@ var teamId = args.ElementAtOrDefault(0) ?? "alfa-rossa";
 var careers = int.TryParse(args.ElementAtOrDefault(1), out var n) ? n : 20;
 
 var data = GameData.FromDirectory(FindDataDir());
-var years = data.Seasons.Keys.Order().ToList();
+var years = data.Seasons.Keys.Order().Where(y => y >= startYear).ToList();
 var rows = years.ToDictionary(y => y, _ => new List<(SeasonSummary Summary, Car Car, int Drivers)>());
 var ledgers = new List<Transaction>();
 var broke = 0;

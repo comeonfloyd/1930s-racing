@@ -141,17 +141,28 @@ public sealed partial class Career
     public IReadOnlyList<Project> Projects => _projects;
     public IReadOnlyList<NewsItem> News => _news;
 
-    public Career(GameData data, string teamId, int startYear, int seed = 1930, RaceSettings? settings = null)
+    /// <summary>The scenario the career began with.</summary>
+    public string ScenarioId { get; }
+
+    /// <summary>
+    /// A new career with a team in a year. The team must be on offer in a scenario starting
+    /// that year (or playable, for a test career in any year), which also sets its budget.
+    /// </summary>
+    public Career(GameData data, string teamId, int startYear, int seed = 1930, RaceSettings? settings = null, string? scenarioId = null)
     {
         Seed = seed;
         Settings = settings ?? new RaceSettings();
         _data = data;
         Team = data.Teams[teamId];
-        if (!Team.Playable)
-            throw new ArgumentException($"Team {teamId} is not playable", nameof(teamId));
+        var scenario = data.Scenarios.FirstOrDefault(s => s.Id == scenarioId)
+                       ?? data.Scenarios.FirstOrDefault(s => s.Year == startYear && s.Teams.Any(t => t.TeamId == teamId));
+        var offered = scenario?.Teams.FirstOrDefault(t => t.TeamId == teamId);
+        if (offered is null && !Team.Playable)
+            throw new ArgumentException($"Team {teamId} is not playable in {startYear}", nameof(teamId));
+        ScenarioId = scenario?.Id ?? data.Scenarios[0].Id;
         Today = new DateOnly(startYear, 1, 1);
         _paidUntil = Today;
-        Cash = (int)(Math.Round(Team.StartingCash * Settings.StartingMoney / 100) * 100);
+        Cash = (int)(Math.Round((offered?.Cash ?? Team.StartingCash) * Settings.StartingMoney / 100) * 100);
         Car = Team.CarFor(startYear);
         ModelYear = Team.CarYearFor(startYear);
         _roster = Team.RosterFor(startYear).ToList();
@@ -385,7 +396,12 @@ public sealed partial class Career
     public int WeeklyBacking => BackingOn(Today);
 
     /// <summary>The works' backing in a week, after any world news.</summary>
-    private int BackingOn(DateOnly date) => (int)Math.Round(Finance.WeeklyBacking(Team.Prestige) * WorldFactor(WorldEffect.Backing, date));
+    private int BackingOn(DateOnly date) =>
+        (int)Math.Round(Finance.WeeklyBacking(Team.Prestige) * WorldFactor(WorldEffect.Backing, date)) + StateGrantOn(date);
+
+    /// <summary>The Reich's weekly grant to a German works from 1934, unless the settings take state money out of racing.</summary>
+    private int StateGrantOn(DateOnly date) =>
+        Settings.StateFundedGermans && Team.Nationality == "Germany" && date.Year >= RaceSettings.FirstStateFundedYear ? Finance.StateGrant : 0;
 
     /// <summary>The next entered race still to be run, if any.</summary>
     public RaceEvent? NextRace => _entries.FirstOrDefault(e => e.Date >= Today && !HasRun(e));

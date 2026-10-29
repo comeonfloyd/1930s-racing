@@ -40,6 +40,9 @@ public static class Finance
     /// </summary>
     public static int WeeklyBacking(int prestige) => 2 * prestige;
 
+    /// <summary>The Reich's weekly grant to a German works, on top of the maker's backing.</summary>
+    public const int StateGrant = 150;
+
     /// <summary>Prize money for a finishing position (1 = winner), or 0 outside the prizes.</summary>
     public static int Prize(RaceEvent ev, int position) =>
         position >= 1 && position <= PrizeShares.Count ? (int)Math.Round(ev.PrizeFund * PrizeShares[position - 1]) : 0;
