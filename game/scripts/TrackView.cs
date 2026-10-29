@@ -113,7 +113,7 @@ public partial class TrackView : Node2D, IRaceView
             _carLabels.Add(TextLabel((_carLabels.Count + 1).ToString(), 14, Colors.White));
         var followed = cars.FirstOrDefault(c => c.Entry.Driver.Id == FollowDriverId);
         if (followed is not null && _track is not null)
-            Focus = _focus.Lerp(_track.At(followed.Distance), 0.25f);
+            Focus = _focus.Lerp(_track.At(_track.Placed(followed)), 0.25f);
         QueueRedraw();
     }
 
@@ -294,8 +294,9 @@ public partial class TrackView : Node2D, IRaceView
         // Leader drawn last, on top.
         foreach (var (car, index) in _cars.Select((c, i) => (c, i)).Reverse())
         {
-            var p = Map(_track!.At(car.Distance));
-            var forward = (Map(_track.At(car.Distance + 0.0015)) - p).Normalized();
+            var at = _track!.Placed(car);
+            var p = Map(_track.At(at));
+            var forward = (Map(_track.At(at + 0.0015)) - p).Normalized();
             if (forward == Vector2.Zero)
                 forward = Vector2.Right;
             var left = new Vector2(forward.Y, -forward.X);

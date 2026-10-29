@@ -313,7 +313,7 @@ public partial class TrackView3D : Control, IRaceView
 
     private Vector3 World(Vector2 p) => new(p.X * K * Aspect, 0, p.Y * K);
 
-    private Vector3 CarSpot(LiveCar car) => World(_track!.At(car.Distance));
+    private Vector3 CarSpot(LiveCar car) => World(_track!.At(_track.Placed(car)));
 
     private void PlaceCars(float dt)
     {
@@ -326,8 +326,9 @@ public partial class TrackView3D : Control, IRaceView
         {
             var car = _cars[i];
             var (node, paint, colour) = _carNodes[i];
-            var p = CarSpot(car);
-            var ahead = World(_track!.At(car.Distance + 0.0015)) - p;
+            var at = _track!.Placed(car);
+            var p = World(_track.At(at));
+            var ahead = World(_track.At(at + 0.0015)) - p;
             var heading = ahead.LengthSquared() > 0 ? Mathf.Atan2(-ahead.Z, ahead.X) : 0;
             var id = car.Entry.Driver.Id;
             _headings[id] = _headings.TryGetValue(id, out var was) ? Mathf.LerpAngle(was, heading, Math.Min(1, dt * 8)) : heading;

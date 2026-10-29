@@ -44,12 +44,15 @@ public sealed record RaceMessage(double Time, int Lap, string DriverId, string T
 /// <param name="PitSeconds">Seconds stood in the pits so far.</param>
 /// <param name="Plan">What the crew does at the next stop.</param>
 /// <param name="PlannedStops">The laps still to come at whose end the car is called in.</param>
+/// <param name="StandingStart">The lap now running started from rest: the first lap, or out of the pits.</param>
+/// <param name="LapSeconds">How long the lap now running takes on the move, pit stop left out.</param>
 public sealed record LiveCar(
     RaceEntry Entry, double Distance, bool Running, Retirement? Retirement, bool Finished,
     bool InPits, double Fuel, double TyreWear, PaceOrder Pace, bool PitCalled, int PitStops, double FinishedAt = 0,
     Driver? AtWheel = null, double StintHours = 0, bool SwapAtStop = true, bool FuelAllowed = true,
     int LapsDone = 0, double LastLap = 0, double BestLap = 0, int BestLapNumber = 0, int Grid = 0,
-    double PitSeconds = 0, PitPlan? Plan = null, IReadOnlyList<int>? PlannedStops = null);
+    double PitSeconds = 0, PitPlan? Plan = null, IReadOnlyList<int>? PlannedStops = null,
+    bool StandingStart = false, double LapSeconds = 0);
 
 /// <summary>
 /// A race that runs as time goes on, so the player can give orders while it is on: call a car in
@@ -257,7 +260,8 @@ public sealed class LiveRace
                 laps.Count, laps.Count == 0 ? 0 : laps[^1], best, laps.IndexOf(best) + 1, car.Grid,
                 // A stop at the start of the lap now running counts once the car is standing in the pits.
                 car.PitSecondsDone - car.PitTime + Math.Clamp(Time - car.LapStart, 0, car.PitTime),
-                car.Plan, car.PlannedStops.Order().ToList()));
+                car.Plan, car.PlannedStops.Order().ToList(),
+                car.LapTimes.Count == 0 || car.PitTime > 0, Math.Max(0, car.LapEnd - driving)));
         }
         // Finished cars by finishing time, then everyone else by distance covered.
         return list
