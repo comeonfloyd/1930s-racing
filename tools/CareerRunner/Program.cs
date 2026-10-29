@@ -17,6 +17,8 @@ var design = args.Contains("--design");
 var sponsors = args.Contains("--sponsors");
 // --year=YEAR: start in that year, as a scenario starting then (e.g. --year=1934 mercator-benz).
 var startYear = args.FirstOrDefault(a => a.StartsWith("--year="))?.Split('=')[1] is { } sy ? int.Parse(sy) : 0;
+// --own=NATIONALITY: run a garage team of the player's own instead (e.g. --own=Italy).
+var own = args.FirstOrDefault(a => a.StartsWith("--own="))?.Split('=')[1];
 // --races=YEAR: print each race of that year in the first career, with the field's cars.
 // --fair-germans: the German works race without state money (a career setting).
 var settings = new RaceSettings(StateFundedGermans: !args.Contains("--fair-germans"));
@@ -33,7 +35,9 @@ var broke = 0;
 var lostDrivers = 0;
 for (var seed = 0; seed < careers; seed++)
 {
-    var career = new Career(data, teamId, years[0], seed, settings);
+    var career = own is null
+        ? new Career(data, teamId, years[0], seed, settings)
+        : new Career(data, OwnTeam.Create(data, "Garage", own, "#262222", years[0]), years[0], seed, settings);
     while (true)
     {
         while (true)
@@ -79,7 +83,7 @@ for (var seed = 0; seed < careers; seed++)
     }
 }
 
-var team = data.Teams[teamId];
+var team = own is null ? data.Teams[teamId] : OwnTeam.Create(data, "Own garage", own, "#262222", years[0]);
 Console.WriteLine($"{team.Name}, {careers} careers from {years[0]}");
 Console.WriteLine("year  careers  races  wins  podiums  cash at end (min)    car (most common)");
 foreach (var (year, list) in rows.Where(r => r.Value.Count > 0))
@@ -107,6 +111,9 @@ static void Plan(Career career, bool works, bool design)
         career.Sign(driver.Id);
 
     var reserve = 2500;
+    // A garage buys each new customer car it can afford, keeping money to race.
+    if (career.CustomerCarForSale is { } customer && Better(customer, career.Car) && OwnTeam.CustomerCarCost(customer) + 1000 < career.Cash)
+        career.BuyCustomerCar();
     if (design)
     {
         // Study the parts of the day first, when the money allows.

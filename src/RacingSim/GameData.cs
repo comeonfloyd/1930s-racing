@@ -59,6 +59,23 @@ public sealed class GameData
         Validate();
     }
 
+    private GameData(GameData data, Team extra)
+    {
+        Circuits = data.Circuits;
+        Cities = data.Cities;
+        Drivers = data.Drivers;
+        Teams = data.Teams.Values.Where(t => t.Id != extra.Id).Append(extra).ToDictionary(t => t.Id);
+        Seasons = data.Seasons;
+        LeMans = data.LeMans;
+        Staff = data.Staff;
+        World = data.World;
+        Sponsors = data.Sponsors;
+        Scenarios = data.Scenarios;
+    }
+
+    /// <summary>The same data with one more team: the player's own.</summary>
+    public GameData WithTeam(Team team) => new(this, team);
+
     /// <summary>
     /// Builds the data set from raw JSON text. The caller reads the files, so the same
     /// code works from Godot (res:// paths) and from tests (disk paths).

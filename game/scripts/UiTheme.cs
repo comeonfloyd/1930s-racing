@@ -253,6 +253,13 @@ public static class UiTheme
             t.SetColor(c, "OptionButton", Ink);
             t.SetColor(c, "CheckButton", Ink);
         }
+        // Text fields look like the drop-downs: ink on paper, a red rule when typing.
+        t.SetStylebox("normal", "LineEdit", Box(new Color(Ink, 0.05f), 0, 10, border: new Color(Ink, 0.5f)));
+        t.SetStylebox("focus", "LineEdit", Box(Colors.Transparent, 0, 10, border: Red));
+        t.SetColor("font_color", "LineEdit", Ink);
+        t.SetColor("font_placeholder_color", "LineEdit", new Color(Ink, 0.45f));
+        t.SetColor("caret_color", "LineEdit", Red);
+        t.SetColor("selection_color", "LineEdit", new Color(Red, 0.25f));
         t.SetStylebox("panel", "PopupMenu", Box(Paper, 0, 6, border: new Color(Ink, 0.4f)));
         t.SetStylebox("hover", "PopupMenu", Box(new Color(Red, 0.2f), 0, 4));
         t.SetColor("font_color", "PopupMenu", Ink);

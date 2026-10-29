@@ -121,7 +121,8 @@ public sealed record Team(
     IReadOnlyDictionary<string, IReadOnlyList<string>>? Rosters = null,
     IReadOnlyDictionary<string, Car>? Cars = null,
     bool Privateer = false,
-    IReadOnlyDictionary<string, Car>? SportsCars = null)
+    IReadOnlyDictionary<string, Car>? SportsCars = null,
+    string? Colour = null)
 {
     /// <summary>The maker's sports car for endurance races in a year, or null when it has none.</summary>
     public Car? SportsCarFor(int year) => Latest(SportsCars, year);
