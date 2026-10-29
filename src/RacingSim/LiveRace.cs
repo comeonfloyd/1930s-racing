@@ -12,6 +12,20 @@ public enum PaceOrder
     Push,
 }
 
+/// <summary>How much fuel goes in at a stop.</summary>
+public enum FuelPlan
+{
+    /// <summary>Enough to reach the next planned stop, or the flag when none is planned: the lightest car.</summary>
+    NextStop,
+    /// <summary>Fill the tank: a heavier car and a longer stop, but room to stay out.</summary>
+    Full,
+    /// <summary>No fuel: a quick stop for tyres only.</summary>
+    None,
+}
+
+/// <summary>What the crew does when the car stops: how much fuel goes in, and whether the rear wheels are changed.</summary>
+public sealed record PitPlan(FuelPlan Fuel = FuelPlan.NextStop, bool Tyres = true);
+
 /// <summary>Something worth a line in the race commentary.</summary>
 public sealed record RaceMessage(double Time, int Lap, string DriverId, string Text);
 
@@ -22,10 +36,20 @@ public sealed record RaceMessage(double Time, int Lap, string DriverId, string T
 /// <param name="StintHours">How long the driver at the wheel has been in the car.</param>
 /// <param name="SwapAtStop">For a shared car: the drivers change at the next stop.</param>
 /// <param name="FuelAllowed">False while the endurance rules forbid refuelling at the next stop.</param>
+/// <param name="LapsDone">Laps completed so far.</param>
+/// <param name="LastLap">The last completed lap in seconds, pit stop included, or 0 before the first.</param>
+/// <param name="BestLap">The quickest completed lap in seconds, or 0 before the first.</param>
+/// <param name="BestLapNumber">Which lap the quickest one was.</param>
+/// <param name="Grid">Starting place, from 1.</param>
+/// <param name="PitSeconds">Seconds stood in the pits so far.</param>
+/// <param name="Plan">What the crew does at the next stop.</param>
+/// <param name="PlannedStops">The laps still to come at whose end the car is called in.</param>
 public sealed record LiveCar(
     RaceEntry Entry, double Distance, bool Running, Retirement? Retirement, bool Finished,
     bool InPits, double Fuel, double TyreWear, PaceOrder Pace, bool PitCalled, int PitStops, double FinishedAt = 0,
-    Driver? AtWheel = null, double StintHours = 0, bool SwapAtStop = true, bool FuelAllowed = true);
+    Driver? AtWheel = null, double StintHours = 0, bool SwapAtStop = true, bool FuelAllowed = true,
+    int LapsDone = 0, double LastLap = 0, double BestLap = 0, int BestLapNumber = 0, int Grid = 0,
+    double PitSeconds = 0, PitPlan? Plan = null, IReadOnlyList<int>? PlannedStops = null);
 
 /// <summary>
 /// A race that runs as time goes on, so the player can give orders while it is on: call a car in
@@ -105,7 +129,7 @@ public sealed class LiveRace
         var dayForm = new Random(Seeds.Mix(seed, -1));
         _cars = grid.Select((entry, i) => new CarState(entry, new Random(Seeds.Mix(seed, i)),
             // Each car's form on the day: up to about 2% either way, so the fastest car does not always win.
-            1 + Gaussian(dayForm) * 0.01)).ToArray();
+            1 + Gaussian(dayForm) * 0.01) { Grid = i + 1 }).ToArray();
         foreach (var car in _cars)
             StartLap(car, 0);
     }
@@ -119,6 +143,38 @@ public sealed class LiveRace
 
     /// <summary>Calls the car in at the end of its current lap; calling again cancels.</summary>
     public void CallPitStop(string driverId, bool call = true) => Car(driverId).PitCalled = call;
+
+    /// <summary>What the crew does at this car's stops from now on.</summary>
+    public void SetPitPlan(string driverId, PitPlan plan) => Car(driverId).Plan = plan;
+
+    /// <summary>
+    /// Plans the car's stops ahead: it comes in at the end of each of these laps. Laps already
+    /// run are dropped; an empty list leaves the stops to the player's calls (and the driver's
+    /// own sense of an empty tank).
+    /// </summary>
+    public void SetPlannedStops(string driverId, IEnumerable<int> laps)
+    {
+        var car = Car(driverId);
+        car.PlannedStops.Clear();
+        car.PlannedStops.UnionWith(laps.Where(l => l > car.LapTimes.Count && l < Event.Laps));
+    }
+
+    /// <summary>
+    /// Laps that split what is left of the race into equal stints, for a plan of so many stops
+    /// from now on. Endurance races run on the clock, so they have no lap plan.
+    /// </summary>
+    public IReadOnlyList<int> EvenStops(string driverId, int stops)
+    {
+        var car = Car(driverId);
+        var done = car.LapTimes.Count;
+        var left = Event.Laps - done;
+        if (Event.IsEndurance || stops <= 0 || left < 2)
+            return [];
+        // A stop comes at the end of a lap: the earliest the end of the lap running now, the latest the lap before the last.
+        return Enumerable.Range(1, stops)
+            .Select(k => Math.Clamp(done + (int)Math.Round(left * k / (double)(stops + 1)), done + 1, Event.Laps - 1))
+            .Distinct().ToList();
+    }
 
     /// <summary>For a shared car: whether the drivers change at the next stop.</summary>
     public void SetSwapAtStop(string driverId, bool swap) => Car(driverId).SwapAtStop = swap;
@@ -192,9 +248,15 @@ public sealed class LiveRace
                 distance += Math.Clamp((Time - driving) / (car.StopTime - driving), 0, 1) * car.StopFraction;
             else if (!finished && !inPits)
                 distance += Math.Clamp((Time - driving) / (car.LapEnd - driving), 0, 0.999);
+            var laps = car.LapTimes;
+            var best = laps.Count == 0 ? 0 : laps.Min();
             list.Add(new LiveCar(car.Entry, distance, !finished && !stopped, stopped ? car.Retirement : null, finished,
                 inPits, car.Fuel, car.Tyres, car.Pace, car.PitCalled, car.PitStops, finished ? car.LapEnd : 0,
-                car.AtWheel, Math.Max(0, Time - car.StintStart) / 3600, car.SwapAtStop, FuelAllowed(car)));
+                car.AtWheel, Math.Max(0, Time - car.StintStart) / 3600, car.SwapAtStop, FuelAllowed(car),
+                laps.Count, laps.Count == 0 ? 0 : laps[^1], best, laps.IndexOf(best) + 1, car.Grid,
+                // A stop at the start of the lap now running counts once the car is standing in the pits.
+                car.PitSecondsDone - car.PitTime + Math.Clamp(Time - car.LapStart, 0, car.PitTime),
+                car.Plan, car.PlannedStops.Order().ToList()));
         }
         // Finished cars by finishing time, then everyone else by distance covered.
         return list
@@ -257,7 +319,8 @@ public sealed class LiveRace
         var lapsLeft = LapsLeft(car, start);
         var manual = _manualTeams.Contains(car.Entry.Team.Id);
         var stops = manual ? FuelShort(car, lapsLeft) : WantsStop(car, lapsLeft, start);
-        if (lap > 1 && (car.PitCalled || car.TyreBurst || stops))
+        var planned = car.PlannedStops.Remove(lap - 1);
+        if (lap > 1 && (car.PitCalled || car.TyreBurst || stops || planned))
             PitStop(car, lapsLeft, start, lap);
 
         var fuelForLap = FuelPerLap(car);
@@ -309,7 +372,7 @@ public sealed class LiveRace
         // Less consistent drivers spread their laps wider.
         var spread = (21 - driver.Skills.Consistency) * 0.005;
         var time = ideal * (1 + Math.Abs(Gaussian(rng)) * spread) * car.Form / speed;
-        time *= 1 + 0.01 * car.Fuel;                  // a full tank is heavy
+        time *= 1 + 0.02 * car.Fuel;                  // a full tank is heavy: a light load is worth planning for
         time *= 1 + 0.05 * car.Tyres * car.Tyres;     // worn rear tyres lose grip
         if (car.TyreBurst)
             time *= 1.4;                              // limping back on a burst tyre
@@ -366,23 +429,35 @@ public sealed class LiveRace
     private void PitStop(CarState car, int lapsLeft, double start, int lap)
     {
         var rng = car.Rng;
-        // Fuel for the rest of the race, or a full tank, when the rules allow it.
-        // At Le Mans the tank is filled: the next chance to refuel may be 24 laps away.
-        var needed = Event.IsEndurance ? 1 : Math.Min(1, lapsLeft * FuelPerLap(car) * 1.05);
+        // Fuel as the plan says, when the rules allow it: by default for the rest of the race,
+        // or to the next planned stop, with a little to spare. At Le Mans the tank is filled:
+        // the next chance to refuel may be 24 laps away.
+        var plan = car.Plan;
+        var nextStop = car.PlannedStops.Where(l => l >= lap).DefaultIfEmpty(0).Min();
+        var lapsToRun = nextStop > 0 ? Math.Min(lapsLeft, nextStop - lap + 1) : lapsLeft;
+        var needed = plan.Fuel switch
+        {
+            FuelPlan.None => 0,
+            FuelPlan.Full => 1,
+            _ when Event.IsEndurance => 1,
+            _ => Math.Min(1, lapsToRun * FuelPerLap(car) * 1.05),
+        };
         var fuelAdded = FuelAllowed(car) ? Math.Max(0, needed - car.Fuel) : 0;
+        // A burst tyre is changed whatever the plan says.
+        var tyres = plan.Tyres || car.TyreBurst;
         double seconds;
-        string work;
         if (Event.IsEndurance)
-        {
             // At Le Mans the driver does the work himself, alone: slow churns, all four wheels.
-            seconds = 40 + 120 * fuelAdded + 60;
-            work = fuelAdded > 0 ? "fuel and tyres" : "tyres only, too soon to refuel";
-        }
+            seconds = 40 + 120 * fuelAdded + (tyres ? 60 : 0);
         else
+            seconds = 20 + 30 * fuelAdded + (tyres ? 15 : 0);  // stop and go, fuel churns, rear wheels
+        var work = (fuelAdded > 0, tyres) switch
         {
-            seconds = 20 + 30 * fuelAdded + 15;  // stop and go, fuel churns, rear wheels
-            work = "fuel and tyres";
-        }
+            (true, true) => "fuel and tyres",
+            (true, false) => "fuel only",
+            (false, true) => Event.IsEndurance && plan.Fuel != FuelPlan.None && !FuelAllowed(car) ? "tyres only, too soon to refuel" : "tyres only",
+            _ => "a quick look over the car",
+        };
         var crew = _pitCrews.GetValueOrDefault(car.Entry.Team.Id, AverageCrew);
         seconds *= Works.PitTimeFactor(crew);
         var fumble = rng.NextDouble() < Works.FumbleChance(crew);
@@ -391,7 +466,8 @@ public sealed class LiveRace
         if (fuelAdded > 0)
             car.LapsSinceFuel = 0;
         car.Fuel += fuelAdded;
-        car.Tyres = 0;
+        if (tyres)
+            car.Tyres = 0;
         car.TyreBurst = false;
         car.PitCalled = false;
         car.PitStops++;
@@ -399,6 +475,7 @@ public sealed class LiveRace
         if (swap)
             seconds += 20;
         car.PitTime = seconds;
+        car.PitSecondsDone += seconds;
         Say(car, start, lap, $"pits for {work}, {seconds:0} s{(fumble ? " after a fumbled wheel change" : "")}");
         if (swap)
         {
@@ -511,6 +588,12 @@ public sealed class LiveRace
         public PaceOrder Pace = PaceOrder.Race;
         public bool PitCalled;
         public int PitStops;
+        /// <summary>Seconds of every stop made, the one at the start of the current lap included.</summary>
+        public double PitSecondsDone;
+        public PitPlan Plan = new();
+        /// <summary>Laps at whose end the player wants the car in.</summary>
+        public SortedSet<int> PlannedStops { get; } = new();
+        public int Grid;
         public Retirement? Retirement;
         public bool Done;
         /// <summary>Who is driving: the first driver until a swap.</summary>
