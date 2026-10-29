@@ -73,6 +73,7 @@ public partial class RaceScreen : Control
     private double _time;
     private int _speed = 60;
     private bool _paused;
+    private RaceSounds? _sounds;
     private bool _resultShown;
     private readonly List<Button> _speedButtons = new();
     private int[] Speeds => _race.Event.IsEndurance ? EnduranceSpeeds : GrandPrixSpeeds;
@@ -124,6 +125,7 @@ public partial class RaceScreen : Control
         AddChild(CameraBar());
         AddChild(PlaybackBar());
         AddChild(_statsScreen = StatsScreen());
+        AddChild(_sounds = new RaceSounds(race, shape));
 
         Resized += Layout;
         Layout();
@@ -131,7 +133,7 @@ public partial class RaceScreen : Control
 
         if (DevShot.Active)
         {
-            SetSpeed(240);
+            SetSpeed(DevShot.Arg("listen") is null ? 240 : 1);
             // DevShot --night: start the shots at midnight in a 24-hour race.
             if (_race.Event.IsEndurance && OS.GetCmdlineUserArgs().Contains("--night"))
             {
@@ -151,8 +153,10 @@ public partial class RaceScreen : Control
                 var mine = _followChoices.IndexOf(_race.Cars().First(c => c.Entry.Team.Id == RaceRequest.PlayerTeamId).Entry.Driver.Id);
                 _follow.Selected = Math.Max(0, mine);
                 _track.Zoom = float.TryParse(DevShot.Arg("zoom"), System.Globalization.CultureInfo.InvariantCulture, out var zoom) ? zoom : 5;
-                SetSpeed(10);
-                DevShot.Capture(this, "race-zoom.png", 2, () =>
+                // DevShot --listen=20: watch the followed car at true speed for that long first, to hear the race.
+                var listen = double.TryParse(DevShot.Arg("listen"), System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : 0;
+                SetSpeed(listen > 0 ? 1 : 10);
+                DevShot.Capture(this, "race-zoom.png", listen > 0 ? listen : 2, () =>
                 {
                     _statsButton.ButtonPressed = true;
                     DevShot.Capture(this, "race-stats.png", 1, () =>
@@ -540,6 +544,8 @@ public partial class RaceScreen : Control
             Refresh();
         };
         row.AddChild(finish);
+        row.AddChild(new VSeparator());
+        row.AddChild(SoundPanel.Button());
         card.AddChild(row);
         card.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterBottom, LayoutPresetMode.KeepSize, 16);
         card.GrowHorizontal = GrowDirection.Both;
@@ -682,7 +688,10 @@ public partial class RaceScreen : Control
 
     public override void _Process(double delta)
     {
-        if (_race is null || _paused || Over)
+        if (_race is null)
+            return;
+        _sounds?.Update(_race.Cars(), _track, _time, _speed, _paused, _track.Rain, _track.Night, delta);
+        if (_paused || Over)
             return;
         _time += delta * _speed;
         _race.AdvanceTo(_time);

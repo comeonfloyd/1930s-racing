@@ -284,6 +284,26 @@ public partial class TrackView3D : Control, IRaceView
         _environment.Environment.FogDensity = (0.06f + 0.12f * Rain) / Distance;
     }
 
+    // The ear sits between the camera and what it looks at: from the whole-track view the race
+    // is a distant roar, close behind a car its engine fills the speakers.
+    private const float EarShare = 0.12f;
+
+    public (Vector2 At, float Height) Ear
+    {
+        get
+        {
+            var ear = _target + (_camera.Position - _target) * EarShare;
+            return (new Vector2(ear.X / (K * Aspect), ear.Z / K), ear.Y / K);
+        }
+    }
+
+    public float PanOf(Vector2 point)
+    {
+        var local = _camera.Transform.AffineInverse() * World(point);
+        var flat = new Vector2(local.X, local.Z).Length();
+        return flat < 1e-3f ? 0 : local.X / flat;
+    }
+
     private void ClampTarget()
     {
         _target = new Vector3(Mathf.Clamp(_target.X, 0, K * Aspect), 0, Mathf.Clamp(_target.Z, 0, K));

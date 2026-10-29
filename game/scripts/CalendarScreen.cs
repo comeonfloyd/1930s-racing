@@ -90,6 +90,7 @@ public partial class CalendarScreen : Control
         _status = new Label { ThemeTypeVariation = "Figure" };
         chip.AddChild(_status);
         header.AddChild(chip);
+        header.AddChild(SoundPanel.Button());
         _action = new Button { ThemeTypeVariation = "Accent", SizeFlagsVertical = SizeFlags.ShrinkCenter, CustomMinimumSize = new Vector2(0, 44) };
         _action.Pressed += OnAction;
         header.AddChild(_action);

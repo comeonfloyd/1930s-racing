@@ -27,6 +27,9 @@ public sealed class TrackLine
 
     public double LapMetres { get; }
 
+    /// <summary>Metres to one drawing height: the drawing is to scale, so one factor fits it all.</summary>
+    public double MetresPerHeight { get; }
+
     /// <param name="points">The smoothed outline in the track file's 0..1 drawing coordinates.</param>
     /// <param name="lapKm">The real lap length; the drawing is to scale, so one factor fits it.</param>
     public TrackLine(IReadOnlyList<(double X, double Y)> points, double lapKm)
@@ -36,7 +39,7 @@ public sealed class TrackLine
         for (var i = 1; i <= n; i++)
             drawn[i] = drawn[i - 1] + Length(points[i - 1], points[i % n]);
         LapMetres = lapKm * 1000;
-        var scale = LapMetres / drawn[^1];
+        var scale = MetresPerHeight = LapMetres / drawn[^1];
 
         // Headings of the outline's segments, unwrapped so they can be subtracted.
         var heading = new double[n];

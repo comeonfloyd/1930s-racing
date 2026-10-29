@@ -24,6 +24,7 @@ public partial class Shutdown : Node
     private static void FreeAndQuit(SceneTree tree)
     {
         tree.CurrentScene?.Free();
+        Sounds.Release();
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
