@@ -70,6 +70,7 @@ public sealed partial class Career
         if (cost > Cash)
             return ProjectResult.NotEnoughMoney;
         Pay(MoneyKind.Development, $"Customer car: {car.Name}", -cost);
+        KeepOldCar(Car, Today);
         Car = car;
         DesignBase = car;
         TeethingFaults = 0;

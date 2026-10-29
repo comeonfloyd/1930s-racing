@@ -46,7 +46,9 @@ public sealed record CareerSave(
     IReadOnlyList<SponsorDeal>? Deals = null,
     IReadOnlyDictionary<string, double>? StartDeals = null,
     string? ScenarioId = null,
-    Team? OwnTeam = null);
+    Team? OwnTeam = null,
+    IReadOnlyList<Car>? SpareCars = null,
+    IReadOnlyDictionary<string, string>? CarOfDriver = null);
 
 public sealed record SavedRace(string EventId, bool Entered, int Earned, IReadOnlyList<SavedCar> Classification);
 
@@ -94,7 +96,9 @@ public sealed partial class Career
         _deals.Values.ToList(),
         new Dictionary<string, double>(_startDeals),
         ScenarioId,
-        IsOwnTeam ? Team : null);
+        IsOwnTeam ? Team : null,
+        _spares.ToList(),
+        new Dictionary<string, string>(_carOf));
 
     public string ToJson() => JsonSerializer.Serialize(ToSave(), SaveOptions);
 
@@ -170,6 +174,9 @@ public sealed partial class Career
         }
         foreach (var deal in (save.Deals ?? []).Where(d => data.Sponsors.ContainsKey(d.SponsorId)))
             career._deals[data.Sponsors[deal.SponsorId].Kind] = deal;
+        career._spares.AddRange(save.SpareCars ?? []);
+        foreach (var (driver, car) in save.CarOfDriver ?? new Dictionary<string, string>())
+            career._carOf[driver] = car;
         foreach (var (id, factor) in save.StartDeals ?? new Dictionary<string, double>())
             career._startDeals[id] = factor;
         return career;

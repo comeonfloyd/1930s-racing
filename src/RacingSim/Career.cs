@@ -242,6 +242,7 @@ public sealed partial class Career
     {
         if (Drivers.Count <= 1 || !_roster.Remove(driverId))
             return false;
+        _carOf.Remove(driverId);
         _news.Add(new NewsItem(Today, $"{_data.Drivers[driverId].Name} leaves {Team.Name}."));
         return true;
     }
@@ -381,6 +382,7 @@ public sealed partial class Career
     /// <summary>A new car starts its development afresh, so tuning costs go back to their base.</summary>
     private void NewCarArrives(int modelYear, DateOnly date, Car? ownDesign = null, int faults = 0)
     {
+        KeepOldCar(Car, date);
         Car = ownDesign ?? Team.CarFor(modelYear);
         DesignBase = ownDesign;
         ModelYear = modelYear;
@@ -440,7 +442,7 @@ public sealed partial class Career
         return teams.SelectMany(t =>
             {
                 var team = t with { Car = t.Id == Team.Id ? Supplied(Works.Prepared(RaceCarFor(ev)!, Level(Facility.Workshop))) : CarOf(t.Id) };
-                return StartersOf(t, ev.Date).Select(id => new RaceEntry(_data.Drivers[id], team));
+                return StartersOf(t, ev.Date).Select(id => new RaceEntry(_data.Drivers[id], t.Id == Team.Id ? team with { Car = CarFor(id, ev, team.Car) } : team));
             })
             .Concat(PrivateersFor(ev, circuit))
             .ToList();

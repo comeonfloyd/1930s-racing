@@ -169,6 +169,14 @@ public partial class CalendarScreen : Control
             }
             else
                 Career = new Career(_data, team, year);
+            // --newcar: build the next works model first, so the old car is kept and the second driver races it.
+            if (DevShot.Arg("newcar") is not null && Career.StartProject(Upgrade.NewCar) == ProjectResult.Queued)
+            {
+                Career.AdvanceTo(new DateOnly(Career.Today.Year, 12, 31));
+                Career.StartNextSeason();
+                if (Career.SpareCars.Count > 0 && Career.Drivers.Count > 1)
+                    Career.AssignCar(Career.Drivers[1].Id, Career.SpareCars[0].Name);
+            }
             Career.StartProject(Upgrade.Engine);
             // The best-paying fuel and tyres, so the shots show contracts and offers.
             foreach (var kind in new[] { SupplyKind.Fuel, SupplyKind.Tyres })
@@ -910,7 +918,62 @@ public partial class CalendarScreen : Control
                 career.Release(id);
                 Refresh();
             };
-            mine.AddChild(DriverCard(career, driver, release, mine: true));
+            Control action = release;
+            if (career.SpareCars.Count > 0)
+            {
+                // Which car the driver races: the newest, or one kept in the works.
+                var actions = new HBoxContainer();
+                actions.AddThemeConstantOverride("separation", 8);
+                var pick = new OptionButton { CustomMinimumSize = new Vector2(180, 0), ClipText = true, TooltipText = "The car this driver races. Kept cars race as they were last developed." };
+                pick.AddItem(career.Car.Name);
+                foreach (var car in career.SpareCars)
+                    pick.AddItem(car.Name);
+                var given = career.CarOfDriver(id);
+                pick.Selected = given is null ? 0 : 1 + career.SpareCars.ToList().IndexOf(given);
+                pick.ItemSelected += i =>
+                {
+                    career.AssignCar(id, i == 0 ? null : career.SpareCars[(int)i - 1].Name);
+                    Refresh();
+                };
+                actions.AddChild(pick);
+                actions.AddChild(release);
+                action = actions;
+            }
+            mine.AddChild(DriverCard(career, driver, action, mine: true));
+        }
+
+        if (career.SpareCars.Count > 0)
+        {
+            _body.AddChild(new Label { Text = "CARS KEPT IN THE WORKS", ThemeTypeVariation = "Section" });
+            foreach (var car in career.SpareCars)
+            {
+                var card = new PanelContainer { ThemeTypeVariation = "CardTight" };
+                var row = new HBoxContainer();
+                row.AddThemeConstantOverride("separation", 14);
+                var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+                titles.AddThemeConstantOverride("separation", 2);
+                titles.AddChild(new Label { Text = car.Name, ThemeTypeVariation = "Heading" });
+                var drivers = career.Drivers.Where(d => career.CarOfDriver(d.Id)?.Name == car.Name).Select(d => d.Name).ToList();
+                var legal = Formula.Breach(car, career.Today.Year) is null;
+                titles.AddChild(new Label
+                {
+                    Text = $"{car.Horsepower} hp · {car.WeightKg} kg · handling {car.Handling} · reliability {car.Reliability:P0} · "
+                           + (drivers.Count > 0 ? $"raced by {string.Join(", ", drivers)}" : "spare")
+                           + (legal ? "" : " · outside this year's rules, so its driver races the newest car"),
+                    ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                }.Tint(legal ? null : UiTheme.Red));
+                row.AddChild(titles);
+                var name = car.Name;
+                var sell = new Button { Text = $"Sell · £{Career.SpareValue(car):N0}", SizeFlagsVertical = SizeFlags.ShrinkCenter, CustomMinimumSize = new Vector2(110, 0), TooltipText = "Sell the car to a private entrant. Its driver goes back to the newest car." };
+                sell.Pressed += () =>
+                {
+                    career.SellSpare(name);
+                    Refresh();
+                };
+                row.AddChild(sell);
+                card.AddChild(row);
+                _body.AddChild(card);
+            }
         }
 
         _body.AddChild(new Label { Text = "DRIVERS LOOKING FOR A DRIVE", ThemeTypeVariation = "Section" });
@@ -953,7 +1016,7 @@ public partial class CalendarScreen : Control
         return grid;
     }
 
-    private Control DriverCard(Career career, Driver driver, Button action, bool mine)
+    private Control DriverCard(Career career, Driver driver, Control action, bool mine)
     {
         var card = new PanelContainer { ThemeTypeVariation = "CardTight", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var row = new HBoxContainer();
